@@ -1,4 +1,16 @@
-# WinMarchy
+<p align="center"><img src="src/WinMarchy.App/Assets/winmarchy.svg" width="96" alt="WinMarchy"></p>
+
+<h1 align="center">WinMarchy</h1>
+
+<p align="center">Omarchys Look und Tastenkürzel auf Windows, mit GlazeWM.</p>
+
+<p align="center">
+  <a href="https://github.com/PixelShober/WinMarchy/releases/latest">Download</a> ·
+  <a href="docs/shortcuts.md">Tastenkürzel</a> ·
+  <a href="docs/tiling.md">Tiling</a>
+</p>
+
+---
 
 Omarchys Look und Tastenkürzel auf Windows, ohne Admin-Rechte und ohne Programme, die im Büro nicht erlaubt sind. WinMarchy richtet [GlazeWM](https://github.com/glzr-io/glazewm) als Tiling-Window-Manager ein, legt eine Leiste nach Art von Waybar oben an den Bildschirm, überträgt die Kürzel aus Omarchy und färbt Terminal, VS Code, Flow Launcher und Windows mit einem der 22 Omarchy-Themes ein.
 
@@ -15,6 +27,10 @@ Hervorgegangen ist WinMarchy aus dem Winarchy Lite WPF Manager 2.1. Die Logik st
 Die Exe ist eigenständig: .NET muss nicht installiert sein. Läuft auf Windows 10 (ab 1809) und Windows 11, x64.
 
 Wer nicht kopieren will, startet mit `WinMarchy.exe --portable`.
+
+### Testversionen aus Pull Requests
+
+Jeder Pull Request baut eine `WinMarchy.exe`, zu finden als Artefakt „WinMarchy-PR-…“ auf der Seite des CI-Laufs (Actions → Lauf öffnen → unten bei Artifacts). Daneben liegt „Screenshots-PR-…“ mit jeder Seite in Hell und Dunkel. Diese Testversionen erkennt WinMarchy an der Versionsnummer (`0.0.0-ci.…`). Sie laufen immer portabel, überschreiben keine installierte Version und laden keine Updates. So siehst du wirklich den Stand des Pull Requests.
 
 ### Updates
 
