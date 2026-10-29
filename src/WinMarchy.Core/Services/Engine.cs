@@ -73,7 +73,7 @@ public sealed class Engine
         if (s.HotkeyEngine == "glazewm")
         {
             var set = HotkeySet.Build(s.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), "glazewm");
-            options.Keybindings = GlazeConfig.Keybindings(set, KeyboardLayouts.Current, Components.SelfExe);
+            options.Keybindings = GlazeConfig.Keybindings(set, KeyboardLayouts.Current, Components.SelfExe, LeaveAlone(s));
         }
         return GlazeConfig.Generate(options);
     }
@@ -91,6 +91,14 @@ public sealed class Engine
         var step = new SetupStep(L.T("steps.glazewm"), (_, _) => Task.CompletedTask);
         WriteGlazeConfig(Context(point, step), CurrentTheme.Palette);
         await Components.ReloadGlazeAsync(Glaze(), ct);
+        // The bar's entries: Zebar reads config.js when the bar starts.
+        var dir = _loc.ZebarPackDir;
+        Backups.CaptureDirectory(point, dir);
+        if (ZebarPack.WriteConfig(_loc, Components.SelfExe, S) && Components.IsRunning("zebar"))
+        {
+            Components.StopBar();
+            if (S.ShowBar) Components.StartBar();
+        }
     }
 
     /// <summary>
@@ -105,6 +113,10 @@ public sealed class Engine
 
     // ------------------------------------------------------------------ hotkeys
 
+    /// <summary>With Greenshot, its Print keys belong to it.</summary>
+    static IReadOnlyCollection<string>? LeaveAlone(UserSettings s) =>
+        s.ScreenshotTool == Platform.Screenshots.Greenshot ? Platform.Screenshots.GreenshotKeys.ToHashSet() : null;
+
     public HotkeySet CurrentHotkeys() => HotkeySet.Build(S.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), S.HotkeyEngine);
 
     async Task ApplyHotkeysAsync(IntegrationContext ctx, SetupStep step, CancellationToken ct)
@@ -117,7 +129,7 @@ public sealed class Engine
         if (s.HotkeyEngine == "autohotkey" && Components.AhkExe != null)
         {
             var glazeCli = ToolCatalog.GlazeCli(Components.GlazeExe) ?? "";
-            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher));
+            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s)));
             step.Report(L.T("hotkeys.validating"));
             var (ok, output) = await Components.ValidateAhkAsync(script, ct);
             if (!ok) throw new WinMarchyException("ahkInvalid", ("detail", output));
@@ -145,6 +157,40 @@ public sealed class Engine
             BeginStep("hotkeys", L.T("jobs.hotkeys"), p => point = p),
             new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)),
         };
+    }
+
+    // ------------------------------------------------------------------ screenshots
+
+    /// <summary>
+    /// Switches between Snipping Tool and Greenshot: Greenshot comes from its vendor if it is missing,
+    /// Windows' own Print → Snipping Tool is switched off (it would take the key first), and the hotkey
+    /// script leaves Greenshot's keys alone. Back to Windows, the script takes Print again.
+    /// </summary>
+    public List<SetupStep> ScreenshotToolSteps(string tool)
+    {
+        RestorePoint? point = null;
+        var greenshot = tool == Platform.Screenshots.Greenshot;
+        var steps = new List<SetupStep> { BeginStep("screenshots", L.T("jobs.screenshots"), p => point = p) };
+        if (greenshot)
+        {
+            steps.AddRange(InstallSteps(new[] { ToolCatalog.Greenshot }));
+            steps.Add(new SetupStep(L.T("steps.printKey"), (step, _) =>
+            {
+                Context(point!, step).WriteRegistry(@"Control Panel\Keyboard", "PrintScreenKeyForSnippingEnabled", RegistryData.Dword(0));
+                step.Report(L.T("screenshot.printKeyFreed"));
+                if (!Components.IsRunning("Greenshot") && Components.Status(ToolCatalog.Greenshot).Path is { } exe) Platform.AppLauncher.Start(exe);
+                return Task.CompletedTask;
+            }));
+        }
+        steps.Add(new SetupStep(L.T("steps.saveChoice"), (step, _) =>
+        {
+            var s = S.Clone();
+            s.ScreenshotTool = greenshot ? Platform.Screenshots.Greenshot : Platform.Screenshots.Windows;
+            _save(s);
+            return Task.CompletedTask;
+        }));
+        steps.Add(new SetupStep(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)));
+        return steps;
     }
 
     // ------------------------------------------------------------------ themes
@@ -258,7 +304,7 @@ public sealed class Engine
     /// <summary>The wallpaper shown now also on the lock screen (wallpaper menu).</summary>
     public bool WallpaperToLockScreen()
     {
-        var files = ThemeAssets.DownloadedBackgrounds(CurrentTheme);
+        var files = ThemeAssets.Backgrounds(CurrentTheme);
         if (files.Count == 0) return false;
         var index = AppState.Load().WallpaperIndex.GetValueOrDefault(CurrentTheme.Name);
         var point = Backups.Reuse("lockscreen", L.T("jobs.lockScreen"), TimeSpan.FromHours(1));

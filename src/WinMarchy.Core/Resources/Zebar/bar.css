@@ -52,6 +52,8 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .clock { color: var(--fg); letter-spacing: 0.02em; }
 
 .item { display: inline-flex; align-items: center; gap: 5px; color: var(--fg); white-space: nowrap; }
+.item:hover, .clock:hover, .logo:hover { color: var(--accent); }
+[hidden] { display: none !important; }
 .item.dim { color: var(--muted); }
 .item.warn { color: var(--warn); }
 .glyph { font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 12px; }

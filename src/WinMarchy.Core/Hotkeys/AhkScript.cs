@@ -3,7 +3,9 @@ using System.Text;
 namespace WinMarchy.Core.Hotkeys;
 
 /// <summary>What the generated AutoHotkey script needs to know about this machine.</summary>
-public sealed record AhkContext(string WinMarchyExe, string GlazeCli, bool WinKeyOpensLauncher, string LauncherKeys = "!{F24}");
+/// <param name="LeaveAlone">Keys another program owns (Greenshot's Print keys), normalized: no hotkey for them.</param>
+public sealed record AhkContext(string WinMarchyExe, string GlazeCli, bool WinKeyOpensLauncher, string LauncherKeys = "!{F24}",
+    IReadOnlyCollection<string>? LeaveAlone = null);
 
 /// <summary>
 /// Generates the AutoHotkey v2 script from the active shortcuts. Only fixed function calls with quoted
@@ -37,6 +39,7 @@ public static class AhkScript
         foreach (var b in set.Active)
         {
             if (b.Combo is not { } combo || b.Action is not { } action) continue;
+            if (ctx.LeaveAlone?.Contains(combo.ToString()) == true) continue;
             sb.Append("Hotkey(").Append(Quote(combo.ToAhk())).Append(", (*) => ").Append(Call(action, ctx))
               .Append(")  ; ").AppendLine(Comment(b.Describe()));
         }

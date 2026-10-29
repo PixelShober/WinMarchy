@@ -8,7 +8,7 @@ namespace WinMarchy.App.Pages;
 
 public partial class HotkeysPage : UserControl, IPage
 {
-    static readonly string[] GroupIds = { "all", "tiling", "workspaces", "apps", "menus", "utilities", "system" };
+    static readonly string[] GroupIds = { "all", "favorites", "tiling", "workspaces", "apps", "menus", "utilities", "system" };
     static readonly string[] Kinds = { "wm", "app", "web", "open", "send", "do", "run" };
 
     string _group = "all";
@@ -92,7 +92,7 @@ public partial class HotkeysPage : UserControl, IPage
         var off = new HashSet<string>(_custom.Disabled.Select(Normalize), StringComparer.OrdinalIgnoreCase);
         var shown = _set.All
             .Where(b => _set.Active.Contains(b) || off.Contains(b.Keys) || (b.Source == "custom" && !b.Enabled))
-            .Where(b => _group == "all" || b.Group == _group)
+            .Where(b => _group == "all" || b.Group == _group || (_group == "favorites" && b.Favorite))
             .Where(b => query.Length == 0 || b.Keys.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                         b.Describe().Contains(query, StringComparison.OrdinalIgnoreCase) || b.Do.Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -102,9 +102,9 @@ public partial class HotkeysPage : UserControl, IPage
             return;
         }
         string? lastGroup = null;
-        foreach (var b in shown.OrderBy(b => Array.IndexOf(GroupIds, b.Group)).ThenBy(b => shown.IndexOf(b)))
+        foreach (var b in shown.OrderBy(b => Array.IndexOf(GroupIds, b.Group)).ThenBy(b => shown.IndexOf(b)).ToList())
         {
-            if (_group == "all" && b.Group != lastGroup)
+            if (_group is "all" or "favorites" && b.Group != lastGroup)
             {
                 lastGroup = b.Group;
                 var head = UiKit.Text(L.T("hotkeys.groups." + b.Group), "H3", new Thickness(20, List.Children.Count == 0 ? 16 : 22, 20, 6));
@@ -150,6 +150,18 @@ public partial class HotkeysPage : UserControl, IPage
         grid.Children.Add(source);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        // Favourites come first in Win+K, the rest under "Optional".
+        var starIcon = new Icon { Kind = "star", Size = 14 };
+        starIcon.SetResourceReference(Icon.ForegroundProperty, b.Favorite ? "Accent" : "TextMuted");
+        var star = new Button { Style = UiKit.S("IconButton"), Content = starIcon, ToolTip = b.Favorite ? L.T("hotkeys.unstarTip") : L.T("hotkeys.starTip") };
+        System.Windows.Automation.AutomationProperties.SetName(star, (string)star.ToolTip);
+        star.Click += (_, _) =>
+        {
+            _custom.Favorites[b.Keys] = !b.Favorite;
+            _custom.Save(Paths.HotkeysFile);
+            Reload();
+        };
+        actions.Children.Add(star);
         var edit = new Button { Style = UiKit.S("IconButton"), Content = new Icon { Kind = "pencil", Size = 14 }, ToolTip = L.T("hotkeys.editTip") };
         edit.Click += (_, _) => BeginEdit(b, isNew: false);
         actions.Children.Add(edit);
@@ -187,11 +199,51 @@ public partial class HotkeysPage : UserControl, IPage
         return row;
     }
 
+    /// <summary>Saves and puts the shortcuts into effect right away (AutoHotkey or GlazeWM).</summary>
     void SaveCustom()
     {
         _custom.Save(Paths.HotkeysFile);
         Reload();
-        Toasts.Show(ToastKind.Info, L.T("hotkeys.savedNotApplied"));
+        if (AppModel.Engine.CurrentHotkeys().HasBlockingProblems)
+        {
+            Toasts.Show(ToastKind.Error, L.T("hotkeys.savedWithProblems"));
+            return;
+        }
+        Apply(L.T("hotkeys.savedAndApplied"));
+    }
+
+    void OnExport(object sender, RoutedEventArgs e)
+    {
+        var d = new Microsoft.Win32.SaveFileDialog { Title = L.T("hotkeys.export"), FileName = L.T("hotkeys.exportFile") + ".json", Filter = "JSON (*.json)|*.json" };
+        if (d.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            CustomHotkeys.Load(Paths.HotkeysFile).Save(d.FileName);
+            Toasts.Show(ToastKind.Ok, L.T("hotkeys.exported", ("path", d.FileName)));
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show(ToastKind.Error, Net.Describe(ex));
+        }
+    }
+
+    /// <summary>Replaces the own shortcuts with an exported file; the old file goes into a restore point first.</summary>
+    void OnImport(object sender, RoutedEventArgs e)
+    {
+        var d = new Microsoft.Win32.OpenFileDialog { Title = L.T("hotkeys.import"), Filter = "JSON (*.json)|*.json" };
+        if (d.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            var imported = CustomHotkeys.Import(d.FileName);
+            var point = AppModel.Engine.Backups.Begin("hotkeys", L.T("jobs.hotkeysImport"));
+            AppModel.Engine.Backups.CaptureFile(point, Paths.HotkeysFile);
+            _custom = imported;
+            SaveCustom();
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show(ToastKind.Error, L.T("hotkeys.importFailed", ("detail", Net.Describe(ex))));
+        }
     }
 
     // ------------------------------------------------------------------ editor
@@ -287,13 +339,15 @@ public partial class HotkeysPage : UserControl, IPage
         _editing = null;
     }
 
-    void OnApply(object sender, RoutedEventArgs e)
+    void OnApply(object sender, RoutedEventArgs e) => Apply(L.T("hotkeys.applied"));
+
+    void Apply(string doneText)
     {
         var job = AppModel.Run("hotkeys", "hotkeys", L.T("jobs.hotkeys"), AppModel.Engine.HotkeySteps(), async j =>
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("hotkeys.applied"));
+                if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, doneText);
             });
         });
         if (job != null) Job.Follow(job.Id);

@@ -73,7 +73,11 @@ public static class ToolCatalog
     public static readonly ToolDef Pi = new("pi", "Pi", "MIT", "https://pi.dev",
         "earendil-works/pi", @"^pi-windows-x64\.zip$", InstallKind.Zip, "pi.exe", Required: false, Extra: true);
 
-    public static IReadOnlyList<ToolDef> All { get; } = new[] { GlazeWm, Zebar, AutoHotkey, Flow, PowerShell, Herdr, Pi, Terminal, Files, VsCode };
+    /// <summary>Screenshots with an editor, if the user prefers it to Snipping Tool. The vendor's portable zip.</summary>
+    public static readonly ToolDef Greenshot = new("greenshot", "Greenshot", "GPL-3.0", "https://getgreenshot.org",
+        "greenshot/greenshot", @"^Greenshot-PORTABLE-[\d.]+-RELEASE\.zip$", InstallKind.Zip, "Greenshot.exe", Required: false, Extra: true);
+
+    public static IReadOnlyList<ToolDef> All { get; } = new[] { GlazeWm, Zebar, AutoHotkey, Flow, PowerShell, Herdr, Pi, Greenshot, Terminal, Files, VsCode };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
     public static IReadOnlyList<ToolDef> Extras { get; } = All.Where(t => t.Extra).ToList();
@@ -106,6 +110,7 @@ public static class ToolCatalog
         "herdr" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Herdr", "herdr.exe"), Path.Combine(loc.LocalAppData, "Programs", "Herdr", "winarchy-lite", "herdr.exe") },
         "pi" => new[] { Path.Combine(loc.LocalAppData, "Programs", "pi", "pi.exe"), Path.Combine(loc.UserProfile, ".pi", "bin", "pi.exe") },
         "pwsh" => new[] { Path.Combine(loc.ProgramFiles, "PowerShell", "7", "pwsh.exe") },
+        "greenshot" => new[] { Path.Combine(loc.ProgramFiles, "Greenshot", "Greenshot.exe"), Path.Combine(loc.LocalAppData, "Programs", "Greenshot", "Greenshot.exe") },
         "terminal" => new[] { Path.Combine(loc.LocalAppData, "Microsoft", "WindowsApps", "wt.exe") },
         "vscode" => new[]
         {

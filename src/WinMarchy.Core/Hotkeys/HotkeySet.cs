@@ -52,6 +52,8 @@ public sealed class HotkeySet
                 var n = (ws % 10).ToString();
                 var copy = b.Copy();
                 copy.Repeat = null;
+                copy.Template = b.Keys;
+                copy.TemplateLabel = b.Label;
                 copy.Keys = b.Keys.Replace("{n}", n);
                 copy.Do = b.Do.Replace("{ws}", ws.ToString());
                 if (b.Label != null)
@@ -66,15 +68,18 @@ public sealed class HotkeySet
         var layers = new List<IEnumerable<HotkeyBinding>> { LoadProfile("business").Bindings };
         if (personal) layers.Add(LoadProfile("personal").Bindings);
         layers.Add(custom.Bindings.Select(b => { var c = b.Copy(); c.Source = "custom"; return c; }));
-        return Compose(layers, custom.Disabled, engine);
+        return Compose(layers, custom.Disabled, engine, custom.Favorites);
     }
 
-    internal static HotkeySet Compose(IEnumerable<IEnumerable<HotkeyBinding>> layers, IEnumerable<string> disabled, string engine)
+    internal static HotkeySet Compose(IEnumerable<IEnumerable<HotkeyBinding>> layers, IEnumerable<string> disabled, string engine,
+        IReadOnlyDictionary<string, bool>? favorites = null)
     {
         var problems = new List<HotkeyProblem>();
         var all = new List<HotkeyBinding>();
         var byKeys = new Dictionary<string, HotkeyBinding>(StringComparer.OrdinalIgnoreCase);
         var off = new HashSet<string>(disabled.Select(Normalize), StringComparer.OrdinalIgnoreCase);
+        var starred = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (keys, on) in favorites ?? new Dictionary<string, bool>()) starred[Normalize(keys)] = on;
 
         foreach (var layer in layers)
         {
@@ -88,6 +93,7 @@ public sealed class HotkeySet
                     continue;
                 }
                 b.Keys = combo.ToString();
+                b.Favorite = starred.TryGetValue(b.Keys, out var star) ? star : !b.Optional;
                 if (combo.ReservedReason() is { } reserved)
                 {
                     problems.Add(new HotkeyProblem(b.Keys, reserved, true));

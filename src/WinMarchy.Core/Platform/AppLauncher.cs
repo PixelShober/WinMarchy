@@ -37,8 +37,9 @@ public sealed class AppLauncher
             case "stackfield":
                 // The desktop app if it is installed (found through its Start menu entry), else the web app.
                 return StartMenuEntry("Stackfield") is { } sf ? Start(sf) : Web("https://www.stackfield.com/");
-            case "browser": return Browser(privateWindow: false);
-            case "browser-private": return Browser(privateWindow: true);
+            case "browser": return Browser(_settings().Browser, privateWindow: false);
+            case "browser2": return Browser(_settings().Browser2, privateWindow: false);
+            case "browser-private": return Browser(_settings().Browser, privateWindow: true);
             case "files":
                 return First(Alias("files-stable.exe"), Alias("files.exe"), Alias("files-preview.exe"), Alias("files-dev.exe")) is { } files
                     ? Start(files) : Start("explorer.exe");
@@ -92,21 +93,36 @@ public sealed class AppLauncher
     /// <summary>Omarchy's web apps: the site in its own window without tabs (Edge or Chrome --app).</summary>
     public bool Web(string url)
     {
-        var browser = DefaultBrowser();
-        var chromium = browser != null && Path.GetFileName(browser).ToLowerInvariant() is "msedge.exe" or "chrome.exe" or "brave.exe" or "vivaldi.exe";
-        var exe = chromium ? browser : AppPath("msedge.exe");
+        var browser = Resolve(_settings().Browser);
+        var exe = IsChromium(browser) ? browser : AppPath("msedge.exe");
         return exe != null ? Start(exe, $"--app=\"{url}\"") : Open(url);
     }
 
-    bool Browser(bool privateWindow)
+    static bool IsChromium(string? exe) =>
+        exe != null && Path.GetFileName(exe).ToLowerInvariant() is "msedge.exe" or "chrome.exe" or "brave.exe" or "vivaldi.exe" or "opera.exe" or "thorium.exe";
+
+    /// <summary>Browsers WinMarchy offers in the settings, if they are installed.</summary>
+    public static IReadOnlyList<(string Name, string Exe)> InstalledBrowsers()
     {
-        var exe = DefaultBrowser() ?? AppPath("msedge.exe");
+        var list = new List<(string, string)>();
+        foreach (var (name, exe) in new[] { ("Microsoft Edge", "msedge.exe"), ("Google Chrome", "chrome.exe"), ("Firefox", "firefox.exe"), ("Brave", "brave.exe"), ("Vivaldi", "vivaldi.exe"), ("Opera", "opera.exe") })
+            if (AppPath(exe) is { } path) list.Add((name, path));
+        return list;
+    }
+
+    /// <summary>A chosen browser exe if it still exists, else the default browser.</summary>
+    static string? Resolve(string? chosen) => chosen != null && File.Exists(chosen) ? chosen : DefaultBrowser();
+
+    bool Browser(string? chosen, bool privateWindow)
+    {
+        var exe = Resolve(chosen) ?? AppPath("msedge.exe");
         if (exe == null) return Open("https://");
         var name = Path.GetFileName(exe).ToLowerInvariant();
         var args = name switch
         {
             "firefox.exe" => privateWindow ? "-private-window" : "-new-window",
             "msedge.exe" => privateWindow ? "--inprivate" : "--new-window",
+            "opera.exe" => privateWindow ? "--private" : "--new-window",
             _ => privateWindow ? "--incognito" : "--new-window",
         };
         return Start(exe, args);

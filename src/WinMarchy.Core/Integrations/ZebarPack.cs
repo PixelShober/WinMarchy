@@ -15,14 +15,31 @@ public static class ZebarPack
 
     static readonly string[] StaticFiles = { "bar.html", "bar.css", "bar.js", "zebar.js" };
 
+    /// <summary>
+    /// What the bar can show, in its order on the screen, and whether it is on unless the user says
+    /// otherwise. The defaults are Omarchy's Waybar: logo and workspaces, clock, tray, network, sound,
+    /// CPU and battery.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Id, bool On)> Modules = new[]
+    {
+        ("logo", true), ("workspaces", true), ("clock", true), ("tray", true), ("direction", false),
+        ("network", true), ("audio", true), ("cpu", true), ("memory", false), ("battery", true),
+    };
+
+    public static bool IsOn(UserSettings s, string module) =>
+        s.BarModules.TryGetValue(module, out var on) ? on : Modules.FirstOrDefault(m => m.Id == module).On;
+
     public static string ThemeCss(Palette p) =>
         $":root {{\n  --bg: {p.Background};\n  --fg: {p.Foreground};\n  --accent: {p.Accent};\n  --muted: {p.DarkForeground};\n  --warn: {ColorMath.Legible(p.Yellow, p.Background)};\n  --border: {p.InactiveBorder};\n}}\n";
 
-    public static string ConfigJs(string winMarchyExe)
+    public static string ConfigJs(string winMarchyExe, UserSettings? settings = null)
     {
+        var modules = new JsonObject();
+        foreach (var (id, _) in Modules) modules[id] = IsOn(settings ?? new UserSettings(), id);
         var config = new JsonObject
         {
             ["exe"] = winMarchyExe,
+            ["modules"] = modules,
             ["locale"] = L.Culture.Name,
             ["clock"] = L.Language == "de" ? "cccc HH:mm" : "cccc h:mm a",
             ["text"] = new JsonObject
@@ -30,6 +47,12 @@ public static class ZebarPack
                 ["paused"] = L.T("bar.paused"),
                 ["direction"] = L.T("bar.direction"),
                 ["offline"] = L.T("bar.offline"),
+                ["clockTip"] = L.T("bar.clockTip"),
+                ["networkTip"] = L.T("bar.networkTip"),
+                ["audioTip"] = L.T("bar.audioTip"),
+                ["cpuTip"] = L.T("bar.cpuTip"),
+                ["batteryTip"] = L.T("bar.batteryTip"),
+                ["logoTip"] = L.T("bar.logoTip"),
             },
         };
         return "// Written by WinMarchy.\nexport default " + Json.Format(config) + ";\n";
@@ -86,8 +109,11 @@ public static class ZebarPack
     {
         var root = string.IsNullOrWhiteSpace(original) ? new JsonObject() : Jsonc.ParseObject(original);
         var list = root["startupConfigs"] as JsonArray ?? new JsonArray();
+        // Zebar's own example bar ("glzr-io.starter") would sit right on top of WinMarchy's and take
+        // its clicks; it goes out of the startup list too (the file is in the restore point).
         for (int i = list.Count - 1; i >= 0; i--)
-            if (list[i] is JsonObject o && (string?)o["pack"] == PackName) list.RemoveAt(i);
+            if (list[i] is JsonObject o && (string?)o["pack"] is { } pack && (pack == PackName || pack.StartsWith("glzr-io.starter", StringComparison.OrdinalIgnoreCase)))
+                list.RemoveAt(i);
         if (enabled) list.Insert(0, new JsonObject { ["pack"] = PackName, ["widget"] = Widget, ["preset"] = "default" });
         root["startupConfigs"] = list;
         return original == null ? Json.Format(root) + "\n" : Json.WriteLike(root, original);
@@ -99,7 +125,7 @@ public static class ZebarPack
         ctx.Backups.CaptureDirectory(ctx.Point, dir);
         Directory.CreateDirectory(dir);
         foreach (var name in StaticFiles) FileSafety.WriteText(Path.Combine(dir, name), Resource(name));
-        FileSafety.WriteText(Path.Combine(dir, "config.js"), ConfigJs(winMarchyExe));
+        FileSafety.WriteText(Path.Combine(dir, "config.js"), ConfigJs(winMarchyExe, ctx.Settings));
         FileSafety.WriteText(Path.Combine(dir, "zpack.json"), Manifest(winMarchyExe));
         FileSafety.WriteText(Path.Combine(dir, "theme.css"), ThemeCss(palette));
 
@@ -107,6 +133,20 @@ public static class ZebarPack
         var current = File.Exists(settings) ? FileSafety.ReadShared(settings) : null;
         ctx.WriteFile(settings, PatchSettings(current, ctx.Settings.ShowBar));
         ctx.Report(L.T("integrations.zebar.done", ("path", dir)));
+    }
+
+    /// <summary>
+    /// The bar's choice of entries changed (Tiling page). The pack's config.js is written again; the
+    /// caller restarts the bar so it reads it. False if the pack is not installed.
+    /// </summary>
+    public static bool WriteConfig(Locations loc, string winMarchyExe, UserSettings settings)
+    {
+        var dir = loc.ZebarPackDir;
+        if (!File.Exists(Path.Combine(dir, "zpack.json"))) return false;
+        FileSafety.WriteText(Path.Combine(dir, "config.js"), ConfigJs(winMarchyExe, settings));
+        // An older pack has the bar files of its time; the new config needs the new bar.
+        foreach (var name in StaticFiles) FileSafety.WriteText(Path.Combine(dir, name), Resource(name));
+        return true;
     }
 
     /// <summary>Theme change only: the bar reloads theme.css by itself.</summary>

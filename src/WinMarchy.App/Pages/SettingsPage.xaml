@@ -64,6 +64,43 @@
 
     <Border Style="{StaticResource Card}" Margin="0,20,0,0">
       <StackPanel>
+        <TextBlock Text="{ui:T settings.browsers}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T settings.browsersText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="14" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <StackPanel>
+            <TextBlock Text="{ui:T settings.browser1}" Style="{StaticResource H3}" Margin="0,0,0,4" />
+            <ComboBox x:Name="Browser1" SelectionChanged="OnBrowser" Tag="1" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Text="{ui:T settings.browser2}" Style="{StaticResource H3}" Margin="0,0,0,4" />
+            <ComboBox x:Name="Browser2" SelectionChanged="OnBrowser" Tag="2" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <TextBlock Text="{ui:T settings.screenshots}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T settings.screenshotsText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
+        <Border Style="{StaticResource SegmentGroup}" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal">
+            <RadioButton x:Name="ShotWindows" Style="{StaticResource Segment}" GroupName="shots" Tag="windows" Checked="OnScreenshotTool" Content="{ui:T settings.screenshotWindows}" />
+            <RadioButton x:Name="ShotGreenshot" Style="{StaticResource Segment}" GroupName="shots" Tag="greenshot" Checked="OnScreenshotTool" Content="{ui:T settings.screenshotGreenshot}" />
+          </StackPanel>
+        </Border>
+        <TextBlock x:Name="ShotHint" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <ui:JobView x:Name="ShotJob" Margin="0,10,0,0" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
         <TextBlock Text="{ui:T settings.paths}" Style="{StaticResource H2}" Margin="0,0,0,14" />
         <TextBlock Text="{ui:T settings.personalScript}" Style="{StaticResource H3}" Margin="0,0,0,4" />
         <DockPanel>

@@ -50,8 +50,88 @@ public partial class SettingsPage : UserControl, IPage
         var herdr = AppModel.Engine.Components.Status(ToolCatalog.Herdr);
         HerdrState.Text = herdr.Installed ? L.T("settings.herdrFound", ("path", herdr.Path)) : L.T("settings.herdrMissing");
         ShowFilesDefault();
+        FillBrowsers(Browser1, s.Browser);
+        FillBrowsers(Browser2, s.Browser2);
+        (s.ScreenshotTool == Core.Platform.Screenshots.Greenshot ? ShotGreenshot : ShotWindows).IsChecked = true;
+        ShowScreenshotHint();
         _loading = false;
         ShowUpdate();
+    }
+
+    // ------------------------------------------------------------------ browsers
+
+    const string OtherBrowser = "*other*";
+
+    /// <summary>Windows' default, the installed browsers, the chosen one if it is none of those, "other…".</summary>
+    static void FillBrowsers(ComboBox box, string? chosen)
+    {
+        box.Items.Clear();
+        var standard = Core.Platform.AppLauncher.DefaultBrowser();
+        box.Items.Add(new ComboBoxItem
+        {
+            Content = standard != null ? L.T("settings.browserDefaultNamed", ("name", BrowserName(standard))) : L.T("settings.browserDefault"),
+            Tag = "",
+        });
+        foreach (var (name, exe) in Core.Platform.AppLauncher.InstalledBrowsers()) box.Items.Add(new ComboBoxItem { Content = name, Tag = exe });
+        if (chosen != null && !box.Items.Cast<ComboBoxItem>().Any(i => string.Equals((string)i.Tag, chosen, StringComparison.OrdinalIgnoreCase)))
+            box.Items.Add(new ComboBoxItem { Content = Path.GetFileNameWithoutExtension(chosen), Tag = chosen, ToolTip = chosen });
+        box.Items.Add(new ComboBoxItem { Content = L.T("settings.browserOther"), Tag = OtherBrowser });
+        box.SelectedItem = box.Items.Cast<ComboBoxItem>().FirstOrDefault(i => string.Equals((string)i.Tag, chosen ?? "", StringComparison.OrdinalIgnoreCase)) ?? box.Items[0];
+    }
+
+    static string BrowserName(string exe) => Path.GetFileNameWithoutExtension(exe).ToLowerInvariant() switch
+    {
+        "msedge" => "Microsoft Edge", "chrome" => "Google Chrome", "firefox" => "Firefox", "brave" => "Brave",
+        "vivaldi" => "Vivaldi", "opera" => "Opera", var other => other,
+    };
+
+    void OnBrowser(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || sender is not ComboBox { Tag: string which } box || box.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        string? exe = tag.Length == 0 ? null : tag;
+        if (tag == OtherBrowser)
+        {
+            var d = new OpenFileDialog { Title = L.T("settings.browserOther"), Filter = L.T("settings.exeFilter") };
+            if (d.ShowDialog(Window.GetWindow(this)) != true)
+            {
+                _loading = true;
+                FillBrowsers(box, which == "1" ? AppModel.Settings.Browser : AppModel.Settings.Browser2);
+                _loading = false;
+                return;
+            }
+            exe = d.FileName;
+        }
+        AppModel.Update(s => { if (which == "1") s.Browser = exe; else s.Browser2 = exe; });
+        _loading = true;
+        FillBrowsers(box, exe);
+        _loading = false;
+    }
+
+    // ------------------------------------------------------------------ screenshots
+
+    void ShowScreenshotHint()
+    {
+        bool greenshot = AppModel.Settings.ScreenshotTool == Core.Platform.Screenshots.Greenshot;
+        var installed = AppModel.Engine.Components.Status(ToolCatalog.Greenshot).Installed;
+        ShotHint.Text = greenshot ? L.T("settings.screenshotGreenshotHint")
+            : installed ? L.T("settings.screenshotWindowsHint") : L.T("settings.screenshotWindowsHint") + " " + L.T("settings.screenshotGreenshotInstall");
+    }
+
+    /// <summary>Greenshot is installed if needed, Print goes to it, and the hotkeys are written again.</summary>
+    void OnScreenshotTool(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string tool } || tool == AppModel.Settings.ScreenshotTool) return;
+        var job = AppModel.Run("screenshots", "hotkeys", L.T("jobs.screenshots"), AppModel.Engine.ScreenshotToolSteps(tool), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
+                    j.State == JobState.Done ? L.T("settings.screenshotDone", ("tool", L.T(tool == "greenshot" ? "settings.screenshotGreenshot" : "settings.screenshotWindows"))) : j.Status);
+                OnShown();
+            });
+        });
+        if (job != null) ShotJob.Follow(job.Id);
+        else OnShown();
     }
 
     void ShowFilesDefault()

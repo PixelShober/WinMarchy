@@ -51,15 +51,24 @@ public class IntegrationTests
     }
 
     [Fact]
-    public void Zebar_startup_keeps_other_widgets()
+    public void Zebar_startup_keeps_other_widgets_but_not_the_starter_bar()
     {
-        const string original = """{ "startupConfigs": [ { "pack": "glzr-io.starter", "widget": "vanilla", "preset": "default" } ] }""";
+        const string original = """{ "startupConfigs": [ { "pack": "glzr-io.starter", "widget": "vanilla", "preset": "default" }, { "pack": "me.clock", "widget": "clock", "preset": "default" } ] }""";
         var on = Jsonc.ParseObject(ZebarPack.PatchSettings(original, enabled: true));
-        Assert.Equal(2, on["startupConfigs"]!.AsArray().Count);
-        Assert.Equal(ZebarPack.PackName, (string?)on["startupConfigs"]![0]!["pack"]);
+        // Zebar's example bar would cover WinMarchy's and take its clicks.
+        Assert.Equal(new[] { ZebarPack.PackName, "me.clock" }, on["startupConfigs"]!.AsArray().Select(c => (string?)c!["pack"]));
 
         var off = Jsonc.ParseObject(ZebarPack.PatchSettings(on.ToJsonString(), enabled: false));
-        Assert.Equal("glzr-io.starter", (string?)Assert.Single(off["startupConfigs"]!.AsArray())!["pack"]);
+        Assert.Equal("me.clock", (string?)Assert.Single(off["startupConfigs"]!.AsArray())!["pack"]);
+    }
+
+    [Fact]
+    public void Zebar_config_carries_the_chosen_entries()
+    {
+        var js = ZebarPack.ConfigJs(@"C:\WinMarchy\App\WinMarchy.exe", new UserSettings { BarModules = { ["cpu"] = false, ["memory"] = true } });
+        Assert.Contains("\"cpu\": false", js);
+        Assert.Contains("\"memory\": true", js);
+        Assert.Contains("\"battery\": true", js);
     }
 
     [Fact]
@@ -109,6 +118,10 @@ public class IntegrationTests
         var yaml = GlazeConfig.Generate(o);
         Assert.Contains("lwin+enter", yaml);
         Assert.Contains(@"shell-exec --hide-window C:\WinMarchy\App\WinMarchy.exe --action app:terminal", yaml);
+        Assert.Contains("focus --workspace 1", yaml);
+        // Arrows stay GlazeWM's own: no process start per key press.
         Assert.Contains("focus --direction left", yaml);
+        Assert.Contains("'move --workspace 3', 'focus --workspace 3'", yaml);
+        Assert.DoesNotContain("--action do:focus", yaml);
     }
 }

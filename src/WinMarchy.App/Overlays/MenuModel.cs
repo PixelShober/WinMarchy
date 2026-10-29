@@ -15,10 +15,14 @@ sealed record MenuEntry(string Icon, string Label)
     public string? Detail { get; init; }
     public string? Keys { get; init; }
     public bool Current { get; init; }
+    /// <summary>A section title between rows; never selected.</summary>
+    public bool Header { get; init; }
+
+    public static MenuEntry Section(string title) => new("", title) { Header = true };
 }
 
 /// <summary>
-/// The menus behind Win+Alt+Space, built after Omarchy's (Apps, Learn, Trigger, Style, Setup, Update,
+/// The menus behind Win+Space, built after Omarchy's (Apps, Learn, Trigger, Style, Setup, Update,
 /// System). Everything points to what Windows already has – settings pages, Snipping Tool, the
 /// launcher – so nothing here needs extra software or admin rights.
 /// </summary>
@@ -127,6 +131,20 @@ static class MenuModel
             Sub("power", "root.system", "system"),
         },
     };
+
+    static readonly string[] Submenus = { "learn", "trigger", "capture", "toggle", "hardware", "style", "setup", "update", "system" };
+
+    /// <summary>
+    /// Everything a search in the main menu can find: the entries of every submenu (not the links
+    /// to them), with the submenu's name on the right.
+    /// </summary>
+    public static IReadOnlyList<MenuEntry> Searchable()
+    {
+        var list = Entries(Root).Where(e => e.Menu == null).ToList();
+        foreach (var menu in Submenus)
+            list.AddRange(Entries(menu).Where(e => e.Menu == null).Select(e => e with { Keys = Title(menu) }));
+        return list.GroupBy(e => e.Label + "|" + e.Action).Select(g => g.First()).ToList();
+    }
 
     static void CheckForUpdate()
     {

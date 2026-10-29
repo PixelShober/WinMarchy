@@ -143,9 +143,12 @@ public class HotkeySetTests
     {
         var set = HotkeySet.Build(personal: true, new CustomHotkeys(), "autohotkey");
         Assert.DoesNotContain(set.Problems, p => p.Blocking);
-        var chat = Assert.Single(set.Active, b => b.Keys == "Win+Shift+A");
-        Assert.Equal("web:https://chatgpt.com/", chat.Do);
-        Assert.Equal("web:https://m365.cloud.microsoft/chat", chat.Replaces?.Do);
+        Assert.Equal("web:https://chatgpt.com/", Assert.Single(set.Active, b => b.Keys == "Win+Shift+A").Do);
+        var music = Assert.Single(set.Active, b => b.Keys == "Win+Shift+M");
+        Assert.Equal("app:spotify", music.Do);
+        Assert.Equal("web:https://open.spotify.com/", music.Replaces?.Do);
+        // Win+Ctrl+T stays the theme menu; the personal script moved one key over.
+        Assert.Equal("do:theme-menu", Assert.Single(set.Active, b => b.Keys == "Win+Ctrl+T").Do);
         // Win+Shift+G stays Stackfield with the personal profile too; Signal moved.
         Assert.Equal("app:stackfield", Assert.Single(set.Active, b => b.Keys == "Win+Shift+G").Do);
     }
@@ -208,7 +211,7 @@ public class AhkScriptTests
     {
         var s = Script();
         Assert.Contains("Hotkey(\"$#Enter\", (*) => Act(\"app:terminal\"))", s);
-        Assert.Contains("Hotkey(\"$#Space\", (*) => Send(LauncherKeys))", s);
+        Assert.Contains("Hotkey(\"$#Space\", (*) => Act(\"do:menu\"))", s);
         Assert.Contains("Hotkey(\"$#c\", (*) => UniversalCopy())", s);
     }
 

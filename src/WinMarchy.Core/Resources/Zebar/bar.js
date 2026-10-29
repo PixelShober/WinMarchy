@@ -1,6 +1,7 @@
 // WinMarchy bar for Zebar. Workspaces on the left, the clock in the middle, tray and status on the
-// right – laid out like Omarchy's bar. Only fixed SVG markup goes through innerHTML; names, titles
-// and tooltips are set as text.
+// right – laid out like Omarchy's bar. Which entries show is chosen in WinMarchy (config.modules);
+// every entry does something on a click. Only fixed SVG markup goes through innerHTML; names,
+// titles and tooltips are set as text.
 import * as zebar from './zebar.js';
 import config from './config.js';
 
@@ -23,20 +24,53 @@ function battery(percent, charging) {
 
 // Clicks call WinMarchy; zpack.json allows only "--action …" for WinMarchy.exe.
 const act = (action) => zebar.shellSpawn(config.exe, `--action ${action}`).catch((e) => console.error(e));
+const on = (id) => config.modules?.[id] !== false;
 
-$('logo').addEventListener('click', () => act('do:menu'));
-$('clock').addEventListener('click', () => act('send:Win+Alt+D'));
-$('audio').addEventListener('click', () => act('open:ms-settings:sound'));
+for (const id of ['logo', 'workspaces', 'clock', 'tray', 'direction', 'network', 'audio', 'cpu', 'memory', 'battery']) {
+  if (!on(id)) $(id).hidden = true;
+}
 
-const providers = zebar.createProviderGroup({
+// Left click does the obvious thing, right click the second one (as in Omarchy's Waybar).
+function clicks(id, left, right, tip) {
+  const el = $(id);
+  el.addEventListener('click', left);
+  if (right) el.addEventListener('contextmenu', (e) => { e.preventDefault(); right(); });
+  if (tip) el.title = tip;
+}
+
+clicks('logo', () => act('do:menu'), () => act('do:keybindings'), config.text.logoTip);
+clicks('clock', () => act('app:calendar'), () => act('open:ms-settings:dateandtime'), config.text.clockTip);
+clicks('network', () => act('open:ms-availablenetworks:'), () => act('open:ms-settings:network'));
+clicks('cpu', () => act('app:taskmanager'), null, config.text.cpuTip);
+clicks('memory', () => act('app:taskmanager'), null, config.text.cpuTip);
+clicks('battery', () => act('open:ms-settings:batterysaver'), () => act('open:ms-settings:powersleep'), config.text.batteryTip);
+clicks('direction', () => providers.outputMap.glazewm?.runCommand('toggle-tiling-direction'), null);
+clicks('audio', () => act('open:ms-settings:sound'), () => {
+  const a = providers.outputMap.audio;
+  const dev = a?.defaultPlaybackDevice;
+  if (dev) a.setMute(!dev.isMuted);
+});
+// Scrolling over the volume changes it in steps of five.
+$('audio').addEventListener('wheel', (e) => {
+  const a = providers.outputMap.audio;
+  const dev = a?.defaultPlaybackDevice;
+  if (!dev) return;
+  e.preventDefault();
+  a.setVolume(Math.max(0, Math.min(100, Math.round(dev.volume) + (e.deltaY < 0 ? 5 : -5))));
+}, { passive: false });
+
+// Only what is shown is measured.
+const wanted = {
   glazewm: { type: 'glazewm' },
   date: { type: 'date', formatting: config.clock, locale: config.locale },
-  cpu: { type: 'cpu', refreshInterval: 3000 },
-  battery: { type: 'battery', refreshInterval: 15000 },
-  network: { type: 'network', refreshInterval: 5000 },
-  audio: { type: 'audio' },
-  systray: { type: 'systray' },
-});
+};
+if (on('cpu')) wanted.cpu = { type: 'cpu', refreshInterval: 3000 };
+if (on('memory')) wanted.memory = { type: 'memory', refreshInterval: 5000 };
+if (on('battery')) wanted.battery = { type: 'battery', refreshInterval: 15000 };
+if (on('network')) wanted.network = { type: 'network', refreshInterval: 5000 };
+if (on('audio')) wanted.audio = { type: 'audio' };
+if (on('tray')) wanted.systray = { type: 'systray' };
+const providers = zebar.createProviderGroup(wanted);
 
 function renderWorkspaces(glaze) {
   const box = $('workspaces');
@@ -78,17 +112,21 @@ function renderStatus(o) {
   const type = o.network?.defaultInterface?.type;
   net.innerHTML = type === 'wifi' ? icons.wifi : type === 'ethernet' ? icons.ethernet : type === 'proprietary_virtual' ? icons.vpn : icons.offline;
   net.className = 'item' + (type ? '' : ' dim');
-  net.title = o.network?.defaultGateway?.ssid ?? o.network?.defaultInterface?.friendlyName ?? config.text.offline;
+  net.title = (o.network?.defaultGateway?.ssid ?? o.network?.defaultInterface?.friendlyName ?? config.text.offline) + ' · ' + config.text.networkTip;
 
   const audio = $('audio');
   const dev = o.audio?.defaultPlaybackDevice;
   audio.innerHTML = dev ? (dev.isMuted ? icons.muted : icons.volume) : '';
   if (dev) audio.append(document.createTextNode(`${Math.round(dev.volume)}%`));
-  audio.title = dev?.name ?? '';
+  audio.title = dev ? `${dev.name} · ${config.text.audioTip}` : '';
 
   const cpu = $('cpu');
   cpu.textContent = o.cpu ? `cpu ${Math.round(o.cpu.usage)}%` : '';
   cpu.className = 'item' + (o.cpu && o.cpu.usage > 85 ? ' warn' : ' dim');
+
+  const mem = $('memory');
+  mem.textContent = o.memory ? `ram ${Math.round(o.memory.usage)}%` : '';
+  mem.className = 'item' + (o.memory && o.memory.usage > 90 ? ' warn' : ' dim');
 
   const bat = $('battery');
   if (o.battery && o.battery.state !== 'unknown') {

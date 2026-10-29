@@ -19,6 +19,8 @@ public sealed class GlazeConfigOptions
     public bool FocusFollowsCursor { get; set; }
     public List<string> StartupCommands { get; set; } = new();
     public List<string> ShutdownCommands { get; set; } = new();
+    /// <summary>Workspace name → monitor index (0 = leftmost), for workspaces pinned to a screen.</summary>
+    public Dictionary<string, int> WorkspaceMonitors { get; set; } = new();
     /// <summary>Only for the GlazeWM hotkey engine; with AutoHotkey the list stays empty.</summary>
     public List<(IReadOnlyList<string> Commands, string Binding, string Comment)> Keybindings { get; set; } = new();
 }
@@ -31,7 +33,12 @@ public sealed class GlazeConfigOptions
 public static class GlazeConfig
 {
     public const string ScratchpadWorkspace = "scratchpad";
+    /// <summary>Hidden workspace where a layout change parks windows for a moment. Never the scratchpad.</summary>
+    public const string StageWorkspace = "winmarchy-stage";
     public const int WorkspaceCount = 10;
+
+    /// <summary>The numbered workspaces, not the two hidden ones.</summary>
+    public static bool IsRegular(string name) => name != ScratchpadWorkspace && name != StageWorkspace;
     public const string OverlayTitle = "WinMarchy Overlay";
 
     public static GlazeConfigOptions FromSettings(UserSettings s, Palette palette, int barHeight) => new()
@@ -45,6 +52,7 @@ public static class GlazeConfig
         HideTitleBars = s.HideTitleBars,
         DimInactive = s.DimInactive,
         FocusFollowsCursor = s.FocusFollowsCursor,
+        WorkspaceMonitors = new Dictionary<string, int>(s.WorkspaceMonitors),
     };
 
     public static string Generate(GlazeConfigOptions o)
@@ -91,9 +99,15 @@ public static class GlazeConfig
         Line("      shown_on_top: false");
         Line();
         Line("workspaces:");
-        for (int i = 1; i <= WorkspaceCount; i++) Line($"  - name: '{i}'");
-        // Hidden workspace for Win+S / Win+Alt+S. WinMarchy moves windows in and out of it.
+        for (int i = 1; i <= WorkspaceCount; i++)
+        {
+            Line($"  - name: '{i}'");
+            // Pinned to a screen (Tiling page): Win+{i} always opens it there.
+            if (o.WorkspaceMonitors.TryGetValue(i.ToString(), out var monitor) && monitor >= 0) Line($"    bind_to_monitor: {monitor}");
+        }
+        // Hidden workspaces: Win+S / Win+Alt+S, and a parking spot for layout changes.
         Line($"  - name: '{ScratchpadWorkspace}'");
+        Line($"  - name: '{StageWorkspace}'");
         Line();
         Line("window_rules:");
         Rule(sb, "ignore", ("window_process", "equals", "zebar"));
@@ -162,21 +176,41 @@ public static class GlazeConfig
     static string Bool(bool b) => b ? "true" : "false";
 
     /// <summary>
+    /// Arrows and Win+Shift+1 … go through WinMarchy for the scratchpad and the scrolling layout.
+    /// With the GlazeWM engine that would start WinMarchy.exe on every key press, so they stay
+    /// GlazeWM's own commands there.
+    /// </summary>
+    static IReadOnlyList<string>? Native(HotkeyAction action)
+    {
+        if (action.Kind != ActionKind.Do) return null;
+        var parts = action.Value.Split(' ', 2, StringSplitOptions.TrimEntries);
+        if (parts.Length < 2) return null;
+        return parts[0] switch
+        {
+            "focus" => new[] { "focus --direction " + parts[1] },
+            "swap" => new[] { "move --direction " + parts[1] },
+            "to-workspace" => new[] { "move --workspace " + parts[1], "focus --workspace " + parts[1] },
+            _ => null,
+        };
+    }
+
+    /// <summary>
     /// Keybindings for the GlazeWM engine. Window commands run in GlazeWM itself, everything else goes
     /// through WinMarchy.exe --action (GlazeWM cannot send keys or show menus).
     /// </summary>
     public static List<(IReadOnlyList<string> Commands, string Binding, string Comment)> Keybindings(
-        HotkeySet set, IKeyboardLayout layout, string winMarchyExe)
+        HotkeySet set, IKeyboardLayout layout, string winMarchyExe, IReadOnlyCollection<string>? leaveAlone = null)
     {
         var list = new List<(IReadOnlyList<string>, string, string)>();
         foreach (var b in set.Active)
         {
             if (b.Combo is not { } combo || b.Action is not { } action) continue;
+            if (leaveAlone?.Contains(combo.ToString()) == true) continue;
             var key = combo.ToGlaze(layout);
             if (key == null) continue;
             IReadOnlyList<string> commands = action.Kind == ActionKind.Wm
                 ? action.WmCommands.ToList()
-                : new[] { $"shell-exec --hide-window {winMarchyExe} --action {action}" };
+                : Native(action) ?? new[] { $"shell-exec --hide-window {winMarchyExe} --action {action}" };
             list.Add((commands, key, b.Describe()));
         }
         return list;

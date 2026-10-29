@@ -19,8 +19,46 @@ public static class ThemeAssets
     public static string BackgroundFile(OmarchyTheme theme, ThemeAsset asset) =>
         Path.Combine(Dir(theme.Name), asset.File.Replace('/', Path.DirectorySeparatorChar));
 
+    /// <summary>The theme's own pictures that are on disk (downloaded or imported).</summary>
     public static IReadOnlyList<string> DownloadedBackgrounds(OmarchyTheme theme) =>
         theme.Backgrounds.Select(b => BackgroundFile(theme, b)).Where(File.Exists).ToList();
+
+    /// <summary>
+    /// Pictures the user added to a theme, as in Omarchy's ~/.config/omarchy/backgrounds/&lt;theme&gt;:
+    /// C:\WinMarchy\Themes\&lt;theme&gt;\own. They come first when cycling through the backgrounds.
+    /// </summary>
+    public static string OwnDir(OmarchyTheme theme) => Path.Combine(Dir(theme.Name), "own");
+
+    static readonly string[] ImageTypes = { ".jpg", ".jpeg", ".png", ".bmp", ".webp" };
+
+    public static IReadOnlyList<string> OwnBackgrounds(OmarchyTheme theme)
+    {
+        var dir = OwnDir(theme);
+        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        var files = Directory.EnumerateFiles(dir).Where(f => ImageTypes.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
+        // A JPEG WinMarchy made from a WebP is not a picture of its own.
+        return files.Where(f => !(Path.GetExtension(f).Equals(".jpg", StringComparison.OrdinalIgnoreCase) && files.Contains(Path.ChangeExtension(f, ".webp"))))
+            .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>What Win+Ctrl+Space cycles through: the user's own pictures, then the theme's.</summary>
+    public static IReadOnlyList<string> Backgrounds(OmarchyTheme theme) => OwnBackgrounds(theme).Concat(DownloadedBackgrounds(theme)).ToList();
+
+    /// <summary>Copies pictures into the theme's own folder. Returns how many.</summary>
+    public static int AddOwn(OmarchyTheme theme, IEnumerable<string> files)
+    {
+        var dir = Paths.Ensure(OwnDir(theme));
+        int count = 0;
+        foreach (var file in files.Where(f => ImageTypes.Contains(Path.GetExtension(f).ToLowerInvariant())))
+        {
+            var target = Path.Combine(dir, Path.GetFileName(file));
+            for (int n = 2; File.Exists(target); n++)
+                target = Path.Combine(dir, $"{Path.GetFileNameWithoutExtension(file)}-{n}{Path.GetExtension(file)}");
+            File.Copy(file, target);
+            count++;
+        }
+        return count;
+    }
 
     public static bool HasAllBackgrounds(OmarchyTheme theme) => theme.Backgrounds.All(b => File.Exists(BackgroundFile(theme, b)));
 
@@ -84,7 +122,7 @@ public static class Wallpapers
 
     public static string? Apply(IntegrationContext ctx, OmarchyTheme theme, int index)
     {
-        var files = ThemeAssets.DownloadedBackgrounds(theme);
+        var files = ThemeAssets.Backgrounds(theme);
         if (files.Count == 0 || ctx.Wallpaper == null)
         {
             ctx.Report(L.T("integrations.wallpaper.none", ("theme", theme.Title)));

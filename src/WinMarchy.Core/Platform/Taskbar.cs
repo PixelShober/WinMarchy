@@ -55,6 +55,26 @@ public static class Taskbar
         foreach (var h in Windows()) ShowWindow(h, SW_SHOWNA);
     }
 
+    /// <summary>The process that owns the taskbar (Explorer), or 0.</summary>
+    internal static uint ShellProcess()
+    {
+        var tray = FindWindow("Shell_TrayWnd", null);
+        if (tray == IntPtr.Zero) return 0;
+        GetWindowThreadProcessId(tray, out var pid);
+        return pid;
+    }
+
+    internal static bool IsTaskbarWindow(IntPtr hwnd)
+    {
+        var sb = new System.Text.StringBuilder(64);
+        if (GetClassName(hwnd, sb, sb.Capacity) == 0) return false;
+        var name = sb.ToString();
+        return name is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
+    }
+
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, System.Text.StringBuilder name, int max);
+
     [StructLayout(LayoutKind.Sequential)]
     struct APPBARDATA
     {
@@ -74,4 +94,100 @@ public static class Taskbar
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string? title);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+}
+
+/// <summary>
+/// Keeps the taskbar hidden from a thread of its own: Explorer shows it again after a theme or colour
+/// change, a restart, or when the mouse touches the screen edge with auto-hide on. A window event hook
+/// hides it the moment it appears, a timer twice a second catches the rest. Neither waits for the UI
+/// thread, which may be busy with a theme change.
+/// </summary>
+public sealed class TaskbarGuard : IDisposable
+{
+    const uint EVENT_OBJECT_SHOW = 0x8002, WINEVENT_OUTOFCONTEXT = 0, WM_TIMER = 0x0113, WM_QUIT = 0x0012;
+
+    readonly Thread _thread;
+    volatile bool _hide;
+    uint _threadId;
+    IntPtr _hook;
+    uint _hookedPid;
+    WinEventProc? _proc;
+
+    public TaskbarGuard()
+    {
+        _thread = new Thread(Run) { IsBackground = true, Name = "WinMarchy taskbar" };
+        if (OperatingSystem.IsWindows()) _thread.Start();
+    }
+
+    /// <summary>Whether the taskbar should be hidden right now.</summary>
+    public bool Hide
+    {
+        get => _hide;
+        set => _hide = value;
+    }
+
+    void Run()
+    {
+        _threadId = GetCurrentThreadId();
+        _proc = OnEvent;
+        SetTimer(IntPtr.Zero, IntPtr.Zero, 500, IntPtr.Zero);
+        while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
+        {
+            if (msg.message == WM_TIMER) Tick();
+            DispatchMessage(ref msg);
+        }
+        if (_hook != IntPtr.Zero) UnhookWinEvent(_hook);
+    }
+
+    void Tick()
+    {
+        // Explorer restarted: the hook has to follow it to its new process.
+        var pid = Taskbar.ShellProcess();
+        if (pid != 0 && pid != _hookedPid)
+        {
+            if (_hook != IntPtr.Zero) UnhookWinEvent(_hook);
+            _hook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, IntPtr.Zero, _proc!, pid, 0, WINEVENT_OUTOFCONTEXT);
+            _hookedPid = pid;
+        }
+        if (_hide)
+        {
+            try { Taskbar.EnforceHidden(); } catch { }
+        }
+    }
+
+    void OnEvent(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
+    {
+        if (!_hide || idObject != 0 || hwnd == IntPtr.Zero) return;
+        try
+        {
+            if (Taskbar.IsTaskbarWindow(hwnd)) Taskbar.EnforceHidden();
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        if (_threadId != 0) PostThreadMessage(_threadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    delegate void WinEventProc(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time);
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct MSG
+    {
+        public IntPtr hwnd;
+        public uint message;
+        public IntPtr wParam;
+        public IntPtr lParam;
+        public uint time;
+        public int x, y;
+    }
+
+    [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr module, WinEventProc proc, uint process, uint thread, uint flags);
+    [DllImport("user32.dll")] static extern bool UnhookWinEvent(IntPtr hook);
+    [DllImport("user32.dll")] static extern int GetMessage(out MSG msg, IntPtr hwnd, uint min, uint max);
+    [DllImport("user32.dll")] static extern IntPtr DispatchMessage(ref MSG msg);
+    [DllImport("user32.dll")] static extern IntPtr SetTimer(IntPtr hwnd, IntPtr id, uint ms, IntPtr proc);
+    [DllImport("user32.dll")] static extern bool PostThreadMessage(uint thread, uint msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
 }

@@ -50,8 +50,8 @@ Ist in Windows „Animationseffekte“ aus, schaltet alles ohne Bewegung um.
 
 Farben aus dem aktiven Omarchy-Theme: `background`, `foreground`, `accent`, `muted`. Rahmen 2 px im Akzent, Schrift Cascadia Mono.
 
-- Menü (`Win+Alt+Space`): Karte 360 px, mittig auf dem Monitor unter der Maus, abgedunkelter Hintergrund. Zeilen 40 px, die gewählte mit 3 px Akzentbalken links und leicht getöntem Grund. Tippen filtert, Pfeile bewegen, Eingabe führt aus, Esc oder Rücktaste geht zurück.
-- Tastenkürzel (`Win+K`): dieselbe Karte, 700 px breit, Tasten rechtsbündig.
+- Menü (`Win+Space`): Karte 360 px, mittig auf dem Monitor unter der Maus, abgedunkelter Hintergrund. Zeilen 40 px, die gewählte mit 3 px Akzentbalken links und leicht getöntem Grund. Tippen filtert, Pfeile bewegen, Eingabe führt aus, Esc oder Rücktaste geht zurück. Im Hauptmenü sucht Tippen auch Programme; Abschnittstitel („Programme“, „WinMarchy“) stehen klein in `muted` und lassen sich nicht wählen. Nur eine Maus, die sich wirklich bewegt, wählt eine Zeile; die Pfeiltasten behalten sonst die Hand.
+- Tastenkürzel (`Win+K`): dieselbe Karte, 700 px breit, Tasten rechtsbündig. Erst die Favoriten, dann der Abschnitt „Optional“. Die zehn Workspace-Kürzel stehen als eine Zeile („Win + 1 … 0“).
 - Hintergrund (`Win+Strg+Alt+Space`, Menü → Stil → Hintergrund): Karte 520 px, Zeilen 48 px mit Vorschau 64 × 36 px und 1 px Rahmen, der beim gewählten Bild im Akzent steht.
-- Benachrichtigungen: oben rechts unter der Leiste, 360 px, höchstens vier, nach 3 bis 8 Sekunden weg, klicken geht durch.
-- Leiste (Zebar): 26 px, Workspaces links, Uhr in der Mitte, Netz, Ton, CPU und Akku rechts, wie Waybar.
+- Benachrichtigungen: oben rechts unter der Leiste, 360 px, höchstens vier, nach 3 bis 8 Sekunden weg, klicken geht durch. Ein Theme-Wechsel zeigt eine Karte mit 4 px Fortschrittsbalken im Akzent auf `divider`, darunter der aktuelle Schritt; am Ende das Ergebnis, nach 3 Sekunden (Fehler: 8) weg.
+- Leiste (Zebar): 26 px, Workspaces links, Uhr in der Mitte, Netz, Ton, CPU und Akku rechts, wie Waybar. Welche Einträge erscheinen, steht unter Tiling. Jeder lässt sich anklicken (Hover im Akzent): links das Naheliegende, rechts das Zweite, das Mausrad über dem Ton ändert die Lautstärke.

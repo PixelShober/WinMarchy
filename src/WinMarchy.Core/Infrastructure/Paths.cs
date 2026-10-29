@@ -42,6 +42,7 @@ public static class Paths
     public static string LayoutsFile => Path.Combine(ConfigDir, "layouts.json");
     public static string StateFile => Path.Combine(ConfigDir, "state.json");
     public static string WindowFile => Path.Combine(ConfigDir, "window.json");
+    public static string ScratchpadFile => Path.Combine(ConfigDir, "scratchpad.json");
 
     public static string AhkScript => Path.Combine(RuntimeDir, "winmarchy-hotkeys.ahk");
 

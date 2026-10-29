@@ -110,8 +110,8 @@ public class PolicyCheckTests
 public class ExtrasTests
 {
     [Fact]
-    public void PowerShell_Herdr_and_Pi_are_the_optional_extras() =>
-        Assert.Equal(new[] { "pwsh", "herdr", "pi" }, ToolCatalog.Extras.Select(t => t.Id));
+    public void PowerShell_Herdr_Pi_and_Greenshot_are_the_optional_extras() =>
+        Assert.Equal(new[] { "pwsh", "herdr", "pi", "greenshot" }, ToolCatalog.Extras.Select(t => t.Id));
 
     [Fact]
     public void Every_extra_can_be_installed_from_its_vendor() =>

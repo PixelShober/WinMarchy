@@ -25,6 +25,9 @@ public sealed class AgentHost : IAgentHost, IDisposable
     readonly DispatcherTimer _taskbarTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromHours(6) };
     readonly Forms.NotifyIcon _tray = new();
+    readonly TaskbarGuard _guard = new();
+    readonly DispatcherTimer _flowTimer = new() { Interval = TimeSpan.FromSeconds(15) };
+    DateTime _flowStarted = DateTime.MinValue;
     HwndSource? _window;
     LayoutEngine? _layouts;
     WindowCommands? _windows;
@@ -69,6 +72,10 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
         if (SetupDone) StartComponents();
         HookMinimize();
+        // The program list for Win+Space's search, read once in the background.
+        StartApps.Refresh();
+        _flowTimer.Tick += (_, _) => KeepFlowRunning();
+        _flowTimer.Start();
         try { AppModel.Engine.CheckFilesDefault(); }
         catch (Exception ex) { Log.Warn(Net.Describe(ex)); }
 
@@ -95,8 +102,15 @@ public sealed class AgentHost : IAgentHost, IDisposable
             if (!c.StartGlaze()) Log.Info(L.T("agent.glazeMissing"));
             if (Settings.ShowBar && !Core.Services.Components.IsRunning("zebar")) c.StartBar();
             if (Settings.HotkeyEngine == "autohotkey" && File.Exists(Paths.AhkScript) && !Core.Services.Components.OurAhkProcesses().Any()) c.StartAhk();
-            // Win and Win+Space open Flow Launcher; after the setup it has never run yet.
-            if (c.StartFlow()) Log.Info(L.T("agent.flowStarted"));
+            // Print belongs to Greenshot when the user chose it; it has to run for that.
+            if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
+                c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
+            // Win opens Flow Launcher; after the setup it has never run yet.
+            if (c.StartFlow())
+            {
+                _flowStarted = DateTime.Now;
+                Log.Info(L.T("agent.flowStarted"));
+            }
         }
         catch (Exception ex)
         {
@@ -104,9 +118,34 @@ public sealed class AgentHost : IAgentHost, IDisposable
         }
     }
 
+    /// <summary>
+    /// Win alone opens Flow Launcher, so it has to run. If it is gone (crashed, or a restart after a
+    /// theme change did not come up), it is started again; not more than once a minute, and not while
+    /// a job runs (a theme change restarts it on purpose, the setup installs it).
+    /// </summary>
+    void KeepFlowRunning()
+    {
+        if (!SetupDone || _restoring || AppModel.Jobs.AnyRunning) return;
+        if (Core.Services.Components.IsRunning("Flow.Launcher") || DateTime.Now - _flowStarted < TimeSpan.FromMinutes(1)) return;
+        try
+        {
+            if (AppModel.Engine.Components.StartFlow())
+            {
+                _flowStarted = DateTime.Now;
+                Log.Info(L.T("agent.flowRestarted"));
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("Flow: " + Net.Describe(ex));
+        }
+    }
+
     public void Dispose()
     {
         _cts.Cancel();
+        _flowTimer.Stop();
+        _guard.Dispose();
         _taskbarTimer.Stop();
         _updateTimer.Stop();
         // Without WinMarchy nobody brings the taskbar back after Explorer restarts: show it again.
@@ -230,8 +269,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
         // Layouts and the window functions take turns: a multi-step command is never interleaved
         // with the layout engine's reaction to the events it causes.
         var gate = new SemaphoreSlim(1, 1);
-        var layouts = new LayoutEngine(ipc, () => LayoutEngine.Parse(Settings.DefaultLayout), Notify, gate);
-        var windows = new WindowCommands(ipc, Notify, gate);
+        var layouts = new LayoutEngine(ipc, () => LayoutEngine.Parse(Settings.DefaultLayout), Notify, gate, () => Settings);
+        var windows = new WindowCommands(ipc, Notify, gate, layouts, () => Settings);
         ipc.Event += e => _ = layouts.OnEventAsync(e, ct);
         ipc.Disconnected += () =>
         {
@@ -258,6 +297,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _lastGlazeError = null;
         GlazeProblem = null;
         Log.Info(L.T("agent.glazeConnected"));
+        try { await windows.RecoverAsync(ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Recover: " + Net.Describe(ex)); }
         await RefreshStatusAsync(ct);
     }
 
@@ -336,7 +377,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
                 Taskbar.SetAutoHide(true);
                 _taskbarHidden = true;
             }
-            Taskbar.EnforceHidden();
+            // The guard's own thread does the hiding, also while this one is busy.
+            _guard.Hide = true;
         }
         else if (_taskbarHidden)
         {
@@ -346,6 +388,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
     void ShowTaskbarAgain()
     {
+        _guard.Hide = false;
         Taskbar.Show();
         if (AppState.Load().TaskbarAutoHideBefore is { } before) Taskbar.SetAutoHide(before);
         _taskbarHidden = false;
@@ -445,7 +488,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     WinEventProc? _minimizeProc;
     IntPtr _minimizeHook;
 
-    /// <summary>Windows reports every minimize; with the setting on, the window goes into the scratchpad.</summary>
+    /// <summary>Windows reports every minimize; with the setting on, the window comes straight back.</summary>
     void HookMinimize()
     {
         _minimizeProc = OnMinimizeStart;
@@ -453,17 +496,32 @@ public sealed class AgentHost : IAgentHost, IDisposable
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
     }
 
+    /// <summary>
+    /// Omarchy has no minimizing: a window GlazeWM manages is restored into its tile. Windows that hide
+    /// themselves in the tray (no longer visible) and windows GlazeWM ignores stay as they are.
+    /// </summary>
     void OnMinimizeStart(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
     {
         if (idObject != 0 || idChild != 0 || hwnd == IntPtr.Zero) return;
-        if (!Settings.MinimizeToScratchpad || _windows is not { } windows) return;
+        if (!Settings.BlockMinimize || _windows is not { } windows) return;
         var handle = hwnd.ToInt64();
         _ = Task.Run(async () =>
         {
-            try { await windows.ScratchStoreAsync(_cts.Token, handle); }
-            catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Minimize → scratchpad: " + Net.Describe(ex)); }
+            try
+            {
+                await Task.Delay(250, _cts.Token);
+                var h = new IntPtr(handle);
+                if (!IsIconic(h) || !IsWindowVisible(h) || !await windows.ManagesAsync(handle, _cts.Token)) return;
+                ShowWindow(h, SW_RESTORE);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Minimize: " + Net.Describe(ex)); }
         });
     }
+
+    const int SW_RESTORE = 9;
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
 
     // ------------------------------------------------------------------ updates
 

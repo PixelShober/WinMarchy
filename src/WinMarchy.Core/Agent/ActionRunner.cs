@@ -116,7 +116,8 @@ public sealed class ActionRunner
                 return;
             }
             AppLauncher.Start(flow);
-            await Task.Delay(1500, ct);
+            // Flow takes its hotkey only once its plugins are loaded.
+            await Task.Delay(3000, ct);
         }
         KeySender.Send(KeyCombo.Parse("Alt+F24"));
     }
@@ -161,6 +162,7 @@ public sealed class ActionRunner
             case "paste": KeySender.Send(KeyCombo.Parse(ForegroundIsTerminal() ? "Ctrl+Shift+V" : "Ctrl+V")); break;
             case "show-time": _host.Notify(DateTime.Now.ToString(L.Language == "de" ? "dddd, d. MMMM · HH:mm" : "dddd, MMMM d · h:mm tt", L.Culture)); break;
             case "show-battery": _host.Notify(BatteryText()); break;
+            case "screenshot": await Screenshots.TakeAsync(_host.Settings, arg, _host.Notify, ct); break;
             case "scale-up":
             case "scale-down":
                 var scale = DisplayScale.Step(command == "scale-up" ? 1 : -1);
@@ -182,8 +184,11 @@ public sealed class ActionRunner
         }
         switch (command)
         {
-            case "layout-next": await layouts.CycleAsync(back: false, ct); break;
-            case "layout-prev": await layouts.CycleAsync(back: true, ct); break;
+            // Older profiles still have "layout back"; with three layouts it simply cycles too.
+            case "layout-next":
+            case "layout-prev":
+                await layouts.CycleAsync(ct);
+                break;
             case "layout":
                 var ws = await _host.Glaze.QueryAsync("workspaces", ct);
                 if (GlazeTree.FocusedWorkspace(ws) is { } f && GlazeTree.Str(f, "name") is { } name)
@@ -192,14 +197,41 @@ public sealed class ActionRunner
             case "scratch-toggle": await windows.ScratchToggleAsync(ct); break;
             case "scratch-store": await windows.ScratchStoreAsync(ct); break;
             case "toggle-split": await windows.ToggleSplitAsync(ct); break;
-            case "desktop-new": await windows.NewDesktopAsync(GlazeConfig.WorkspaceCount, ct); break;
+            case "focus": await windows.FocusAsync(Direction(arg), ct); break;
+            case "swap": await windows.SwapAsync(Direction(arg), ct); break;
+            case "to-workspace" when arg != null && int.TryParse(arg, out var n) && n is >= 1 and <= GlazeConfig.WorkspaceCount:
+                await windows.ToWorkspaceAsync(arg, ct);
+                break;
+            case "desktop-new": await NewDesktopAsync(windows, ct); break;
             case "desktop-next": await windows.DesktopStepAsync(1, ct); break;
             case "desktop-prev": await windows.DesktopStepAsync(-1, ct); break;
             case "workspace-next": await windows.WorkspaceStepAsync(1, ct); break;
             case "workspace-prev": await windows.WorkspaceStepAsync(-1, ct); break;
             case "move-window-monitor": await windows.MoveWindowToMonitorAsync(arg ?? "right", ct); break;
-            case "restore-minimized": await windows.RestoreMinimizedAsync(ct); break;
+            case "restore-minimized":
+                var restored = await windows.RestoreMinimizedAsync(ct);
+                _host.Notify(restored == 0 ? L.T("actions.noneMinimized") : L.T("actions.restoredMinimized", ("count", restored)));
+                break;
             case "transparency-toggle": await windows.ToggleTransparencyAsync(ct); break;
+        }
+    }
+
+    static string Direction(string? arg) => arg is "left" or "right" or "up" or "down" ? arg : "right";
+
+    /// <summary>
+    /// Win+Ctrl+D: a fresh workspace on every monitor, then the program chosen for each monitor
+    /// (Tiling page). One after the other, each caught as it opens and put on its monitor's workspace.
+    /// </summary>
+    async Task NewDesktopAsync(WindowCommands windows, CancellationToken ct)
+    {
+        var s = _host.Settings;
+        var opened = await windows.NewDesktopAsync(GlazeConfig.WorkspaceCount, s.WorkspaceMonitors, ct);
+        foreach (var (monitor, workspace) in opened)
+        {
+            if (!s.DesktopApps.TryGetValue(monitor.ToString(), out var action) || !HotkeyAction.TryParse(action, out var a, out _) ||
+                a.Kind is not (ActionKind.App or ActionKind.Web)) continue;
+            if (!await windows.CatchNextWindowAsync(workspace, () => _ = RunAsync(action, ct), TimeSpan.FromSeconds(12), ct))
+                Log.Info(L.T("tiling.desktopAppLate", ("action", action), ("workspace", workspace)));
         }
     }
 

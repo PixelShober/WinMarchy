@@ -45,7 +45,7 @@ Alles kommt direkt aus dem GitHub-Release des Herstellers, wird vor dem Entpacke
 | GlazeWM | Fenster kacheln, Workspaces | GPL-3.0 |
 | Zebar | Leiste oben | GPL-3.0 |
 | AutoHotkey v2 | Tastenkürzel, auch die Win-Taste allein | GPL-2.0 |
-| Flow Launcher | Programme suchen (Win+Space) | MIT |
+| Flow Launcher | Programme suchen (Win allein) | MIT |
 
 Optionale Extras, in der Einrichtung einzeln anzuhaken:
 
@@ -54,6 +54,7 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 | PowerShell 7 | Shell im Terminal | MIT |
 | Herdr | Terminal-Arbeitsplatz für Coding-Agents (Win+Strg+Eingabe), unter Windows noch Beta | Apache-2.0 |
 | Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
+| Greenshot | Bildschirmfotos mit Editor, statt Snipping Tool (umschaltbar unter **Einstellungen**) | GPL-3.0 |
 
 Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Files lässt sich unter **Einstellungen** als Standard-Dateimanager festlegen: Ordner, Laufwerke und Win+E öffnen dann Files, Dieser PC und Papierkorb bleiben beim Explorer. Ohne Internet nimmt **Einstellungen** Herdr auch aus der ZIP von herdr.dev.
 
@@ -64,10 +65,10 @@ Alle Programme dürfen kostenlos in Firmen eingesetzt werden. Komorebi war desha
 | Ordner | Inhalt |
 |-|-|
 | `C:\WinMarchy\App` | WinMarchy.exe |
-| `C:\WinMarchy\Config` | Einstellungen, eigene Tastenkürzel, Layouts pro Workspace |
+| `C:\WinMarchy\Config` | Einstellungen, eigene Tastenkürzel, Layouts pro Workspace, Scratchpad |
 | `C:\WinMarchy\Backups` | Sicherungspunkte |
 | `C:\WinMarchy\Tools` | GlazeWM, Zebar, AutoHotkey, PowerShell |
-| `C:\WinMarchy\Themes` | Vorschaubilder und Hintergründe |
+| `C:\WinMarchy\Themes` | Vorschaubilder und Hintergründe, unter `<theme>\own` deine eigenen |
 | `C:\WinMarchy\Logs` | Protokolle, 30 Tage |
 
 Darf ein normaler Benutzer unter `C:\` keine Ordner anlegen, nimmt WinMarchy `%LOCALAPPDATA%\WinMarchy` mit demselben Aufbau.
@@ -78,21 +79,23 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 
 | Kürzel | Was passiert |
 |-|-|
-| `Win` allein | Programme suchen |
+| `Win` allein | Programme suchen (Flow Launcher) |
 | `Win+Eingabe` | Terminal |
-| `Win+Alt+Space` | WinMarchy-Menü, wie Super+Space in Omarchy |
-| `Win+K` | Alle Kürzel anzeigen (Eingabe führt das gewählte aus) |
+| `Win+Space` | WinMarchy-Menü; Tippen sucht auch in den Programmen des Startmenüs |
+| `Win+K` | Alle Kürzel anzeigen, Favoriten zuerst (Eingabe führt das gewählte aus) |
 | `Win+W` | Fenster schließen |
 | `Win+Pfeiltasten` | Fokus wechseln, mit Umschalt Fenster tauschen |
 | `Win+J` | Teilung drehen, sofort sichtbar |
 | `Win+1` … `Win+0` | Workspace 1 bis 10 |
 | `Win+Strg+D` | Neuer Workspace auf jedem Bildschirm, `Win+Strg+Pfeil` schaltet alle weiter |
-| `Win+Alt+L` | Layout des Workspace wechseln (Omarchy: Super+L) |
-| `Win+S` | Scratchpad ein- und ausblenden, `Win+Alt+S` legt ein Fenster hinein |
+| `Win+Alt+L` | Layout des Workspace wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
+| `Win+S` | Scratchpad ein- und ausblenden, `Win+Alt+S` legt ein Fenster hinein oder holt es heraus |
+| `Win+M` | Minimierte Fenster zurückholen |
 | `Win+N` | Editor |
 | `Win+Umschalt+G` | Stackfield |
-| `Win+Ctrl+Umschalt+Space` | Theme wählen |
-| `Win+Strg+Alt+Space` | Hintergrund wählen |
+| `Win+Strg+T` | Theme wählen, mit Fortschrittsbalken |
+| `Win+Strg+Alt+Space` | Hintergrund wählen, auch eigene Bilder |
+| `Druck` | Bildschirmfoto mit Snipping Tool oder Greenshot |
 
 Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Wie die Layouts Dwindle, Scrolling und Floating auf GlazeWM abgebildet sind, erklärt [docs/tiling.md](docs/tiling.md).
 

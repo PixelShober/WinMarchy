@@ -64,7 +64,9 @@ public sealed class JobManager
         var job = new Job(id, kind, title, steps) { OnFinished = onFinished };
         foreach (var step in steps) step.Changed += () => Emit(job, immediate: false);
         _jobs[id] = job;
-        _ = RunAsync(job, 0);
+        // Off the caller's thread: a theme change must not hold up the window, the menus or the
+        // taskbar watch while it writes files and waits for programs.
+        _ = Task.Run(() => RunAsync(job, 0));
         return job;
     }
 
@@ -76,7 +78,9 @@ public sealed class JobManager
         if (job.State == JobState.Running || job.FailedIndex < 0) return;
         job.Cts.Dispose();
         job.Cts = new CancellationTokenSource();
-        _ = RunAsync(job, job.FailedIndex);
+        var from = job.FailedIndex;
+        job.State = JobState.Running;
+        _ = Task.Run(() => RunAsync(job, from));
     }
 
     public void Remove(string id)

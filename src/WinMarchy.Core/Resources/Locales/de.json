@@ -72,7 +72,8 @@
       "files": "Dateimanager",
       "vscode": "Editor",
       "herdr": "Agent-Terminal",
-      "pi": "Coding-Agent"
+      "pi": "Coding-Agent",
+      "greenshot": "Bildschirmfotos"
     },
     "running": "Läuft",
     "installedBadge": "Installiert",
@@ -96,10 +97,11 @@
       "glazewm": "Kachelt die Fenster und verwaltet die Workspaces. Ohne GlazeWM geht nichts.",
       "zebar": "Die Leiste oben mit Workspaces, Uhr, Netz, Ton und Akku.",
       "autohotkey": "Fängt die Tastenkürzel ab, auch die Win-Taste allein.",
-      "flow": "Der Starter hinter Win+Space, wie Walker in Omarchy.",
+      "flow": "Der Starter hinter der Win-Taste, wie Walker in Omarchy.",
       "pwsh": "PowerShell 7 fürs Terminal. Windows bringt nur die alte 5.1 mit.",
       "herdr": "Terminal-Arbeitsplatz für Coding-Agents, Win+Strg+Eingabe. Unter Windows noch Beta.",
-      "pi": "Der Coding-Agent Pi im Terminal, Win+Alt+Eingabe."
+      "pi": "Der Coding-Agent Pi im Terminal, Win+Alt+Eingabe.",
+      "greenshot": "Bildschirmfotos mit Editor, falls dir das Snipping Tool nicht reicht. Umschalten unter Einstellungen."
     },
     "detected": "{tool} gefunden",
     "notDetected": "{tool} nicht gefunden",
@@ -159,7 +161,12 @@
     "allProgress": "{done} von {total}: {theme}",
     "allThere": "Alle Hintergrundbilder sind schon da.",
     "loadAllWallpapers": "Alle Hintergründe laden ({size})",
-    "allWallpapersLoaded": "{count} Hintergrundbilder geladen."
+    "allWallpapersLoaded": "{count} Hintergrundbilder geladen.",
+    "addOwn": "Eigenes Bild hinzufügen …",
+    "openOwn": "Ordner der eigenen Bilder",
+    "imageFilter": "Bilder (*.jpg;*.jpeg;*.png;*.bmp;*.webp)|*.jpg;*.jpeg;*.png;*.bmp;*.webp",
+    "ownAdded": "{count} Bilder zu {theme} hinzugefügt.",
+    "ownCount": "Dazu {count} eigene."
   },
 
   "hotkeys": {
@@ -174,14 +181,13 @@
     "winAlone": "Win-Taste allein öffnet die Suche",
     "winAloneHint": "Wie Super in Omarchy. Das Startmenü öffnet weiter Strg+Esc.",
     "profiles": "Profile",
-    "profilesText": "Business ist immer aktiv: Outlook, Teams, OneNote, Word und Copilot statt HEY, Signal und Obsidian.",
+    "profilesText": "Business ist immer aktiv: Outlook, OneNote, Word und Stackfield statt HEY, Signal und Obsidian.",
     "personal": "Persönlich",
     "personalHint": "Spotify, WhatsApp, Telegram und deine Kürzel aus der bindings.lua.",
     "search": "Kürzel suchen",
     "add": "Neues Kürzel",
     "apply": "Übernehmen",
     "applied": "Tastenkürzel sind aktiv.",
-    "savedNotApplied": "Gespeichert. Aktiv wird es mit „Übernehmen“.",
     "empty": "Kein Kürzel passt zur Suche.",
     "editTip": "Ändern",
     "deleteTip": "Löschen",
@@ -201,7 +207,8 @@
       "apps": "Programme",
       "menus": "Menüs",
       "utilities": "Werkzeuge",
-      "system": "System"
+      "system": "System",
+      "favorites": "Favoriten"
     },
     "sources": {
       "business": "Business",
@@ -255,7 +262,18 @@
       "runEmpty": "Gib einen Pfad an.",
       "duplicate": "{keys} ist doppelt belegt. Es gilt der letzte Eintrag.",
       "wheelNeedsAhk": "Kürzel mit dem Mausrad gehen nur mit AutoHotkey."
-    }
+    },
+    "export": "Exportieren",
+    "exportTip": "Deine eigenen Kürzel, abgeschaltete und Favoriten als Datei sichern.",
+    "exportFile": "winmarchy-tastenkuerzel",
+    "exported": "Gesichert unter {path}.",
+    "import": "Importieren",
+    "importTip": "Eine exportierte Datei laden. Deine jetzigen Kürzel kommen vorher in einen Sicherungspunkt.",
+    "importFailed": "Der Import ging nicht: {detail}",
+    "savedAndApplied": "Gespeichert und aktiv.",
+    "savedWithProblems": "Gespeichert, aber noch nicht aktiv: ein Kürzel hat einen Fehler (siehe oben).",
+    "starTip": "Als Favorit markieren: Win+K zeigt es oben",
+    "unstarTip": "Kein Favorit mehr: Win+K zeigt es unter „Optional“"
   },
 
   "apps": {
@@ -284,7 +302,8 @@
     "bitwarden": "Bitwarden",
     "notepad": "Editor",
     "stackfield": "Stackfield",
-    "pi": "Pi"
+    "pi": "Pi",
+    "browser2": "Zweiter Browser"
   },
 
   "commands": {
@@ -296,7 +315,7 @@
     "taskbar-toggle": "Taskleiste ein oder aus",
     "layout-next": "Nächstes Layout",
     "layout-prev": "Vorheriges Layout",
-    "layout": "Layout setzen (dwindle, columns, floating, manual)",
+    "layout": "Layout setzen (dwindle, columns, scrolling, floating, manual)",
     "scratch-toggle": "Scratchpad zeigen oder verstecken",
     "scratch-store": "Fenster ins Scratchpad",
     "workspace-next": "Nächster Workspace",
@@ -318,15 +337,19 @@
     "desktop-new": "Neuer Workspace auf jedem Bildschirm",
     "desktop-next": "Alle Bildschirme: nächster Workspace",
     "desktop-prev": "Alle Bildschirme: vorheriger Workspace",
-    "wallpaper-menu": "Hintergrund wählen"
+    "wallpaper-menu": "Hintergrund wählen",
+    "focus": "Fokus in eine Richtung (left, right, up, down)",
+    "swap": "Fenster tauschen (left, right, up, down)",
+    "to-workspace": "Fenster auf Workspace (1 bis 10)",
+    "screenshot": "Bildschirmfoto (region, window, screen)"
   },
 
   "tiling": {
     "title": "Tiling",
     "subtitle": "Wie GlazeWM deine Fenster anordnet. Wie in Omarchy hat jeder Workspace sein eigenes Layout.",
     "defaultLayout": "Standard-Layout",
-    "defaultLayoutText": "Gilt für neue Workspaces. Win+Alt+L wechselt das Layout des Workspace, auf dem du gerade bist.",
-    "scrollingNote": "Echtes Scrolling, bei dem Fenster über den Bildschirmrand hinauslaufen, kann GlazeWM nicht. Spalten kommt dem am nächsten.",
+    "defaultLayoutText": "Gilt für neue Workspaces. Win+Alt+L schaltet den Workspace, auf dem du gerade bist, weiter: Dwindle, Spalten, Scrolling.",
+    "scrollingNote": "Scrolling stellt die Fenster als Spalten in eine Reihe, die breiter sein darf als der Bildschirm. Win+Pfeil links und rechts scrollt, Win+Umschalt+Pfeil verschiebt die Spalte. GlazeWM kann das nicht selbst, darum setzt WinMarchy diese Fenster (sie schweben dafür).",
     "workspaces": "Workspaces",
     "refresh": "Aktualisieren",
     "workspaceRow": "Workspace {name} · {count} Fenster",
@@ -350,27 +373,49 @@
     "splitNext": "Die Teilung gilt ab dem nächsten Fenster.",
     "allTaken": "Alle {count} Workspaces sind belegt.",
     "newDesktop": "Neue Workspaces: {workspaces}",
-    "minimizeToScratchpad": "Minimieren legt ins Scratchpad",
-    "minimizeHint": "Omarchy kennt kein Minimieren. Ein minimiertes Fenster verschwindet ins Scratchpad, Win+S holt es zurück.",
     "touchpad": "Touchpad-Gesten öffnen",
-    "touchpadHint": "Win+Strg+D gibt jedem Bildschirm einen neuen Workspace, Win+Strg+Pfeil schaltet alle zusammen weiter, wie virtuelle Desktops. Unter „Erweiterte Gesten“ legst du das Drei-Finger-Wischen auf diese Kürzel. „Desktops wechseln“ lieber nicht: Windows' virtuelle Desktops vertragen sich nicht mit GlazeWM."
+    "touchpadHint": "Win+Strg+D gibt jedem Bildschirm einen neuen Workspace, Win+Strg+Pfeil schaltet alle zusammen weiter, wie virtuelle Desktops. Unter „Erweiterte Gesten“ legst du das Drei-Finger-Wischen auf diese Kürzel. „Desktops wechseln“ lieber nicht: Windows' virtuelle Desktops vertragen sich nicht mit GlazeWM.",
+    "scrollingColumns": "Scrolling zeigt",
+    "columnsCount": "{count} nebeneinander",
+    "barModules": "Die Leiste zeigt",
+    "blockMinimize": "Minimieren verhindern",
+    "blockMinimizeHint": "Wie in Omarchy: ein minimiertes Fenster kommt sofort in seine Kachel zurück. Win+M holt alles zurück, was trotzdem minimiert ist.",
+    "monitors": "Bildschirme und Workspaces",
+    "monitorsText": "Wie im Omarchy-Plugin Screens: Jeder Bildschirm bekommt feste Workspaces. Win+3 öffnet Workspace 3 immer auf seinem Bildschirm, und Win+Strg+D nimmt nur Workspaces dieses Bildschirms.",
+    "monitorsHint": "Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um.",
+    "monitorsSplit": "Gleichmäßig aufteilen",
+    "monitorsInvalid": "Bildschirm {number}: nur Workspace-Nummern von 1 bis 10, etwa 1-5 oder 6, 7.",
+    "monitorsTwice": "Workspace {workspace} steht bei Bildschirm {a} und {b}. Jeder Workspace gehört zu einem Bildschirm.",
+    "monitorName": "Bildschirm {number}",
+    "monitorPrimary": "Hauptbildschirm · {width} × {height}",
+    "monitorSize": "{width} × {height}",
+    "monitorWorkspaces": "Workspaces",
+    "monitorWorkspacesHint": "Zum Beispiel 1-5 oder 6, 7, 8. Leer: Dieser Bildschirm nimmt, was frei ist.",
+    "monitorAppNone": "Win+Strg+D startet nichts",
+    "monitorAppPrefix": "Win+Strg+D startet",
+    "monitorAppHint": "Startet bei Win+Strg+D auf dem neuen Workspace dieses Bildschirms.",
+    "desktopAppLate": "{action} hat nach 12 Sekunden noch kein Fenster gezeigt; vorgesehen war Workspace {workspace}."
   },
 
   "layouts": {
     "dwindle": "Dwindle",
     "dwindleText": "Jedes neue Fenster teilt den Platz des fokussierten. Omarchys Standard.",
     "columns": "Spalten",
-    "columnsText": "Fenster nebeneinander, gleich breit. Am nächsten an Omarchys Scrolling.",
+    "columnsText": "Fenster nebeneinander, gleich breit.",
     "floating": "Schwebend",
     "floatingText": "Fenster liegen frei übereinander.",
     "manual": "Manuell",
     "manualText": "Du teilst selbst, mit Win+J.",
-    "changed": "Workspace {workspace}: {layout}"
+    "changed": "Workspace {workspace}: {layout}",
+    "scrolling": "Scrolling",
+    "scrollingText": "Spalten in einer Reihe, breiter als der Bildschirm. Win+Pfeil scrollt."
   },
 
   "scratchpad": {
-    "stored": "Im Scratchpad. Win+S holt es zurück.",
-    "empty": "Das Scratchpad ist leer. Win+Alt+S legt ein Fenster hinein."
+    "stored": "Im Scratchpad. Win+S zeigt es, Win+Alt+S darauf holt es wieder heraus.",
+    "empty": "Das Scratchpad ist leer. Win+Alt+S legt ein Fenster hinein.",
+    "recovered": "{count} Fenster aus versteckten Workspaces zurück auf Workspace {workspace} geholt.",
+    "released": "Wieder in den Kacheln."
   },
 
   "restore": {
@@ -436,7 +481,7 @@
     "paths": "Pfade",
     "choose": "Auswählen …",
     "personalScript": "Persönliches Skript",
-    "personalScriptHint": "Läuft mit Win+Ctrl+T, wenn das Profil Persönlich an ist. PowerShell-Skripte laufen unter der Ausführungsrichtlinie des Rechners.",
+    "personalScriptHint": "Läuft mit Win+Strg+Umschalt+T, wenn das Profil Persönlich an ist. PowerShell-Skripte laufen unter der Ausführungsrichtlinie des Rechners.",
     "scriptFilter": "Skripte (*.ps1;*.cmd;*.bat;*.exe)|*.ps1;*.cmd;*.bat;*.exe|Alle Dateien|*.*",
     "filesPath": "Einstellungsdatei von Files",
     "filesPathHint": "Nur nötig, wenn WinMarchy die Datei nicht selbst findet.",
@@ -461,7 +506,23 @@
     "filesDefaultHint": "Ordner, Laufwerke und Win+E öffnen Files. Ausschalten holt den Explorer zurück, Rückgängig ebenso.",
     "filesDefaultMissing": "Files ist nicht installiert. Es ist kostenlos im Microsoft Store und unter files.community.",
     "filesDefaultOn": "Files ist jetzt der Standard-Dateimanager.",
-    "filesDefaultOff": "Der Explorer ist wieder der Standard-Dateimanager."
+    "filesDefaultOff": "Der Explorer ist wieder der Standard-Dateimanager.",
+    "browsers": "Browser",
+    "browsersText": "Zwei Kürzel, zwei Browser: etwa Edge für die Arbeit und Firefox für den Rest. Web-Apps wie Spotify öffnen im ersten, wenn er auf Chromium beruht, sonst in Edge.",
+    "browser1": "Win+Umschalt+B und Web-Apps",
+    "browser2": "Win+Umschalt+Eingabe",
+    "browserDefault": "Standardbrowser von Windows",
+    "browserDefaultNamed": "Standardbrowser von Windows ({name})",
+    "browserOther": "Anderer Browser …",
+    "exeFilter": "Programme (*.exe)|*.exe",
+    "screenshots": "Bildschirmfotos",
+    "screenshotsText": "Omarchy legt das Bildschirmfoto auf die Druck-Taste. Hier wählst du, wer es macht: das Snipping Tool von Windows oder Greenshot mit seinem Editor.",
+    "screenshotWindows": "Windows (Snipping Tool)",
+    "screenshotGreenshot": "Greenshot",
+    "screenshotWindowsHint": "Druck und Win+Strg+Alt+C öffnen das Snipping Tool, Alt+Druck nimmt den Bildschirm als Video auf.",
+    "screenshotGreenshotHint": "Druck nimmt einen Bereich auf, Alt+Druck ein Fenster, Strg+Druck den ganzen Bildschirm, so wie Greenshot es eingestellt hat. Win+Strg+Alt+C geht auch.",
+    "screenshotGreenshotInstall": "Greenshot lädt WinMarchy beim Umschalten direkt vom Hersteller.",
+    "screenshotDone": "Bildschirmfotos jetzt mit {tool}."
   },
 
   "log": {
@@ -514,7 +575,9 @@
     "wallpapers": "Bilder zu {theme} laden",
     "filesDefaultOn": "Files als Standard-Dateimanager",
     "filesDefaultOff": "Explorer als Standard-Dateimanager",
-    "extras": "Extras installieren: {tools}"
+    "extras": "Extras installieren: {tools}",
+    "hotkeysImport": "Tastenkürzel importieren",
+    "screenshots": "Bildschirmfotos umstellen"
   },
 
   "steps": {
@@ -549,7 +612,9 @@
     "afterRestore": "Programme neu laden",
     "removeTools": "Programme entfernen",
     "allWallpapers": "Hintergrundbilder aller Themes laden ({count})",
-    "filesDefault": "Ordner-Zuordnung ändern"
+    "filesDefault": "Ordner-Zuordnung ändern",
+    "printKey": "Druck-Taste für Greenshot",
+    "saveChoice": "Auswahl speichern"
   },
 
   "integrations": {
@@ -573,7 +638,8 @@
     },
     "flow": {
       "done": "Flow Launcher hat das Theme „WinMarchy“ und hört auf Alt+F24.",
-      "notFound": "Flow Launcher ist nicht installiert."
+      "notFound": "Flow Launcher ist nicht installiert.",
+      "restartAgain": "Flow Launcher ist nach dem Neustart gleich wieder zugegangen. Zweiter Versuch."
     },
     "files": {
       "done": "Farben gesetzt: {path}",
@@ -613,7 +679,25 @@
   "bar": {
     "paused": "Tiling pausiert",
     "direction": "Richtung für das nächste Fenster",
-    "offline": "Kein Netz"
+    "offline": "Kein Netz",
+    "audioTip": "Klick: Toneinstellungen · Rechtsklick: stumm · Mausrad: lauter oder leiser",
+    "batteryTip": "Klick: Energiesparmodus · Rechtsklick: Energieoptionen",
+    "clockTip": "Klick: Kalender · Rechtsklick: Datum und Uhrzeit",
+    "cpuTip": "Klick: Task-Manager",
+    "logoTip": "Klick: WinMarchy-Menü · Rechtsklick: Tastenkürzel",
+    "networkTip": "Klick: WLAN · Rechtsklick: Netzwerkeinstellungen",
+    "modules": {
+      "logo": "Logo (Menü)",
+      "workspaces": "Workspaces",
+      "clock": "Uhr",
+      "tray": "Infobereich",
+      "direction": "Teilungsrichtung",
+      "network": "Netzwerk",
+      "audio": "Ton",
+      "cpu": "CPU",
+      "memory": "Arbeitsspeicher",
+      "battery": "Akku"
+    }
   },
 
   "actions": {
@@ -629,7 +713,9 @@
     "noBattery": "Kein Akku gefunden.",
     "battery": "Akku: {percent} %",
     "batteryCharging": "Akku: {percent} %, lädt",
-    "batteryLeft": "Akku: {percent} %, noch {hours} h {minutes} min"
+    "batteryLeft": "Akku: {percent} %, noch {hours} h {minutes} min",
+    "noneMinimized": "Kein Fenster ist minimiert.",
+    "restoredMinimized": "{count} Fenster zurückgeholt."
   },
 
   "agent": {
@@ -652,7 +738,8 @@
     "noWallpapers": "Für dieses Theme sind noch keine Hintergrundbilder geladen.",
     "restored": "Alles zurückgesetzt. WinMarchy bleibt im Infobereich, bis du es beendest.",
     "glazeConnectFailed": "GlazeWM läuft, aber WinMarchy erreicht es nicht: {detail}",
-    "flowStarted": "Flow Launcher gestartet."
+    "flowStarted": "Flow Launcher gestartet.",
+    "flowRestarted": "Flow Launcher lief nicht mehr und ist neu gestartet."
   },
 
   "tray": {
@@ -772,8 +859,11 @@
       "lockScreenDone": "Der Sperrbildschirm zeigt jetzt dasselbe Bild.",
       "lockScreenFailed": "Der Sperrbildschirm ließ sich nicht ändern. Mehr dazu im Protokoll.",
       "loaded": "Bilder zu {theme} geladen.",
-      "loading": "Lade Bilder zu {theme} …"
-    }
+      "loading": "Lade Bilder zu {theme} …",
+      "addOwn": "Eigenes Bild hinzufügen …"
+    },
+    "keybindingsOptional": "Optional",
+    "sectionApps": "Programme"
   },
 
   "install": {
@@ -839,7 +929,8 @@
     "toolNotFoundAfterInstall": "{tool} ist nach der Installation nicht zu finden.",
     "toolNotInstallable": "{tool} installiert WinMarchy nicht selbst. Der Link zum Hersteller steht unter Start.",
     "zipInvalidPath": "Die ZIP enthält einen ungültigen Pfad: {entry}",
-    "filesMissing": "Files ist nicht installiert."
+    "filesMissing": "Files ist nicht installiert.",
+    "hotkeysImportInvalid": "Die Datei enthält keine WinMarchy-Tastenkürzel."
   },
 
   "policies": {
@@ -880,5 +971,10 @@
       "proxyScript": "Ein Proxy-Skript ist eingestellt ({value}). Downloads von GitHub gehen darüber.",
       "mdm": "Der PC wird über {value} verwaltet (Intune oder ein anderes MDM). Solche Vorgaben stehen nicht immer in der Registry."
     }
+  },
+
+  "screenshot": {
+    "greenshotMissing": "Greenshot ist nicht installiert, das Snipping Tool springt ein. In den Einstellungen lässt sich Greenshot installieren.",
+    "printKeyFreed": "Druck öffnet nicht mehr das Snipping Tool, Greenshot übernimmt die Taste."
   }
 }

@@ -69,6 +69,11 @@ static class SelfTest
         File.WriteAllText(Path.Combine(outDir, "glazewm-config-glazewm-engine.yaml"), GlazeConfig.Generate(glazeKeys));
         File.WriteAllText(Path.Combine(outDir, "zpack.json"), ZebarPack.Manifest(exe));
         File.WriteAllText(Path.Combine(outDir, "theme.css"), ZebarPack.ThemeCss(palette));
+        File.WriteAllText(Path.Combine(outDir, "config.js"), ZebarPack.ConfigJs(exe, settings));
+        // Greenshot owns the Print keys when it is chosen; the script must still validate.
+        var greenshot = AhkScript.Generate(HotkeySet.Build(false, new CustomHotkeys(), "autohotkey"),
+            new AhkContext(exe, cli, WinKeyOpensLauncher: true, LeaveAlone: WinMarchy.Core.Platform.Screenshots.GreenshotKeys.ToHashSet()));
+        File.WriteAllText(Path.Combine(outDir, "winmarchy-hotkeys-greenshot.ahk"), greenshot, bom);
     }
 
     static async Task ShootPagesAsync(string outDir, List<string> problems)
@@ -89,12 +94,15 @@ static class SelfTest
             }
         }
 
-        // The Omarchy menu, drawn on its own (it is a separate window on the desktop).
+        // The Omarchy menu, drawn on its own (it is a separate window on the desktop). The search
+        // preview needs the Start menu's program list first.
+        await WinMarchy.Core.Platform.StartApps.Refresh(force: true);
         var menu = new Overlays.MenuPreview();
         foreach (var (name, build) in new (string, Action<Overlays.MenuPreview>)[]
                  {
                      ("menu", m => m.Root()), ("menu-system", m => m.Sub("system")), ("menu-style", m => m.Sub("style")),
                      ("themes-menu", m => m.Themes()), ("wallpaper-menu", m => m.Wallpapers()), ("keybindings", m => m.Bindings()),
+                     ("menu-search", m => m.Search("note")),
                  })
         {
             build(menu);

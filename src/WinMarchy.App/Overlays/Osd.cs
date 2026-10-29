@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using WinMarchy.Core;
 using WinMarchy.Core.GlazeWm;
 using WinMarchy.Core.Integrations;
 
@@ -26,6 +27,67 @@ public static class Osd
         });
     }
 
+    /// <summary>
+    /// A notification with a progress bar for a running job (theme change): the bar follows the
+    /// steps, the line below names the current one, and at the end it says how it went.
+    /// </summary>
+    public static void Follow(string jobId, string title, string done, Func<string, string> failed)
+    {
+        var app = Application.Current;
+        if (app == null) return;
+        app.Dispatcher.InvokeAsync(() =>
+        {
+            _window ??= new OsdWindow();
+            var card = _window.AddProgress(title);
+            void OnChanged(JobSnapshot snap)
+            {
+                if (snap.Id != jobId) return;
+                app.Dispatcher.InvokeAsync(() =>
+                {
+                    if (snap.State == JobState.Running)
+                    {
+                        card.Update(snap.Progress / 100.0, snap.Status);
+                        return;
+                    }
+                    AppModel.Jobs.Changed -= OnChanged;
+                    card.Finish(snap.State == JobState.Done ? done : failed(snap.Status), snap.State == JobState.Done);
+                });
+            }
+            AppModel.Jobs.Changed += OnChanged;
+            if (AppModel.Jobs.Get(jobId)?.Snapshot() is { } now) OnChanged(now);
+        });
+    }
+
+    /// <summary>The card of <see cref="Follow"/>.</summary>
+    sealed class ProgressCard
+    {
+        public required Border Root { get; init; }
+        public required TextBlock Status { get; init; }
+        public required Border Fill { get; init; }
+        public required Grid Track { get; init; }
+        public required Action Close { get; init; }
+
+        public void Update(double share, string status)
+        {
+            Status.Text = status;
+            // Before the first layout pass the track has no width yet: card width minus padding and border.
+            var width = Track.ActualWidth > 0 ? Track.ActualWidth : 324;
+            Fill.Width = Math.Max(0, Math.Min(1, share)) * width;
+        }
+
+        public void Finish(string text, bool ok)
+        {
+            Update(ok ? 1 : Fill.Width / (Track.ActualWidth > 0 ? Track.ActualWidth : 324), text);
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(ok ? 3 : 8) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                Close();
+            };
+            timer.Start();
+        }
+    }
+
     sealed class OsdWindow : Window
     {
         const int MarginPx = 12;
@@ -46,6 +108,43 @@ public static class Osd
             Content = _stack;
             SourceInitialized += (_, _) => Placement.MakeOverlay(this, clickThrough: true);
             SizeChanged += (_, _) => Position();
+        }
+
+        public ProgressCard AddProgress(string title)
+        {
+            var look = OverlayLook.Current();
+            var status = new TextBlock { Foreground = look.Muted, FontFamily = OverlayLook.Mono, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
+            var fill = new Border { Background = look.Accent, HorizontalAlignment = HorizontalAlignment.Left, Width = 0 };
+            var track = new Grid { Height = 4, Background = look.Divider, Margin = new Thickness(0, 10, 0, 0) };
+            track.Children.Add(fill);
+            var panel = new StackPanel();
+            panel.Children.Add(new TextBlock { Text = title, Foreground = look.Foreground, FontFamily = OverlayLook.Mono, FontSize = 13.5, TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(track);
+            panel.Children.Add(status);
+            var card = new Border
+            {
+                Background = look.Background,
+                BorderBrush = look.Accent,
+                BorderThickness = new Thickness(2),
+                Padding = new Thickness(16, 12, 16, 12),
+                Margin = new Thickness(0, 0, 0, 8),
+                Width = 360,
+                Child = panel,
+            };
+            _stack.Children.Add(card);
+            while (_stack.Children.Count > 4) _stack.Children.RemoveAt(0);
+            if (!IsVisible) Show();
+            Position();
+            if (Ui.Motion.Enabled) Ui.Motion.FadeIn(card, -6);
+            return new ProgressCard
+            {
+                Root = card, Status = status, Fill = fill, Track = track,
+                Close = () =>
+                {
+                    _stack.Children.Remove(card);
+                    if (_stack.Children.Count == 0) Hide();
+                },
+            };
         }
 
         public void Add(string text)

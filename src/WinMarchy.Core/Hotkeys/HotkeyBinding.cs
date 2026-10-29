@@ -41,6 +41,21 @@ public sealed class HotkeyBinding
     /// <summary>Expands "{n}" (1 … 9, 0) and "{ws}" (1 … 10) to all ten workspaces.</summary>
     public string? Repeat { get; set; }
 
+    /// <summary>The profile files it under "Optional": Win+K lists it after the favourites.</summary>
+    public bool Optional { get; set; }
+
+    /// <summary>Shown at the top of Win+K: the profile's choice unless the user starred or unstarred it.</summary>
+    [JsonIgnore]
+    public bool Favorite { get; set; } = true;
+
+    /// <summary>For the ten bindings "Win+{n}" expands to: the keys as the profile writes them, so lists can show one row.</summary>
+    [JsonIgnore]
+    public string? Template { get; set; }
+
+    /// <summary>The label with "{ws}" still in it, for that one row.</summary>
+    [JsonIgnore]
+    public LocalizedText? TemplateLabel { get; set; }
+
     /// <summary>"business", "personal" or "custom".</summary>
     [JsonIgnore]
     public string Source { get; set; } = "custom";
@@ -76,6 +91,9 @@ public sealed class CustomHotkeys
     /// <summary>Profile shortcuts the user switched off, by keys ("Win+Shift+A").</summary>
     public List<string> Disabled { get; set; } = new();
 
+    /// <summary>The user's own favourites (true) and non-favourites (false), by keys.</summary>
+    public Dictionary<string, bool> Favorites { get; set; } = new();
+
     public static CustomHotkeys Load(string file)
     {
         try
@@ -90,4 +108,8 @@ public sealed class CustomHotkeys
     }
 
     public void Save(string file) => FileSafety.WriteText(file, Json.Serialize(this, indented: true));
+
+    /// <summary>Reads an exported file; throws if it is not one.</summary>
+    public static CustomHotkeys Import(string file) =>
+        Json.Deserialize<CustomHotkeys>(File.ReadAllText(file)) ?? throw new WinMarchyException("hotkeysImportInvalid");
 }

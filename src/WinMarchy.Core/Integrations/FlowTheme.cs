@@ -7,7 +7,7 @@ namespace WinMarchy.Core.Integrations;
 
 /// <summary>
 /// Flow Launcher is the "Omarchy menu" for apps on Windows: a theme in the Omarchy colours (square,
-/// 2 px border like Walker) and the hotkey Alt+F24, which WinMarchy presses for Win and Win+Space.
+/// 2 px border like Walker) and the hotkey Alt+F24, which WinMarchy presses when Win is tapped alone.
 /// Flow writes its Settings.json when it exits, so it is closed first and started again afterwards.
 /// </summary>
 public static class FlowTheme
@@ -84,9 +84,26 @@ public static class FlowTheme
         ctx.WriteFile(settingsFile, PatchSettings(fresh ? "{}" : FileSafety.ReadShared(settingsFile), palette.IsLight));
         ctx.Report(L.T("integrations.flow.done"));
 
-        // Flow is the launcher behind Win and Win+Space: afterwards it runs, whether it did before or not.
-        if (exe != null && File.Exists(exe))
+        // Flow is the launcher behind Win: afterwards it runs, whether it did before or not.
+        if (exe != null && File.Exists(exe)) await StartAndCheckAsync(exe, ct);
+    }
+
+    /// <summary>
+    /// Starts Flow and makes sure it stays up. Right after a restart Flow sometimes quits again (the
+    /// old instance was still letting go); then it gets a second start.
+    /// </summary>
+    public static async Task StartAndCheckAsync(string exe, CancellationToken ct)
+    {
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
             Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true })?.Dispose();
+            for (int i = 0; i < 8; i++)
+            {
+                await Task.Delay(500, ct);
+                if (i >= 5 && Process.GetProcessesByName("Flow.Launcher").Length > 0) return;
+            }
+            Log.Warn(L.T("integrations.flow.restartAgain"));
+        }
     }
 
     public static async Task StopAsync(Process[] processes, CancellationToken ct)

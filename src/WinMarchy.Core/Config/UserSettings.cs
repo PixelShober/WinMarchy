@@ -58,15 +58,36 @@ public sealed class UserSettings
     public bool FocusFollowsCursor { get; set; }
 
     /// <summary>
-    /// Omarchy knows no minimizing. With this on, a minimized window goes into the scratchpad instead
-    /// (Win+S shows it again).
+    /// Omarchy knows no minimizing: a window that gets minimized comes straight back into its tile.
+    /// Win+M brings back anything that slipped through.
     /// </summary>
-    public bool MinimizeToScratchpad { get; set; }
+    public bool BlockMinimize { get; set; } = true;
+
+    /// <summary>How many columns the scrolling layout shows side by side (1 to 3).</summary>
+    public int ScrollingColumns { get; set; } = 2;
+
+    /// <summary>Workspace "1" … "10" → monitor index (0 = leftmost). Missing: any monitor.</summary>
+    public Dictionary<string, int> WorkspaceMonitors { get; set; } = new();
+
+    /// <summary>Win+Ctrl+D: the app ("app:…" or "web:…") that starts on the new workspace of each monitor index.</summary>
+    public Dictionary<string, string> DesktopApps { get; set; } = new();
+
+    /// <summary>Browser behind Win+Shift+B and web apps: null = Windows' default browser, else an exe.</summary>
+    public string? Browser { get; set; }
+
+    /// <summary>Browser behind Win+Shift+Enter: null = Windows' default browser, else an exe.</summary>
+    public string? Browser2 { get; set; }
+
+    /// <summary>"windows" (Snipping Tool) or "greenshot".</summary>
+    public string ScreenshotTool { get; set; } = "windows";
+
+    /// <summary>What the bar shows, by module id (see ZebarPack.Modules). Missing: the default.</summary>
+    public Dictionary<string, bool> BarModules { get; set; } = new();
 
     /// <summary>Settings file of the Files app, if it is not found automatically.</summary>
     public string? FilesSettingsPath { get; set; }
 
-    /// <summary>Script behind the personal "Win+Ctrl+T" binding (bindings.lua: Defender token login).</summary>
+    /// <summary>Script behind the personal "Win+Ctrl+Shift+T" binding (bindings.lua: Defender token login).</summary>
     public string? PersonalScriptPath { get; set; }
 
     public bool AutoUpdate { get; set; } = true;

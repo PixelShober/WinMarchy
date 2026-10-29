@@ -162,7 +162,7 @@ public class LayoutTests
     [Theory]
     [InlineData("dwindle", LayoutMode.Dwindle)]
     [InlineData("Columns", LayoutMode.Columns)]
-    [InlineData("scrolling", LayoutMode.Columns)]
+    [InlineData("scrolling", LayoutMode.Scrolling)]
     [InlineData("floating", LayoutMode.Floating)]
     [InlineData("manual", LayoutMode.Manual)]
     [InlineData(null, LayoutMode.Dwindle)]

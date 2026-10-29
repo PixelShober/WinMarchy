@@ -97,6 +97,8 @@
 
     <DockPanel Margin="0,26,0,12">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="{ui:T hotkeys.export}" Click="OnExport" Margin="0,0,8,0" ToolTip="{ui:T hotkeys.exportTip}" />
+        <Button Content="{ui:T hotkeys.import}" Click="OnImport" Margin="0,0,8,0" ToolTip="{ui:T hotkeys.importTip}" />
         <Button Click="OnAdd" Margin="0,0,8,0">
           <StackPanel Orientation="Horizontal">
             <ui:Icon Kind="plus" Size="13" VerticalAlignment="Center" />

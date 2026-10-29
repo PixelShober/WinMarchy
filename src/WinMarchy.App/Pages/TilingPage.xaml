@@ -12,13 +12,31 @@
       <StackPanel>
         <TextBlock Text="{ui:T tiling.defaultLayout}" Style="{StaticResource H2}" />
         <TextBlock Text="{ui:T tiling.defaultLayoutText}" Style="{StaticResource Muted}" Margin="0,4,0,16" />
-        <UniformGrid x:Name="Layouts" Columns="4" />
+        <UniformGrid x:Name="Layouts" Columns="5" />
         <Border Background="{DynamicResource Surface2}" Padding="14,10" Margin="0,4,0,0">
           <DockPanel>
             <ui:Icon Kind="info" Size="15" Foreground="{DynamicResource AccentFg}" DockPanel.Dock="Left" VerticalAlignment="Top" Margin="0,2,10,0" />
-            <TextBlock Text="{ui:T tiling.scrollingNote}" Style="{StaticResource Body}" />
+            <TextBlock Text="{ui:T tiling.scrollingNote}" Style="{StaticResource Body}" TextWrapping="Wrap" />
           </DockPanel>
         </Border>
+        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+          <TextBlock Text="{ui:T tiling.scrollingColumns}" Style="{StaticResource H3}" VerticalAlignment="Center" Margin="0,0,12,0" />
+          <ComboBox x:Name="ScrollingColumns" Width="140" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{ui:T tiling.monitorsSplit}" Click="OnSplitWorkspaces" VerticalAlignment="Top" />
+          <StackPanel>
+            <TextBlock Text="{ui:T tiling.monitors}" Style="{StaticResource H2}" />
+            <TextBlock Text="{ui:T tiling.monitorsText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+          </StackPanel>
+        </DockPanel>
+        <StackPanel x:Name="Monitors" Margin="0,14,0,0" />
+        <TextBlock x:Name="MonitorsError" Style="{StaticResource Small}" Foreground="{DynamicResource Error}" Visibility="Collapsed" Margin="0,6,0,0" />
       </StackPanel>
     </Border>
 

@@ -120,8 +120,10 @@ public partial class ThemesPage : UserControl, IPage
         foreach (var c in new[] { p.Background, p.Foreground, p.Accent, p.Red, p.Green, p.Yellow, p.Blue, p.Magenta, p.Cyan, p.Muted })
             SelPalette.Children.Add(UiKit.Swatch(c, 18));
         var have = ThemeAssets.DownloadedBackgrounds(theme).Count;
-        WallpaperInfo.Text = theme.Backgrounds.Count == 0 ? L.T("themes.noWallpapers")
-            : L.T("themes.wallpapers", ("have", have), ("total", theme.Backgrounds.Count), ("size", Net.Mb(theme.Backgrounds.Sum(b => b.Size))));
+        var own = ThemeAssets.OwnBackgrounds(theme).Count;
+        WallpaperInfo.Text = (theme.Backgrounds.Count == 0 ? L.T("themes.noWallpapers")
+            : L.T("themes.wallpapers", ("have", have), ("total", theme.Backgrounds.Count), ("size", Net.Mb(theme.Backgrounds.Sum(b => b.Size)))))
+            + (own > 0 ? " " + L.T("themes.ownCount", ("count", own)) : "");
         ApplyButton.Content = theme.Name == AppModel.Settings.Theme ? L.T("themes.reapply") : L.T("themes.apply");
     }
 
@@ -174,6 +176,25 @@ public partial class ThemesPage : UserControl, IPage
             RefreshPreviewButton();
         }
     }
+
+    /// <summary>Own pictures for the selected theme; Win+Ctrl+Space and the background menu show them first.</summary>
+    void OnAddOwn(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFileDialog { Title = L.T("themes.addOwn"), Filter = L.T("themes.imageFilter"), Multiselect = true };
+        if (d.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            var count = ThemeAssets.AddOwn(_selected, d.FileNames);
+            Toasts.Show(ToastKind.Ok, L.T("themes.ownAdded", ("count", count), ("theme", _selected.Title)));
+            Select(_selected);
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show(ToastKind.Error, Net.Describe(ex));
+        }
+    }
+
+    void OnOpenOwn(object sender, RoutedEventArgs e) => UiKit.OpenFolder(Paths.Ensure(ThemeAssets.OwnDir(_selected)));
 
     void OnImport(object sender, RoutedEventArgs e)
     {
