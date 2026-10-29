@@ -25,6 +25,7 @@ public partial class ThemesPage : UserControl, IPage
         ("files", t => t.Files, (t, v) => t.Files = v),
         ("windows", t => t.Windows, (t, v) => t.Windows = v),
         ("wallpaper", t => t.Wallpaper, (t, v) => t.Wallpaper = v),
+        ("lockscreen", t => t.LockScreen, (t, v) => t.LockScreen = v),
     };
 
     public ThemesPage()
@@ -39,6 +40,7 @@ public partial class ThemesPage : UserControl, IPage
         }
         BuildGallery();
         if (AppModel.Jobs.Get("theme") != null) Job.Follow("theme");
+        else if (AppModel.Jobs.Get("wallpapers") != null) Job.Follow("wallpapers");
     }
 
     public void OnShown()
@@ -128,6 +130,24 @@ public partial class ThemesPage : UserControl, IPage
         var missing = ThemeCatalog.All.Where(t => ThemeAssets.PreviewFile(t) == null).ToList();
         LoadPreviews.Visibility = missing.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         LoadPreviews.Content = L.T("themes.loadPreviews", ("size", Net.Mb(missing.Sum(t => t.Preview?.Size ?? 0))));
+        var bytes = Wallpapers.AllMissingBytes();
+        LoadAllWallpapers.Visibility = bytes == 0 ? Visibility.Collapsed : Visibility.Visible;
+        LoadAllWallpapers.Content = L.T("themes.loadAllWallpapers", ("size", Net.Mb(bytes)));
+    }
+
+    /// <summary>The wallpapers of all 22 themes at once, so that every theme switch has its pictures.</summary>
+    void OnLoadAllWallpapers(object sender, RoutedEventArgs e)
+    {
+        var job = AppModel.Run("wallpapers", "wallpapers", L.T("jobs.allWallpapers"),
+            new List<SetupStep> { AppModel.Engine.DownloadAllWallpapersStep() }, async j =>
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("themes.allWallpapersLoaded", ("count", Wallpapers.AllCount())));
+                    OnShown();
+                });
+            });
+        if (job != null) Job.Follow(job.Id);
     }
 
     async void OnLoadPreviews(object sender, RoutedEventArgs e)

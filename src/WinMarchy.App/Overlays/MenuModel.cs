@@ -82,7 +82,8 @@ static class MenuModel
         "style" => new[]
         {
             Do("themes", "style.theme", MenuWindow.ShowThemes),
-            Item("image", "style.background", "do:wallpaper-next"),
+            Do("image", "style.background", MenuWindow.ShowWallpapers),
+            Item("refresh", "style.nextBackground", "do:wallpaper-next"),
             Item("bar", "style.bar", "do:bar-toggle"),
             Do("tiling", "style.windows", () => OpenPage("tiling")),
             Do("themes", "style.winmarchy", () => OpenPage("themes")),

@@ -9,7 +9,11 @@ using WinMarchy.Core.Tools;
 namespace WinMarchy.Core.Services;
 
 /// <summary>Which programs the full setup installs if they are missing.</summary>
-public sealed record SetupOptions(bool InstallGlazeWm, bool InstallZebar, bool InstallAutoHotkey, bool InstallFlow, bool InstallPowerShell, bool DownloadWallpapers);
+public sealed record SetupOptions(bool InstallGlazeWm, bool InstallZebar, bool InstallAutoHotkey, bool InstallFlow, bool DownloadWallpapers)
+{
+    /// <summary>Ticked extras: PowerShell 7, Herdr, Pi (tool ids).</summary>
+    public IReadOnlyCollection<string> Extras { get; init; } = Array.Empty<string>();
+}
 
 /// <summary>
 /// Everything that changes the system, as step lists for the job manager: setup, theme, hotkeys and
@@ -145,6 +149,40 @@ public sealed class Engine
 
     // ------------------------------------------------------------------ themes
 
+    // ------------------------------------------------------------------ Files as default
+
+    public bool FilesIsDefault => FilesDefault.IsOn(Backups.Registry);
+
+    public List<SetupStep> FilesDefaultSteps(bool on)
+    {
+        RestorePoint? point = null;
+        return new List<SetupStep>
+        {
+            BeginStep("files-default", L.T(on ? "jobs.filesDefaultOn" : "jobs.filesDefaultOff"), p => point = p),
+            new(L.T("steps.filesDefault"), (step, _) =>
+            {
+                FilesDefault.Apply(Context(point!, step), on);
+                Win32.AssociationsChanged();
+                return Task.CompletedTask;
+            }),
+        };
+    }
+
+    /// <summary>
+    /// At startup: if Files was uninstalled while it is the default, folders would no longer open.
+    /// Then Explorer takes over again (the change is in its own restore point).
+    /// </summary>
+    public void CheckFilesDefault()
+    {
+        if (!FilesIsDefault) return;
+        var target = FilesDefault.Target(Backups.Registry);
+        if (target != null && File.Exists(target)) return;
+        var point = Backups.Begin("files-default", L.T("jobs.filesDefaultOff"));
+        FilesDefault.Apply(Context(point, new SetupStep("files", (_, _) => Task.CompletedTask)), on: false);
+        Win32.AssociationsChanged();
+        Log.Warn(L.T("integrations.filesDefault.gone"));
+    }
+
     public List<SetupStep> ThemeSteps(OmarchyTheme theme, bool downloadWallpapers)
     {
         RestorePoint? point = null;
@@ -204,17 +242,50 @@ public sealed class Engine
     }
 
     /// <summary>Win+Ctrl+Space: the next downloaded wallpaper of the current theme.</summary>
-    public string? NextWallpaper()
+    public string? NextWallpaper() => SetWallpaper(null);
+
+    /// <summary>A wallpaper of the current theme by its place in the list (null: the next one).</summary>
+    public string? SetWallpaper(int? index)
     {
         var theme = CurrentTheme;
-        int index = 0;
-        AppState.Update(st => index = st.WallpaperIndex[theme.Name] = st.WallpaperIndex.GetValueOrDefault(theme.Name) + 1);
+        int i = 0;
+        AppState.Update(st => i = st.WallpaperIndex[theme.Name] = index ?? st.WallpaperIndex.GetValueOrDefault(theme.Name) + 1);
         var point = Backups.Reuse("wallpaper", L.T("jobs.wallpaper"), TimeSpan.FromHours(1));
         var step = new SetupStep("wallpaper", (_, _) => Task.CompletedTask);
-        return Wallpapers.Apply(Context(point, step), theme, index);
+        return Wallpapers.Apply(Context(point, step), theme, i);
     }
 
+    /// <summary>The wallpaper shown now also on the lock screen (wallpaper menu).</summary>
+    public bool WallpaperToLockScreen()
+    {
+        var files = ThemeAssets.DownloadedBackgrounds(CurrentTheme);
+        if (files.Count == 0) return false;
+        var index = AppState.Load().WallpaperIndex.GetValueOrDefault(CurrentTheme.Name);
+        var point = Backups.Reuse("lockscreen", L.T("jobs.lockScreen"), TimeSpan.FromHours(1));
+        var step = new SetupStep("lockscreen", (_, _) => Task.CompletedTask);
+        return Wallpapers.ApplyLockScreen(Context(point, step), files[((index % files.Count) + files.Count) % files.Count]);
+    }
+
+    /// <summary>Previews and wallpapers of all 22 themes. Only downloads into C:\WinMarchy\Themes, so no restore point.</summary>
+    public SetupStep DownloadAllWallpapersStep() => new(L.T("steps.allWallpapers", ("count", Wallpapers.AllCount())), async (step, ct) =>
+    {
+        using var http = Net.CreateClient(TimeSpan.FromMinutes(20));
+        int done = 0;
+        foreach (var theme in ThemeCatalog.All)
+        {
+            ct.ThrowIfCancellationRequested();
+            await ThemeAssets.DownloadAsync(http, theme, backgrounds: true, null, ct);
+            step.Report(L.T("themes.allProgress", ("done", ++done), ("total", ThemeCatalog.All.Count), ("theme", theme.Title)));
+        }
+    }, () => Wallpapers.AllMissingBytes() == 0 ? L.T("themes.allThere") : null);
+
     // ------------------------------------------------------------------ full setup
+
+    /// <summary>Extras later on, without running the whole setup again. Only C:\WinMarchy\Tools changes.</summary>
+    public List<SetupStep> InstallSteps(IEnumerable<ToolDef> tools) => tools
+        .Select(tool => new SetupStep(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); },
+            () => Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null))
+        .ToList();
 
     public List<SetupStep> SetupSteps(SetupOptions o)
     {
@@ -230,7 +301,7 @@ public sealed class Engine
         Install(ToolCatalog.Zebar, o.InstallZebar);
         Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
         Install(ToolCatalog.Flow, o.InstallFlow);
-        Install(ToolCatalog.PowerShell, o.InstallPowerShell);
+        foreach (var extra in ToolCatalog.Extras) Install(extra, o.Extras.Contains(extra.Id));
 
         steps.Add(new SetupStep(L.T("steps.legacy"), (step, _) =>
         {
@@ -258,6 +329,8 @@ public sealed class Engine
             return Task.CompletedTask;
         }));
 
+        // All wallpapers, if wanted: switching themes later then needs no download.
+        if (o.DownloadWallpapers) steps.Add(DownloadAllWallpapersStep());
         // The theme runs last: it styles everything that was just installed.
         steps.AddRange(ThemeChanges(CurrentTheme, o.DownloadWallpapers, () => point!));
         steps.Add(new SetupStep(L.T("steps.bar"), (step, _) =>

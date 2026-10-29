@@ -50,6 +50,13 @@ public sealed class Components
             await ProcessRunner.RunAsync(cli, new[] { "command", "wm-reload-config" }, ct, timeoutSec: 15);
     }
 
+    /// <summary>Starts Flow Launcher if it is installed and not running. True if it was started.</summary>
+    public bool StartFlow()
+    {
+        if (IsRunning("Flow.Launcher") || Status(ToolCatalog.Flow).Path is not { } flow) return false;
+        return Platform.AppLauncher.Start(flow);
+    }
+
     public void StartBar()
     {
         if (ZebarExe is not { } zebar) return;

@@ -13,6 +13,8 @@ public sealed class ThemeTargets
     /// <summary>Dark or light mode and accent colour of Windows itself.</summary>
     public bool Windows { get; set; } = true;
     public bool Wallpaper { get; set; } = true;
+    /// <summary>The wallpaper also on the lock screen. Off by default: in companies IT often sets it.</summary>
+    public bool LockScreen { get; set; }
 }
 
 /// <summary>C:\WinMarchy\Config\settings.json – everything the user chooses in the app.</summary>
@@ -54,6 +56,12 @@ public sealed class UserSettings
     public bool HideTitleBars { get; set; }
     public bool DimInactive { get; set; }
     public bool FocusFollowsCursor { get; set; }
+
+    /// <summary>
+    /// Omarchy knows no minimizing. With this on, a minimized window goes into the scratchpad instead
+    /// (Win+S shows it again).
+    /// </summary>
+    public bool MinimizeToScratchpad { get; set; }
 
     /// <summary>Settings file of the Files app, if it is not found automatically.</summary>
     public string? FilesSettingsPath { get; set; }

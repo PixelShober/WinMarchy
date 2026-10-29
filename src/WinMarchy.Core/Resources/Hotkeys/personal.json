@@ -7,7 +7,7 @@
     { "keys": "Win+Shift+P", "do": "web:https://photos.google.com/", "group": "apps", "label": { "de": "Google Fotos", "en": "Google Photos" } },
     { "keys": "Win+Shift+X", "do": "web:https://x.com/", "group": "apps", "label": { "de": "X", "en": "X" } },
     { "keys": "Win+Shift+Alt+X", "do": "web:https://x.com/compose/post", "group": "apps", "label": { "de": "X-Beitrag", "en": "X post" } },
-    { "keys": "Win+Shift+G", "do": "app:signal", "group": "apps", "label": { "de": "Signal", "en": "Signal" } },
+    { "keys": "Win+Shift+Alt+S", "do": "app:signal", "group": "apps", "omarchy": "bindings.lua: SUPER + SHIFT + G", "label": { "de": "Signal", "en": "Signal" }, "note": { "de": "Win+Umschalt+G ist Stackfield.", "en": "Win+Shift+G is Stackfield." } },
     { "keys": "Win+Shift+O", "do": "app:obsidian", "group": "apps", "label": { "de": "Obsidian", "en": "Obsidian" } },
     { "keys": "Win+Shift+Alt+G", "do": "web:https://web.whatsapp.com/", "group": "apps", "label": { "de": "WhatsApp Web", "en": "WhatsApp Web" } },
     { "keys": "Win+Shift+Ctrl+G", "do": "web:https://messages.google.com/web/conversations", "group": "apps", "label": { "de": "Google Messages", "en": "Google Messages" } },

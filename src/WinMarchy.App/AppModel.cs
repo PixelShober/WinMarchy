@@ -3,6 +3,7 @@ using WinMarchy.App.Agent;
 using WinMarchy.Core;
 using WinMarchy.Core.Backup;
 using WinMarchy.Core.Integrations;
+using WinMarchy.Core.Platform;
 using WinMarchy.Core.Services;
 using WinMarchy.Core.Themes;
 using WinMarchy.Core.Updates;
@@ -27,7 +28,10 @@ public static class AppModel
     {
         _settings = UserSettings.Load();
         var wallpaper = OperatingSystem.IsWindows() ? new WindowsWallpaper() : null;
-        var backups = new BackupStore(Paths.BackupDir, UserRegistry.Current, wallpaper);
+        var backups = new BackupStore(Paths.BackupDir, UserRegistry.Current, wallpaper)
+        {
+            LockScreen = OperatingSystem.IsWindows() ? new WindowsLockScreen() : null,
+        };
         Engine = new Engine(Locations.Current, backups, () => _settings, Save, images)
         {
             Glaze = () => Agent?.Glaze,

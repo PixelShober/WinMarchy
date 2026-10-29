@@ -35,6 +35,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
     bool _taskbarHidden;
     bool _setupDone = AppState.Load().SetupDone;
     string _status = "";
+    int _glazeFailures;
+    string? _lastGlazeError;
 
     public AgentHost()
     {
@@ -47,6 +49,9 @@ public sealed class AgentHost : IAgentHost, IDisposable
     public WindowCommands? Windows => _windows;
     public AppLauncher Apps { get; }
     public UserSettings Settings => AppModel.Settings;
+
+    /// <summary>GlazeWM runs, but WinMarchy cannot reach it (after two tries): the reason, else null.</summary>
+    public string? GlazeProblem { get; private set; }
 
     /// <summary>Cached: the taskbar check runs twice a second and should not read a file each time.</summary>
     bool SetupDone => _setupDone;
@@ -63,6 +68,9 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _ = Task.Run(() => GlazeLoopAsync(_cts.Token));
 
         if (SetupDone) StartComponents();
+        HookMinimize();
+        try { AppModel.Engine.CheckFilesDefault(); }
+        catch (Exception ex) { Log.Warn(Net.Describe(ex)); }
 
         // The first check waits until login is over; then every six hours.
         _updateTimer.Tick += (_, _) => _ = CheckUpdatesAsync();
@@ -87,6 +95,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
             if (!c.StartGlaze()) Log.Info(L.T("agent.glazeMissing"));
             if (Settings.ShowBar && !Core.Services.Components.IsRunning("zebar")) c.StartBar();
             if (Settings.HotkeyEngine == "autohotkey" && File.Exists(Paths.AhkScript) && !Core.Services.Components.OurAhkProcesses().Any()) c.StartAhk();
+            // Win and Win+Space open Flow Launcher; after the setup it has never run yet.
+            if (c.StartFlow()) Log.Info(L.T("agent.flowStarted"));
         }
         catch (Exception ex)
         {
@@ -102,6 +112,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         // Without WinMarchy nobody brings the taskbar back after Explorer restarts: show it again.
         if (_taskbarHidden) ShowTaskbarAgain();
         if (_keepAwake) Power.KeepAwake(false);
+        if (_minimizeHook != IntPtr.Zero) UnhookWinEvent(_minimizeHook);
         _tray.Visible = false;
         _tray.Dispose();
         _window?.Dispose();
@@ -191,6 +202,11 @@ public sealed class AgentHost : IAgentHost, IDisposable
                 if (Glaze is not { Connected: true })
                 {
                     if (Core.Services.Components.IsRunning("glazewm")) await ConnectAsync(ct);
+                    else
+                    {
+                        _glazeFailures = 0;
+                        GlazeProblem = null;
+                    }
                 }
                 else await RefreshStatusAsync(ct);
             }
@@ -207,11 +223,15 @@ public sealed class AgentHost : IAgentHost, IDisposable
         var ipc = new GlazeIpc();
         if (!await ipc.ConnectAsync(ct))
         {
+            GlazeFailed(ipc.LastError ?? "?");
             await ipc.DisposeAsync();
             return;
         }
-        var layouts = new LayoutEngine(ipc, () => LayoutEngine.Parse(Settings.DefaultLayout), Notify);
-        var windows = new WindowCommands(ipc, Notify);
+        // Layouts and the window functions take turns: a multi-step command is never interleaved
+        // with the layout engine's reaction to the events it causes.
+        var gate = new SemaphoreSlim(1, 1);
+        var layouts = new LayoutEngine(ipc, () => LayoutEngine.Parse(Settings.DefaultLayout), Notify, gate);
+        var windows = new WindowCommands(ipc, Notify, gate);
         ipc.Event += e => _ = layouts.OnEventAsync(e, ct);
         ipc.Disconnected += () =>
         {
@@ -221,12 +241,36 @@ public sealed class AgentHost : IAgentHost, IDisposable
             _windows = null;
             Log.Info(L.T("agent.glazeDisconnected"));
         };
-        await ipc.SubscribeAsync(LayoutEngine.Events, ct);
+        try
+        {
+            await ipc.SubscribeAsync(LayoutEngine.Events, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            GlazeFailed(Net.Describe(ex));
+            await ipc.DisposeAsync();
+            return;
+        }
         _layouts = layouts;
         _windows = windows;
         Glaze = ipc;
+        _glazeFailures = 0;
+        _lastGlazeError = null;
+        GlazeProblem = null;
         Log.Info(L.T("agent.glazeConnected"));
         await RefreshStatusAsync(ct);
+    }
+
+    /// <summary>Each new reason goes to the log once; the window shows it from the second failure on.</summary>
+    void GlazeFailed(string detail)
+    {
+        _glazeFailures++;
+        if (detail != _lastGlazeError)
+        {
+            _lastGlazeError = detail;
+            Log.Warn(L.T("agent.glazeConnectFailed", ("detail", detail)));
+        }
+        if (_glazeFailures >= 2) GlazeProblem = detail;
     }
 
     async Task RefreshStatusAsync(CancellationToken ct)
@@ -396,6 +440,31 @@ public sealed class AgentHost : IAgentHost, IDisposable
         Notify(L.T("agent.restored"));
     }
 
+    // ------------------------------------------------------------------ minimizing like Omarchy
+
+    WinEventProc? _minimizeProc;
+    IntPtr _minimizeHook;
+
+    /// <summary>Windows reports every minimize; with the setting on, the window goes into the scratchpad.</summary>
+    void HookMinimize()
+    {
+        _minimizeProc = OnMinimizeStart;
+        _minimizeHook = SetWinEventHook(EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZESTART, IntPtr.Zero, _minimizeProc, 0, 0,
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+    }
+
+    void OnMinimizeStart(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
+    {
+        if (idObject != 0 || idChild != 0 || hwnd == IntPtr.Zero) return;
+        if (!Settings.MinimizeToScratchpad || _windows is not { } windows) return;
+        var handle = hwnd.ToInt64();
+        _ = Task.Run(async () =>
+        {
+            try { await windows.ScratchStoreAsync(_cts.Token, handle); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Minimize → scratchpad: " + Net.Describe(ex)); }
+        });
+    }
+
     // ------------------------------------------------------------------ updates
 
     async Task CheckUpdatesAsync()
@@ -434,4 +503,14 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
     [DllImport("user32.dll")]
     static extern bool ChangeWindowMessageFilterEx(IntPtr hwnd, int msg, int action, IntPtr changeInfo);
+
+    const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016, WINEVENT_OUTOFCONTEXT = 0x0000, WINEVENT_SKIPOWNPROCESS = 0x0002;
+
+    delegate void WinEventProc(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time);
+
+    [DllImport("user32.dll")]
+    static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr module, WinEventProc proc, uint process, uint thread, uint flags);
+
+    [DllImport("user32.dll")]
+    static extern bool UnhookWinEvent(IntPtr hook);
 }

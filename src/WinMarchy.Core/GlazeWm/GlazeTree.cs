@@ -35,6 +35,32 @@ public static class GlazeTree
 
     public static IEnumerable<JsonElement> Windows(JsonElement container) => Descendants(container).Where(d => Type(d) == "window");
 
+    public static IEnumerable<JsonElement> TilingWindows(JsonElement container) => Windows(container).Where(w => WindowState(w) == "tiling");
+
+    /// <summary>Children that take part in the layout: split containers and tiling windows.</summary>
+    public static IEnumerable<JsonElement> TilingChildren(JsonElement e) =>
+        Children(e).Where(c => Type(c) == "split" || (Type(c) == "window" && WindowState(c) == "tiling"));
+
+    /// <summary>Every container below the given roots by id, for walking up via parentId.</summary>
+    public static Dictionary<string, JsonElement> Index(IEnumerable<JsonElement> roots)
+    {
+        var map = new Dictionary<string, JsonElement>();
+        foreach (var root in roots)
+        {
+            if (Str(root, "id") is { } rid) map[rid] = root;
+            foreach (var d in Descendants(root))
+                if (Str(d, "id") is { } id) map[id] = d;
+        }
+        return map;
+    }
+
+    /// <summary>A window's handle (HWND) as GlazeWM reports it.</summary>
+    public static long Handle(JsonElement window) =>
+        window.ValueKind == JsonValueKind.Object && window.TryGetProperty("handle", out var v) && v.TryGetInt64(out var h) ? h : 0;
+
+    /// <summary>Workspaces that hold windows the user works with (not the scratchpad).</summary>
+    public static bool IsRegularWorkspace(JsonElement workspace) => Str(workspace, "name") is { } n && n != GlazeConfig.ScratchpadWorkspace;
+
     /// <summary>The array under data.workspaces / data.monitors / data.windows.</summary>
     public static IEnumerable<JsonElement> List(JsonElement data, string name) =>
         data.ValueKind == JsonValueKind.Object && data.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array

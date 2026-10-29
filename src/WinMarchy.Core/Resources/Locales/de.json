@@ -39,7 +39,8 @@
     "connected": "Workspace {workspace} · {layout}",
     "glazeConnected": "Mit GlazeWM verbunden",
     "glazeConnecting": "Verbinde mit GlazeWM …",
-    "glazeStopped": "GlazeWM läuft nicht"
+    "glazeStopped": "GlazeWM läuft nicht",
+    "glazeUnreachable": "GlazeWM läuft, keine Verbindung"
   },
 
   "overview": {
@@ -70,7 +71,8 @@
       "terminal": "Terminal",
       "files": "Dateimanager",
       "vscode": "Editor",
-      "herdr": "Terminal-Sitzungen"
+      "herdr": "Agent-Terminal",
+      "pi": "Coding-Agent"
     },
     "running": "Läuft",
     "installedBadge": "Installiert",
@@ -89,13 +91,15 @@
     "title": "Einrichtung",
     "subtitle": "Einmal durchlaufen lassen, danach sieht Windows aus wie Omarchy. Vorher entsteht ein Sicherungspunkt, unter Rückgängig kommst du jederzeit zurück.",
     "programs": "Programme",
-    "programsText": "Jedes Programm kommt direkt aus dem GitHub-Release des Herstellers und wird vor dem Entpacken per SHA-256 geprüft. Alles landet unter C:\\WinMarchy\\Tools, Administratorrechte braucht es nicht.",
+    "programsText": "Jedes Programm kommt direkt aus dem GitHub-Release des Herstellers und wird vor dem Entpacken geprüft. Alles landet unter C:\\WinMarchy\\Tools, Administratorrechte braucht es nicht.",
     "why": {
       "glazewm": "Kachelt die Fenster und verwaltet die Workspaces. Ohne GlazeWM geht nichts.",
       "zebar": "Die Leiste oben mit Workspaces, Uhr, Netz, Ton und Akku.",
       "autohotkey": "Fängt die Tastenkürzel ab, auch die Win-Taste allein.",
       "flow": "Der Starter hinter Win+Space, wie Walker in Omarchy.",
-      "pwsh": "PowerShell 7 fürs Terminal. Windows bringt nur die alte 5.1 mit."
+      "pwsh": "PowerShell 7 fürs Terminal. Windows bringt nur die alte 5.1 mit.",
+      "herdr": "Terminal-Arbeitsplatz für Coding-Agents, Win+Strg+Eingabe. Unter Windows noch Beta.",
+      "pi": "Der Coding-Agent Pi im Terminal, Win+Alt+Eingabe."
     },
     "detected": "{tool} gefunden",
     "notDetected": "{tool} nicht gefunden",
@@ -107,10 +111,15 @@
     "bar": "Leiste oben anzeigen",
     "barHint": "Workspaces, Uhr, Netz, Ton und Akku, wie Waybar in Omarchy.",
     "wallpapers": "Hintergrundbilder laden",
-    "wallpapersHint": "Die Bilder zu {theme}, etwa {size}.",
+    "wallpapersHint": "Alle {count} Bilder der {themes} Themes, etwa {size}. Dann hat jedes Theme gleich seine Bilder.",
     "start": "Einrichtung starten",
     "startHint": "Dauert je nach Leitung ein bis drei Minuten.",
-    "done": "Fertig eingerichtet. Win+K zeigt dir alle Tastenkürzel."
+    "done": "Fertig eingerichtet. Win+K zeigt dir alle Tastenkürzel.",
+    "extras": "Optionale Extras",
+    "extrasText": "Für den Omarchy-Desktop nicht nötig. Du kannst sie auch später einzeln installieren.",
+    "installExtras": "Nur Extras installieren",
+    "extrasDone": "Extras installiert.",
+    "piNeedsBash": "Braucht Git Bash, das hier noch fehlt."
   },
 
   "themes": {
@@ -136,7 +145,8 @@
       "flow": "Flow Launcher",
       "files": "Files",
       "windows": "Windows",
-      "wallpaper": "Hintergrund"
+      "wallpaper": "Hintergrund",
+      "lockscreen": "Sperrbildschirm"
     },
     "wallpapers": "{total} Hintergrundbilder, {have} davon schon geladen ({size})",
     "noWallpapers": "Zu diesem Theme gibt es keine Hintergrundbilder.",
@@ -145,7 +155,11 @@
     "withWallpapers": "Mit Hintergrundbildern",
     "applied": "{theme} ist aktiv.",
     "all": "Alle Themes",
-    "credit": "Themes aus Omarchy {tag} · MIT, Copyright (c) David Heinemeier Hansson"
+    "credit": "Themes aus Omarchy {tag} · MIT, Copyright (c) David Heinemeier Hansson",
+    "allProgress": "{done} von {total}: {theme}",
+    "allThere": "Alle Hintergrundbilder sind schon da.",
+    "loadAllWallpapers": "Alle Hintergründe laden ({size})",
+    "allWallpapersLoaded": "{count} Hintergrundbilder geladen."
   },
 
   "hotkeys": {
@@ -267,7 +281,10 @@
     "whatsapp": "WhatsApp",
     "spotify": "Spotify",
     "obsidian": "Obsidian",
-    "bitwarden": "Bitwarden"
+    "bitwarden": "Bitwarden",
+    "notepad": "Editor",
+    "stackfield": "Stackfield",
+    "pi": "Pi"
   },
 
   "commands": {
@@ -296,7 +313,12 @@
     "restore-minimized": "Minimierte Fenster zurückholen",
     "copy": "Kopieren, auch im Terminal",
     "paste": "Einfügen, auch im Terminal",
-    "reload": "GlazeWM neu laden"
+    "reload": "GlazeWM neu laden",
+    "toggle-split": "Teilung drehen",
+    "desktop-new": "Neuer Workspace auf jedem Bildschirm",
+    "desktop-next": "Alle Bildschirme: nächster Workspace",
+    "desktop-prev": "Alle Bildschirme: vorheriger Workspace",
+    "wallpaper-menu": "Hintergrund wählen"
   },
 
   "tiling": {
@@ -324,7 +346,14 @@
     "taskbarHint": "Kommt zurück, sobald du WinMarchy beendest.",
     "apply": "Übernehmen",
     "applyHint": "Schreibt die GlazeWM-Konfiguration neu und lädt sie. Vorher entsteht ein Sicherungspunkt.",
-    "applied": "GlazeWM hat die neuen Einstellungen."
+    "applied": "GlazeWM hat die neuen Einstellungen.",
+    "splitNext": "Die Teilung gilt ab dem nächsten Fenster.",
+    "allTaken": "Alle {count} Workspaces sind belegt.",
+    "newDesktop": "Neue Workspaces: {workspaces}",
+    "minimizeToScratchpad": "Minimieren legt ins Scratchpad",
+    "minimizeHint": "Omarchy kennt kein Minimieren. Ein minimiertes Fenster verschwindet ins Scratchpad, Win+S holt es zurück.",
+    "touchpad": "Touchpad-Gesten öffnen",
+    "touchpadHint": "Win+Strg+D gibt jedem Bildschirm einen neuen Workspace, Win+Strg+Pfeil schaltet alle zusammen weiter, wie virtuelle Desktops. Unter „Erweiterte Gesten“ legst du das Drei-Finger-Wischen auf diese Kürzel. „Desktops wechseln“ lieber nicht: Windows' virtuelle Desktops vertragen sich nicht mit GlazeWM."
   },
 
   "layouts": {
@@ -376,7 +405,9 @@
       "file": "Datei",
       "dir": "Ordner",
       "registry": "Registry",
-      "wallpaper": "Hintergrund"
+      "wallpaper": "Hintergrund",
+      "regkey": "Registry-Schlüssel",
+      "lockscreen": "Sperrbildschirm"
     }
   },
 
@@ -401,7 +432,7 @@
     "prerelease": "Testversion, aktualisiert sich nicht selbst",
     "checkUpdates": "Jetzt prüfen",
     "autoUpdate": "Automatisch aktualisieren",
-    "autoUpdateHint": "WinMarchy lädt neue Versionen von GitHub, prüft die SHA-256 und tauscht sich aus, wenn das Fenster zu ist.",
+    "autoUpdateHint": "WinMarchy lädt neue Versionen von GitHub, prüft sie und tauscht sich aus, wenn das Fenster zu ist.",
     "paths": "Pfade",
     "choose": "Auswählen …",
     "personalScript": "Persönliches Skript",
@@ -409,10 +440,10 @@
     "scriptFilter": "Skripte (*.ps1;*.cmd;*.bat;*.exe)|*.ps1;*.cmd;*.bat;*.exe|Alle Dateien|*.*",
     "filesPath": "Einstellungsdatei von Files",
     "filesPathHint": "Nur nötig, wenn WinMarchy die Datei nicht selbst findet.",
-    "herdr": "Herdr",
+    "herdr": "Herdr ohne Internet",
     "herdrInstall": "Aus ZIP installieren …",
     "herdrFound": "Gefunden: {path}",
-    "herdrMissing": "Nicht installiert. Lade die ZIP bei herdr.dev und wähle sie hier aus.",
+    "herdrMissing": "Nicht installiert. Unter Einrichtung → Optionale Extras lädt WinMarchy Herdr selbst. Ohne Internet geht es hier mit der ZIP von herdr.dev.",
     "herdrDone": "Herdr ist installiert.",
     "folders": "Ordner",
     "folder": {
@@ -423,7 +454,14 @@
       "glazewm": "GlazeWM-Konfiguration",
       "zebar": "Leiste"
     },
-    "unreadable": "Die Einstellungen ließen sich nicht lesen, WinMarchy startet mit den Standardwerten: {detail}"
+    "unreadable": "Die Einstellungen ließen sich nicht lesen, WinMarchy startet mit den Standardwerten: {detail}",
+    "fileManager": "Dateimanager",
+    "fileManagerText": "Omarchy öffnet Ordner in Nautilus, WinMarchy auf Wunsch in Files. Dieser PC, Papierkorb und Systemsteuerung bleiben beim Explorer.",
+    "filesDefault": "Files als Standard-Dateimanager",
+    "filesDefaultHint": "Ordner, Laufwerke und Win+E öffnen Files. Ausschalten holt den Explorer zurück, Rückgängig ebenso.",
+    "filesDefaultMissing": "Files ist nicht installiert. Es ist kostenlos im Microsoft Store und unter files.community.",
+    "filesDefaultOn": "Files ist jetzt der Standard-Dateimanager.",
+    "filesDefaultOff": "Der Explorer ist wieder der Standard-Dateimanager."
   },
 
   "log": {
@@ -440,7 +478,11 @@
       "all": "Alles",
       "info": "Normal",
       "warnings": "Warnungen"
-    }
+    },
+    "policies": "Richtlinien prüfen",
+    "policiesHint": "Sucht Gruppenrichtlinien und Intune-Vorgaben, die WinMarchy überstimmen.",
+    "policiesTitle": "Richtlinien auf diesem PC",
+    "policiesReport": "Bericht öffnen"
   },
 
   "jobs": {
@@ -466,7 +508,13 @@
       "done": "Fertig",
       "failed": "Fehler",
       "cancelled": "Abgebrochen"
-    }
+    },
+    "lockScreen": "Sperrbildschirm",
+    "allWallpapers": "Alle Hintergrundbilder laden",
+    "wallpapers": "Bilder zu {theme} laden",
+    "filesDefaultOn": "Files als Standard-Dateimanager",
+    "filesDefaultOff": "Explorer als Standard-Dateimanager",
+    "extras": "Extras installieren: {tools}"
   },
 
   "steps": {
@@ -499,7 +547,9 @@
     "stopPrograms": "Programme beenden",
     "restoreFiles": "Dateien und Einstellungen zurückspielen",
     "afterRestore": "Programme neu laden",
-    "removeTools": "Programme entfernen"
+    "removeTools": "Programme entfernen",
+    "allWallpapers": "Hintergrundbilder aller Themes laden ({count})",
+    "filesDefault": "Ordner-Zuordnung ändern"
   },
 
   "integrations": {
@@ -535,6 +585,16 @@
       "done": "Hintergrund: {file}",
       "none": "Für {theme} ist noch kein Hintergrundbild geladen.",
       "unsupported": "{file} kann Windows nicht als Hintergrund verwenden."
+    },
+    "lockScreen": {
+      "done": "Sperrbildschirm: {file}",
+      "failed": "Der Sperrbildschirm ließ sich nicht setzen: {detail}"
+    },
+    "filesDefault": {
+      "verb": "In Files öffnen",
+      "on": "Ordner, Laufwerke und Win+E öffnen jetzt Files.",
+      "off": "Ordner öffnen wieder im Explorer.",
+      "gone": "Files ist nicht mehr installiert. Ordner öffnen wieder im Explorer."
     }
   },
 
@@ -590,7 +650,9 @@
     "awakeOff": "Ruhezustand wieder wie eingestellt.",
     "wallpaper": "Hintergrund: {name}",
     "noWallpapers": "Für dieses Theme sind noch keine Hintergrundbilder geladen.",
-    "restored": "Alles zurückgesetzt. WinMarchy bleibt im Infobereich, bis du es beendest."
+    "restored": "Alles zurückgesetzt. WinMarchy bleibt im Infobereich, bis du es beendest.",
+    "glazeConnectFailed": "GlazeWM läuft, aber WinMarchy erreicht es nicht: {detail}",
+    "flowStarted": "Flow Launcher gestartet."
   },
 
   "tray": {
@@ -620,7 +682,8 @@
       "update": "Update",
       "system": "System",
       "themes": "Theme",
-      "keybindings": "Tastenkürzel ({count})"
+      "keybindings": "Tastenkürzel ({count})",
+      "wallpaper": "Hintergrund · {theme}"
     },
     "root": {
       "apps": "Apps",
@@ -676,7 +739,8 @@
       "background": "Hintergrund",
       "bar": "Leiste",
       "windows": "Fenster und Abstände",
-      "winmarchy": "Alle Themes in WinMarchy"
+      "winmarchy": "Alle Themes in WinMarchy",
+      "nextBackground": "Nächstes Bild"
     },
     "setup": {
       "winmarchy": "WinMarchy",
@@ -701,6 +765,14 @@
       "logout": "Abmelden",
       "restart": "Neu starten",
       "shutdown": "Herunterfahren"
+    },
+    "wallpaper": {
+      "load": "{count} Bilder zu {theme} laden",
+      "lockScreen": "Auch als Sperrbildschirm",
+      "lockScreenDone": "Der Sperrbildschirm zeigt jetzt dasselbe Bild.",
+      "lockScreenFailed": "Der Sperrbildschirm ließ sich nicht ändern. Mehr dazu im Protokoll.",
+      "loaded": "Bilder zu {theme} geladen.",
+      "loading": "Lade Bilder zu {theme} …"
     }
   },
 
@@ -766,6 +838,47 @@
     "toolNoChecksum": "Für {file} von {tool} veröffentlicht GitHub keine Prüfsumme. Ohne Prüfung installiert WinMarchy nichts.",
     "toolNotFoundAfterInstall": "{tool} ist nach der Installation nicht zu finden.",
     "toolNotInstallable": "{tool} installiert WinMarchy nicht selbst. Der Link zum Hersteller steht unter Start.",
-    "zipInvalidPath": "Die ZIP enthält einen ungültigen Pfad: {entry}"
+    "zipInvalidPath": "Die ZIP enthält einen ungültigen Pfad: {entry}",
+    "filesMissing": "Files ist nicht installiert."
+  },
+
+  "policies": {
+    "logStart": "Richtlinien geprüft: {count} betreffen WinMarchy.",
+    "logLine": "Richtlinie: {effect} ({location})",
+    "fileName": "richtlinien",
+    "none": "Keine Richtlinie gefunden, die WinMarchy betrifft.",
+    "found": "{count} Richtlinien betreffen WinMarchy. Die Liste steht hier und im Protokoll.",
+    "failed": "Die Prüfung ging schief: {detail}",
+    "reportTitle": "WinMarchy · Richtlinien auf {machine} · {time}",
+    "effects": {
+      "wallpaper": "Die IT legt das Hintergrundbild fest ({value}). Was WinMarchy setzt, überschreibt Windows bei der nächsten Anmeldung.",
+      "wallpaperLocked": "Das Hintergrundbild darf nicht geändert werden.",
+      "wallpaperMdm": "Intune legt das Hintergrundbild fest ({value}).",
+      "colorsLocked": "Farben und Design sind gesperrt. Hell, Dunkel und Akzentfarbe von Windows bleiben, wie die IT sie setzt.",
+      "accentForced": "Die IT gibt die Akzentfarbe von Windows vor ({value}).",
+      "lockScreen": "Die IT legt den Sperrbildschirm fest ({value}).",
+      "lockScreenLocked": "Der Sperrbildschirm darf nicht geändert werden.",
+      "lockScreenOff": "Der Sperrbildschirm ist abgeschaltet.",
+      "lockScreenMdm": "Intune legt den Sperrbildschirm fest ({value}).",
+      "spotlight": "Windows-Blickpunkt ist per Richtlinie aus.",
+      "taskbarLocked": "Die Taskleisten-Einstellungen sind gesperrt. Das Ausblenden kann scheitern.",
+      "winKeys": "Die Win-Kürzel von Windows selbst sind aus. Die von WinMarchy gehen trotzdem.",
+      "allowList": "Nur freigegebene Programme dürfen starten. GlazeWM, AutoHotkey und Zebar müssen auf der Liste stehen.",
+      "blockList": "Bestimmte Programme sind gesperrt. Steht eins von WinMarchy darauf, startet es nicht.",
+      "appLocker": "AppLocker ist eingerichtet. Programme unter C:\\WinMarchy\\Tools brauchen eventuell eine Freigabe.",
+      "srp": "Richtlinien für Softwareeinschränkung sind aktiv. Programme unter C:\\WinMarchy\\Tools können blockiert sein.",
+      "runIgnored": "Autostart-Einträge des Benutzers werden ignoriert.",
+      "scriptHost": "Windows Script Host ist aus. Startmenü- und Autostart-Verknüpfungen lassen sich nicht anlegen.",
+      "powershell": "PowerShell-Skripte laufen nur nach der Richtlinie „{value}“.",
+      "cmd": "Die Eingabeaufforderung ist gesperrt.",
+      "lockWorkstation": "Sperren ist abgeschaltet. Win+Strg+L tut nichts.",
+      "taskManager": "Der Task-Manager ist gesperrt. Win+Umschalt+T öffnet nichts.",
+      "registryTools": "Der Registrierungs-Editor ist gesperrt. WinMarchy schreibt trotzdem in HKEY_CURRENT_USER.",
+      "notifications": "Das Info-Center ist abgeschaltet.",
+      "webView2": "WebView2 hat Vorgaben der IT. Die Leiste (Zebar) läuft mit WebView2.",
+      "proxy": "Ein Proxy ist eingestellt ({value}). Downloads von GitHub gehen darüber.",
+      "proxyScript": "Ein Proxy-Skript ist eingestellt ({value}). Downloads von GitHub gehen darüber.",
+      "mdm": "Der PC wird über {value} verwaltet (Intune oder ein anderes MDM). Solche Vorgaben stehen nicht immer in der Registry."
+    }
   }
 }

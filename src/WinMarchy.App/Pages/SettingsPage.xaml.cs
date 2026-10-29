@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using WinMarchy.App.Ui;
 using WinMarchy.Core;
+using WinMarchy.Core.Integrations;
 using WinMarchy.Core.Tools;
 
 namespace WinMarchy.App.Pages;
@@ -48,8 +49,35 @@ public partial class SettingsPage : UserControl, IPage
         FilesPath.Text = s.FilesSettingsPath ?? "";
         var herdr = AppModel.Engine.Components.Status(ToolCatalog.Herdr);
         HerdrState.Text = herdr.Installed ? L.T("settings.herdrFound", ("path", herdr.Path)) : L.T("settings.herdrMissing");
+        ShowFilesDefault();
         _loading = false;
         ShowUpdate();
+    }
+
+    void ShowFilesDefault()
+    {
+        bool on = AppModel.Engine.FilesIsDefault;
+        bool files = FilesDefault.Exe(Locations.Current) != null;
+        FilesDefaultSwitch.IsChecked = on;
+        FilesDefaultSwitch.IsEnabled = files || on;
+        FilesDefaultHint.Text = files ? L.T("settings.filesDefaultHint") : L.T("settings.filesDefaultMissing");
+    }
+
+    /// <summary>Folders, drives and Win+E open Files, or Explorer again. Each switch is a restore point of its own.</summary>
+    void OnFilesDefault(object sender, RoutedEventArgs e)
+    {
+        bool on = FilesDefaultSwitch.IsChecked == true;
+        var job = AppModel.Run("files-default", "files-default", L.T(on ? "jobs.filesDefaultOn" : "jobs.filesDefaultOff"),
+            AppModel.Engine.FilesDefaultSteps(on), async j =>
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
+                        j.State == JobState.Done ? L.T(on ? "settings.filesDefaultOn" : "settings.filesDefaultOff") : j.Status);
+                    ShowFilesDefault();
+                });
+            });
+        if (job == null) ShowFilesDefault();
     }
 
     void SelectScheme()

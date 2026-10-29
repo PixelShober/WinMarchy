@@ -39,7 +39,8 @@
     "connected": "Workspace {workspace} · {layout}",
     "glazeConnected": "Connected to GlazeWM",
     "glazeConnecting": "Connecting to GlazeWM …",
-    "glazeStopped": "GlazeWM is not running"
+    "glazeStopped": "GlazeWM is not running",
+    "glazeUnreachable": "GlazeWM running, no connection"
   },
 
   "overview": {
@@ -70,7 +71,8 @@
       "terminal": "Terminal",
       "files": "File manager",
       "vscode": "Editor",
-      "herdr": "Terminal sessions"
+      "herdr": "Agent terminal",
+      "pi": "Coding agent"
     },
     "running": "Running",
     "installedBadge": "Installed",
@@ -89,13 +91,15 @@
     "title": "Setup",
     "subtitle": "Run it once and Windows looks like Omarchy. A restore point comes first, and Undo takes you back at any time.",
     "programs": "Programs",
-    "programsText": "Each program comes straight from the vendor's GitHub release and is checked against its SHA-256 before it is unpacked. Everything goes to C:\\WinMarchy\\Tools, no admin rights needed.",
+    "programsText": "Every program comes straight from the vendor's GitHub release and is checked before it is unpacked. Everything goes to C:\\WinMarchy\\Tools, no admin rights needed.",
     "why": {
       "glazewm": "Tiles the windows and runs the workspaces. Nothing works without it.",
       "zebar": "The top bar with workspaces, clock, network, sound and battery.",
       "autohotkey": "Catches the shortcuts, including the Win key on its own.",
       "flow": "The launcher behind Win+Space, like Walker in Omarchy.",
-      "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1."
+      "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1.",
+      "herdr": "Terminal workspace for coding agents, Win+Ctrl+Enter. Still beta on Windows.",
+      "pi": "The Pi coding agent in the terminal, Win+Alt+Enter."
     },
     "detected": "{tool} found",
     "notDetected": "{tool} not found",
@@ -107,10 +111,15 @@
     "bar": "Show the top bar",
     "barHint": "Workspaces, clock, network, sound and battery, like Waybar in Omarchy.",
     "wallpapers": "Download wallpapers",
-    "wallpapersHint": "The pictures for {theme}, about {size}.",
+    "wallpapersHint": "All {count} pictures of the {themes} themes, about {size}. Every theme then has its pictures right away.",
     "start": "Start setup",
     "startHint": "Takes one to three minutes, depending on your connection.",
-    "done": "All set. Win+K shows every shortcut."
+    "done": "All set. Win+K shows every shortcut.",
+    "extras": "Optional extras",
+    "extrasText": "Not needed for the Omarchy desktop. You can also install them one by one later.",
+    "installExtras": "Install extras only",
+    "extrasDone": "Extras installed.",
+    "piNeedsBash": "Needs Git Bash, which is missing here."
   },
 
   "themes": {
@@ -136,7 +145,8 @@
       "flow": "Flow Launcher",
       "files": "Files",
       "windows": "Windows",
-      "wallpaper": "Wallpaper"
+      "wallpaper": "Wallpaper",
+      "lockscreen": "Lock screen"
     },
     "wallpapers": "{total} wallpapers, {have} already downloaded ({size})",
     "noWallpapers": "This theme has no wallpapers.",
@@ -145,7 +155,11 @@
     "withWallpapers": "With wallpapers",
     "applied": "{theme} is on.",
     "all": "All themes",
-    "credit": "Themes from Omarchy {tag} · MIT, Copyright (c) David Heinemeier Hansson"
+    "credit": "Themes from Omarchy {tag} · MIT, Copyright (c) David Heinemeier Hansson",
+    "allProgress": "{done} of {total}: {theme}",
+    "allThere": "All wallpapers are already there.",
+    "loadAllWallpapers": "Download all backgrounds ({size})",
+    "allWallpapersLoaded": "{count} wallpapers downloaded."
   },
 
   "hotkeys": {
@@ -267,7 +281,10 @@
     "whatsapp": "WhatsApp",
     "spotify": "Spotify",
     "obsidian": "Obsidian",
-    "bitwarden": "Bitwarden"
+    "bitwarden": "Bitwarden",
+    "notepad": "Notepad",
+    "stackfield": "Stackfield",
+    "pi": "Pi"
   },
 
   "commands": {
@@ -296,7 +313,12 @@
     "restore-minimized": "Bring back minimized windows",
     "copy": "Copy, also in the terminal",
     "paste": "Paste, also in the terminal",
-    "reload": "Reload GlazeWM"
+    "reload": "Reload GlazeWM",
+    "toggle-split": "Toggle split",
+    "desktop-new": "New workspace on every monitor",
+    "desktop-next": "All monitors: next workspace",
+    "desktop-prev": "All monitors: previous workspace",
+    "wallpaper-menu": "Choose background"
   },
 
   "tiling": {
@@ -324,7 +346,14 @@
     "taskbarHint": "Comes back as soon as you quit WinMarchy.",
     "apply": "Apply",
     "applyHint": "Rewrites the GlazeWM config and reloads it. A restore point comes first.",
-    "applied": "GlazeWM has the new settings."
+    "applied": "GlazeWM has the new settings.",
+    "splitNext": "The split applies from the next window on.",
+    "allTaken": "All {count} workspaces are in use.",
+    "newDesktop": "New workspaces: {workspaces}",
+    "minimizeToScratchpad": "Minimizing goes to the scratchpad",
+    "minimizeHint": "Omarchy has no minimizing. A minimized window disappears into the scratchpad, Win+S brings it back.",
+    "touchpad": "Open touchpad gestures",
+    "touchpadHint": "Win+Ctrl+D gives every monitor a new workspace, Win+Ctrl+Arrow switches all of them together, like virtual desktops. Under “Advanced gestures” you can put the three-finger swipe on these shortcuts. Better not “Switch desktops”: Windows' virtual desktops do not get along with GlazeWM."
   },
 
   "layouts": {
@@ -376,7 +405,9 @@
       "file": "File",
       "dir": "Folder",
       "registry": "Registry",
-      "wallpaper": "Wallpaper"
+      "wallpaper": "Wallpaper",
+      "regkey": "Registry key",
+      "lockscreen": "Lock screen"
     }
   },
 
@@ -401,7 +432,7 @@
     "prerelease": "Test build, does not update itself",
     "checkUpdates": "Check now",
     "autoUpdate": "Update automatically",
-    "autoUpdateHint": "WinMarchy downloads new versions from GitHub, checks the SHA-256 and swaps itself while the window is closed.",
+    "autoUpdateHint": "WinMarchy downloads new versions from GitHub, checks them and switches when the window is closed.",
     "paths": "Paths",
     "choose": "Choose …",
     "personalScript": "Personal script",
@@ -409,10 +440,10 @@
     "scriptFilter": "Scripts (*.ps1;*.cmd;*.bat;*.exe)|*.ps1;*.cmd;*.bat;*.exe|All files|*.*",
     "filesPath": "Files settings file",
     "filesPathHint": "Only needed when WinMarchy cannot find the file itself.",
-    "herdr": "Herdr",
+    "herdr": "Herdr offline",
     "herdrInstall": "Install from ZIP …",
     "herdrFound": "Found: {path}",
-    "herdrMissing": "Not installed. Download the ZIP from herdr.dev and choose it here.",
+    "herdrMissing": "Not installed. Setup → Optional extras downloads Herdr for you. Without internet, pick the ZIP from herdr.dev here.",
     "herdrDone": "Herdr is installed.",
     "folders": "Folders",
     "folder": {
@@ -423,7 +454,14 @@
       "glazewm": "GlazeWM config",
       "zebar": "Bar"
     },
-    "unreadable": "Could not read the settings, WinMarchy starts with the defaults: {detail}"
+    "unreadable": "Could not read the settings, WinMarchy starts with the defaults: {detail}",
+    "fileManager": "File manager",
+    "fileManagerText": "Omarchy opens folders in Nautilus, WinMarchy in Files if you like. This PC, the recycle bin and the control panel stay with Explorer.",
+    "filesDefault": "Files as the default file manager",
+    "filesDefaultHint": "Folders, drives and Win+E open Files. Switching it off brings Explorer back, and so does Undo.",
+    "filesDefaultMissing": "Files is not installed. It is free in the Microsoft Store and at files.community.",
+    "filesDefaultOn": "Files is now the default file manager.",
+    "filesDefaultOff": "Explorer is the default file manager again."
   },
 
   "log": {
@@ -440,7 +478,11 @@
       "all": "Everything",
       "info": "Normal",
       "warnings": "Warnings"
-    }
+    },
+    "policies": "Check policies",
+    "policiesHint": "Looks for group policies and Intune settings that override WinMarchy.",
+    "policiesTitle": "Policies on this PC",
+    "policiesReport": "Open report"
   },
 
   "jobs": {
@@ -466,7 +508,13 @@
       "done": "Done",
       "failed": "Failed",
       "cancelled": "Cancelled"
-    }
+    },
+    "lockScreen": "Lock screen",
+    "allWallpapers": "Download all wallpapers",
+    "wallpapers": "Download pictures for {theme}",
+    "filesDefaultOn": "Files as the default file manager",
+    "filesDefaultOff": "Explorer as the default file manager",
+    "extras": "Install extras: {tools}"
   },
 
   "steps": {
@@ -499,7 +547,9 @@
     "stopPrograms": "Stop programs",
     "restoreFiles": "Restore files and settings",
     "afterRestore": "Reload programs",
-    "removeTools": "Remove programs"
+    "removeTools": "Remove programs",
+    "allWallpapers": "Download the wallpapers of all themes ({count})",
+    "filesDefault": "Change folder association"
   },
 
   "integrations": {
@@ -535,6 +585,16 @@
       "done": "Wallpaper: {file}",
       "none": "No wallpaper downloaded for {theme} yet.",
       "unsupported": "Windows cannot use {file} as a wallpaper."
+    },
+    "lockScreen": {
+      "done": "Lock screen: {file}",
+      "failed": "Could not set the lock screen: {detail}"
+    },
+    "filesDefault": {
+      "verb": "Open in Files",
+      "on": "Folders, drives and Win+E now open Files.",
+      "off": "Folders open in Explorer again.",
+      "gone": "Files is no longer installed. Folders open in Explorer again."
     }
   },
 
@@ -590,7 +650,9 @@
     "awakeOff": "Sleep back to normal.",
     "wallpaper": "Wallpaper: {name}",
     "noWallpapers": "No wallpapers downloaded for this theme yet.",
-    "restored": "Everything reset. WinMarchy stays in the notification area until you quit it."
+    "restored": "Everything reset. WinMarchy stays in the notification area until you quit it.",
+    "glazeConnectFailed": "GlazeWM is running, but WinMarchy cannot reach it: {detail}",
+    "flowStarted": "Flow Launcher started."
   },
 
   "tray": {
@@ -620,7 +682,8 @@
       "update": "Update",
       "system": "System",
       "themes": "Theme",
-      "keybindings": "Shortcuts ({count})"
+      "keybindings": "Shortcuts ({count})",
+      "wallpaper": "Background · {theme}"
     },
     "root": {
       "apps": "Apps",
@@ -676,7 +739,8 @@
       "background": "Background",
       "bar": "Top bar",
       "windows": "Windows and gaps",
-      "winmarchy": "All themes in WinMarchy"
+      "winmarchy": "All themes in WinMarchy",
+      "nextBackground": "Next picture"
     },
     "setup": {
       "winmarchy": "WinMarchy",
@@ -701,6 +765,14 @@
       "logout": "Sign out",
       "restart": "Restart",
       "shutdown": "Shut down"
+    },
+    "wallpaper": {
+      "load": "Download {count} pictures for {theme}",
+      "lockScreen": "Use for the lock screen too",
+      "lockScreenDone": "The lock screen now shows the same picture.",
+      "lockScreenFailed": "Could not change the lock screen. See the log for details.",
+      "loaded": "Pictures for {theme} downloaded.",
+      "loading": "Downloading pictures for {theme} …"
     }
   },
 
@@ -766,6 +838,47 @@
     "toolNoChecksum": "GitHub publishes no checksum for {file} of {tool}. WinMarchy installs nothing it cannot check.",
     "toolNotFoundAfterInstall": "{tool} cannot be found after installing it.",
     "toolNotInstallable": "WinMarchy does not install {tool} itself. The link to the vendor is on Start.",
-    "zipInvalidPath": "The ZIP contains an invalid path: {entry}"
+    "zipInvalidPath": "The ZIP contains an invalid path: {entry}",
+    "filesMissing": "Files is not installed."
+  },
+
+  "policies": {
+    "logStart": "Policies checked: {count} affect WinMarchy.",
+    "logLine": "Policy: {effect} ({location})",
+    "fileName": "policies",
+    "none": "No policy found that affects WinMarchy.",
+    "found": "{count} policies affect WinMarchy. The list is here and in the log.",
+    "failed": "The check failed: {detail}",
+    "reportTitle": "WinMarchy · policies on {machine} · {time}",
+    "effects": {
+      "wallpaper": "IT sets the wallpaper ({value}). Windows overwrites what WinMarchy sets at the next sign-in.",
+      "wallpaperLocked": "The wallpaper must not be changed.",
+      "wallpaperMdm": "Intune sets the wallpaper ({value}).",
+      "colorsLocked": "Colours and theme are locked. Light, dark and the Windows accent colour stay as IT sets them.",
+      "accentForced": "IT sets the Windows accent colour ({value}).",
+      "lockScreen": "IT sets the lock screen ({value}).",
+      "lockScreenLocked": "The lock screen must not be changed.",
+      "lockScreenOff": "The lock screen is switched off.",
+      "lockScreenMdm": "Intune sets the lock screen ({value}).",
+      "spotlight": "Windows Spotlight is off by policy.",
+      "taskbarLocked": "Taskbar settings are locked. Hiding the taskbar may fail.",
+      "winKeys": "Windows' own Win shortcuts are off. WinMarchy's still work.",
+      "allowList": "Only approved programs may start. GlazeWM, AutoHotkey and Zebar must be on the list.",
+      "blockList": "Some programs are blocked. If one of WinMarchy's is on the list, it does not start.",
+      "appLocker": "AppLocker is set up. Programs in C:\\WinMarchy\\Tools may need approval.",
+      "srp": "Software restriction policies are active. Programs in C:\\WinMarchy\\Tools may be blocked.",
+      "runIgnored": "The user's autostart entries are ignored.",
+      "scriptHost": "Windows Script Host is off. Start menu and autostart shortcuts cannot be created.",
+      "powershell": "PowerShell scripts only run under the policy “{value}”.",
+      "cmd": "The command prompt is blocked.",
+      "lockWorkstation": "Locking is switched off. Win+Ctrl+L does nothing.",
+      "taskManager": "Task Manager is blocked. Win+Shift+T opens nothing.",
+      "registryTools": "The registry editor is blocked. WinMarchy still writes to HKEY_CURRENT_USER.",
+      "notifications": "The notification center is switched off.",
+      "webView2": "IT has WebView2 settings. The bar (Zebar) runs on WebView2.",
+      "proxy": "A proxy is set ({value}). Downloads from GitHub go through it.",
+      "proxyScript": "A proxy script is set ({value}). Downloads from GitHub go through it.",
+      "mdm": "The PC is managed through {value} (Intune or another MDM). Such settings are not always in the registry."
+    }
   }
 }

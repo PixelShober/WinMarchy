@@ -27,7 +27,8 @@ public static class ToolInstaller
         await Net.DownloadVerifiedAsync(http, release.Assets[asset], file, sha,
             (done, total) => step.SetProgress(total is > 0 ? 100.0 * done / total.Value : null), ct);
         step.SetProgress(null, visible: false);
-        step.Report(L.T("tools.verified", ("file", asset)), log: true);
+        // The check belongs in the log, not on screen.
+        Log.Info(L.T("tools.verified", ("file", asset)));
         if (OperatingSystem.IsWindows() && Authenticode.Signer(file) is { } signer)
             Log.Info(L.T("tools.signedBy", ("file", asset), ("signer", signer)));
 

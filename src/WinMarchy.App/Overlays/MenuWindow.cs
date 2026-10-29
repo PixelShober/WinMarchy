@@ -18,9 +18,15 @@ public sealed class MenuWindow : Window
 {
     static MenuWindow? _current;
 
-    public static void ShowMenu(string? name) => Open(w => w.ShowEntries(string.IsNullOrWhiteSpace(name) ? MenuModel.Root : name.Trim(), clearHistory: true));
+    public static void ShowMenu(string? name)
+    {
+        if (name?.Trim() == "wallpaper") ShowWallpapers();
+        else Open(w => w.ShowEntries(string.IsNullOrWhiteSpace(name) ? MenuModel.Root : name.Trim(), clearHistory: true));
+    }
 
     public static void ShowThemes() => Open(w => w.ShowThemeList());
+
+    public static void ShowWallpapers() => Open(w => w.ShowWallpaperList());
 
     public static void ShowKeybindings() => Open(w => w.ShowBindings());
 
@@ -40,7 +46,10 @@ public sealed class MenuWindow : Window
         });
     }
 
-    enum Mode { Menu, Themes, Bindings }
+    enum Mode { Menu, Themes, Bindings, Wallpapers }
+
+    /// <summary>Wallpaper thumbnails, decoded once per file.</summary>
+    static readonly Dictionary<string, ImageSource?> Thumbnails = new(StringComparer.OrdinalIgnoreCase);
 
     readonly OverlayLook _look = OverlayLook.Current();
     readonly Border _card = new();
@@ -210,6 +219,97 @@ public sealed class MenuWindow : Window
         Reset(0);
     }
 
+    /// <summary>
+    /// Omarchy's background picker: the pictures of the current theme with a preview, Enter sets one.
+    /// Missing pictures can be loaded from here, and the current one can go to the lock screen.
+    /// </summary>
+    internal void ShowWallpaperList()
+    {
+        _history.Clear();
+        _mode = Mode.Wallpapers;
+        _card.Width = 520;
+        var theme = AppModel.CurrentTheme;
+        var files = ThemeAssets.DownloadedBackgrounds(theme);
+        int current = -1;
+        if (files.Count > 0)
+        {
+            var index = AppState.Load().WallpaperIndex.GetValueOrDefault(theme.Name);
+            current = ((index % files.Count) + files.Count) % files.Count;
+        }
+        var list = files.Select((f, i) => new MenuEntry("image", PictureName(f))
+        {
+            Run = () => SetWallpaper(i),
+            Current = i == current,
+            Detail = f,
+        }).ToList();
+        if (files.Count < theme.Backgrounds.Count)
+            list.Add(new MenuEntry("download", L.T("menu.wallpaper.load", ("theme", theme.Title), ("count", theme.Backgrounds.Count - files.Count))) { Run = () => LoadWallpapers(theme) });
+        if (files.Count > 0)
+            list.Add(new MenuEntry("lock", L.T("menu.wallpaper.lockScreen")) { Run = WallpaperToLockScreen });
+        _all = list;
+        SetTitle(L.T("menu.titles.wallpaper", ("theme", theme.Title)));
+        Reset(Math.Max(0, current));
+    }
+
+    /// <summary>"1-totoro.png" → "Totoro".</summary>
+    static string PictureName(string file)
+    {
+        var name = Path.GetFileNameWithoutExtension(file);
+        var dash = name.IndexOf('-');
+        if (dash > 0 && name[..dash].All(char.IsDigit)) name = name[(dash + 1)..];
+        name = name.Replace('-', ' ').Replace('_', ' ').Trim();
+        return name.Length == 0 ? Path.GetFileName(file) : char.ToUpper(name[0], L.Culture) + name[1..];
+    }
+
+    static void SetWallpaper(int index) => _ = Task.Run(() =>
+    {
+        try
+        {
+            var file = AppModel.Engine.SetWallpaper(index);
+            Osd.Show(file != null ? L.T("agent.wallpaper", ("name", PictureName(file))) : L.T("agent.noWallpapers"));
+        }
+        catch (Exception ex)
+        {
+            Osd.Show(Net.Describe(ex));
+        }
+    });
+
+    static void WallpaperToLockScreen() => _ = Task.Run(() =>
+    {
+        try
+        {
+            Osd.Show(AppModel.Engine.WallpaperToLockScreen() ? L.T("menu.wallpaper.lockScreenDone") : L.T("menu.wallpaper.lockScreenFailed"));
+        }
+        catch (Exception ex)
+        {
+            Osd.Show(Net.Describe(ex));
+        }
+    });
+
+    static void LoadWallpapers(OmarchyTheme theme)
+    {
+        var step = new SetupStep(L.T("steps.themeAssets"), async (st, ct) =>
+        {
+            using var http = Net.CreateClient(TimeSpan.FromMinutes(10));
+            await ThemeAssets.DownloadAsync(http, theme, backgrounds: true, t => st.Report(t), ct);
+        });
+        var job = AppModel.Run("wallpapers", "wallpapers", L.T("jobs.wallpapers", ("theme", theme.Title)), new List<SetupStep> { step }, j =>
+        {
+            Osd.Show(j.State == JobState.Done ? L.T("menu.wallpaper.loaded", ("theme", theme.Title)) : j.Status);
+            if (j.State == JobState.Done) ShowWallpapers();
+            return Task.CompletedTask;
+        });
+        if (job != null) Osd.Show(L.T("menu.wallpaper.loading", ("theme", theme.Title)));
+    }
+
+    static ImageSource? Thumbnail(string file)
+    {
+        if (Thumbnails.TryGetValue(file, out var cached)) return cached;
+        var image = Ui.UiKit.LoadImage(file, 128);
+        Thumbnails[file] = image;
+        return image;
+    }
+
     void SetTitle(string text) => _title.Text = text;
 
     void Reset(int index)
@@ -231,7 +331,7 @@ public sealed class MenuWindow : Window
             ? _all.ToList()
             : _all.Where(e => e.Label.Contains(q, StringComparison.CurrentCultureIgnoreCase) ||
                               (e.Keys?.Contains(q, StringComparison.CurrentCultureIgnoreCase) ?? false) ||
-                              (e.Detail?.Contains(q, StringComparison.CurrentCultureIgnoreCase) ?? false)).ToList();
+                              (_mode != Mode.Wallpapers && (e.Detail?.Contains(q, StringComparison.CurrentCultureIgnoreCase) ?? false))).ToList();
         if (!keepSelection) _index = 0;
         _index = Math.Clamp(_index, 0, Math.Max(0, _shown.Count - 1));
         _empty.Visibility = _shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -257,6 +357,19 @@ public sealed class MenuWindow : Window
         {
             grid.Children.Add(Swatches(theme.Palette));
             grid.ColumnDefinitions[0].Width = new GridLength(74);
+        }
+        else if (_mode == Mode.Wallpapers && entry.Detail != null)
+        {
+            grid.Children.Add(new Border
+            {
+                Width = 64,
+                Height = 36,
+                BorderThickness = new Thickness(1),
+                BorderBrush = selected ? _look.Accent : _look.Divider,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new Image { Source = Thumbnail(entry.Detail), Stretch = Stretch.UniformToFill },
+            });
+            grid.ColumnDefinitions[0].Width = new GridLength(78);
         }
         else
         {
@@ -292,7 +405,7 @@ public sealed class MenuWindow : Window
         var row = new Border
         {
             Child = grid,
-            Height = _mode == Mode.Bindings ? 34 : 40,
+            Height = _mode switch { Mode.Bindings => 34, Mode.Wallpapers when entry.Detail != null => 48, _ => 40 },
             Padding = new Thickness(10, 0, 12, 0),
             Background = selected ? _look.Selection : Brushes.Transparent,
             BorderBrush = selected ? _look.Accent : Brushes.Transparent,
@@ -322,9 +435,20 @@ public sealed class MenuWindow : Window
         if (i == _index || i < 0 || i >= _shown.Count) return;
         int old = _index;
         _index = i;
-        if (old < _rows.Children.Count) _rows.Children[old] = Row(_shown[old], old);
-        _rows.Children[i] = Row(_shown[i], i);
+        Replace(old);
+        Replace(i);
         BringSelectedIntoView();
+    }
+
+    /// <summary>
+    /// Swaps one row for a fresh one. A panel slot has to be emptied first: assigning to an occupied
+    /// index throws ("Specified index is already in use").
+    /// </summary>
+    void Replace(int i)
+    {
+        if (i < 0 || i >= _rows.Children.Count || i >= _shown.Count) return;
+        _rows.Children.RemoveAt(i);
+        _rows.Children.Insert(i, Row(_shown[i], i));
     }
 
     void BringSelectedIntoView()
@@ -439,6 +563,8 @@ sealed class MenuPreview
     public void Sub(string menu) => Show(w => w.ShowEntries(menu, clearHistory: true));
 
     public void Themes() => Show(w => w.ShowThemeList());
+
+    public void Wallpapers() => Show(w => w.ShowWallpaperList());
 
     public void Bindings() => Show(w => w.ShowBindings());
 

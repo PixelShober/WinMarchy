@@ -38,7 +38,9 @@ static class SelfTest
             ThemeManager.Initialize("dark", AppModel.CurrentTheme.Palette.Accent);
 
             WriteGenerated(outDir);
+            FakeWallpapers();
             await ShootPagesAsync(outDir, problems);
+            if (OperatingSystem.IsWindows()) WindowsChecks(outDir, problems);
         }
         catch (Exception ex)
         {
@@ -89,7 +91,11 @@ static class SelfTest
 
         // The Omarchy menu, drawn on its own (it is a separate window on the desktop).
         var menu = new Overlays.MenuPreview();
-        foreach (var (name, build) in new (string, Action<Overlays.MenuPreview>)[] { ("menu", m => m.Root()), ("menu-system", m => m.Sub("system")), ("themes-menu", m => m.Themes()), ("keybindings", m => m.Bindings()) })
+        foreach (var (name, build) in new (string, Action<Overlays.MenuPreview>)[]
+                 {
+                     ("menu", m => m.Root()), ("menu-system", m => m.Sub("system")), ("menu-style", m => m.Sub("style")),
+                     ("themes-menu", m => m.Themes()), ("wallpaper-menu", m => m.Wallpapers()), ("keybindings", m => m.Bindings()),
+                 })
         {
             build(menu);
             var card = menu.Card;
@@ -101,6 +107,72 @@ static class SelfTest
                 problems.Add($"overlay {name}: missing text '{text}'");
         }
         window.Close();
+    }
+
+    /// <summary>Two plain pictures as the default theme's wallpapers, so the picker has something to show.</summary>
+    static void FakeWallpapers()
+    {
+        var theme = ThemeCatalog.Default;
+        var p = theme.Palette;
+        foreach (var (asset, color) in theme.Backgrounds.Take(2).Zip(new[] { p.Accent, p.Magenta }))
+        {
+            var file = ThemeAssets.BackgroundFile(theme, asset);
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                dc.DrawRectangle(new SolidColorBrush((Color)ColorConverter.ConvertFromString(p.Background)), null, new Rect(0, 0, 320, 180));
+                dc.DrawEllipse(new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)), null, new Point(200, 90), 70, 70);
+            }
+            var bitmap = new RenderTargetBitmap(320, 180, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            BitmapEncoder encoder = file.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? new PngBitmapEncoder() : new JpegBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = File.Create(file);
+            encoder.Save(stream);
+        }
+    }
+
+    /// <summary>
+    /// What only Windows can answer: the lock screen calls (straight COM, so a wrong slot would crash
+    /// here and not on a user's PC) and the policy check. The CI runner's own lock screen may change;
+    /// the machine is thrown away afterwards.
+    /// </summary>
+    static void WindowsChecks(string outDir, List<string> problems)
+    {
+        var lines = new List<string>();
+        var lockScreen = new WinMarchy.Core.Platform.WindowsLockScreen();
+        try
+        {
+            var before = lockScreen.Current();
+            lines.Add($"lock screen read: {before?.Length ?? 0} bytes");
+            var picture = ThemeAssets.DownloadedBackgrounds(ThemeCatalog.Default).FirstOrDefault();
+            if (picture != null)
+            {
+                lockScreen.Set(picture);
+                lines.Add($"lock screen set: {Path.GetFileName(picture)}, now {lockScreen.Current()?.Length ?? 0} bytes");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Windows Server may not offer the API; a wrong interface would not get this far.
+            lines.Add("lock screen: " + ex.GetType().Name + ": " + ex.Message);
+        }
+        try
+        {
+            var findings = WinMarchy.Core.Platform.PolicyCheck.Run();
+            lines.Add($"policies: {findings.Count}");
+            foreach (var f in findings)
+            {
+                lines.Add($"  {f.Id}: {f.Location} = {f.Value} → {f.Effect}");
+                if (BareKey.IsMatch(f.Effect)) problems.Add($"policy {f.Id}: missing text");
+            }
+        }
+        catch (Exception ex)
+        {
+            problems.Add("policy check: " + ex);
+        }
+        File.WriteAllLines(Path.Combine(outDir, "windows-checks.txt"), lines, new UTF8Encoding(true));
     }
 
     static async Task SettleAsync()

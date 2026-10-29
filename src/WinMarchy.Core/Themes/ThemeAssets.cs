@@ -75,6 +75,13 @@ public static class ThemeAssets
 /// <summary>Sets a theme wallpaper (WebP converted to JPEG first) and cycles through them.</summary>
 public static class Wallpapers
 {
+    public const string ContentDeliveryKey = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
+
+    /// <summary>All 22 themes together, to say how much "load everything" costs.</summary>
+    public static long AllMissingBytes() => ThemeCatalog.All.Sum(t => ThemeAssets.MissingBytes(t, backgrounds: true));
+
+    public static int AllCount() => ThemeCatalog.All.Sum(t => t.Backgrounds.Count);
+
     public static string? Apply(IntegrationContext ctx, OmarchyTheme theme, int index)
     {
         var files = ThemeAssets.DownloadedBackgrounds(theme);
@@ -95,7 +102,33 @@ public static class Wallpapers
         ctx.WriteRegistry(WindowsAppearance.DesktopKey, "TileWallpaper", RegistryData.Str("0"));
         ctx.Wallpaper.Set(usable);
         ctx.Report(L.T("integrations.wallpaper.done", ("file", Path.GetFileName(file))));
+        if (ctx.Settings.ThemeTargets.LockScreen) ApplyLockScreen(ctx, usable);
         return file;
+    }
+
+    /// <summary>
+    /// The same picture on the lock screen. The picture before and Windows' Spotlight switches go into
+    /// the restore point first, so undo brings back exactly what was there.
+    /// </summary>
+    public static bool ApplyLockScreen(IntegrationContext ctx, string file)
+    {
+        if (ctx.Backups.LockScreen is not { } lockScreen) return false;
+        try
+        {
+            ctx.Backups.CaptureRegistry(ctx.Point, ContentDeliveryKey, "RotatingLockScreenEnabled");
+            ctx.Backups.CaptureRegistry(ctx.Point, ContentDeliveryKey, "RotatingLockScreenOverlayEnabled");
+            ctx.Backups.CaptureLockScreen(ctx.Point);
+            lockScreen.Set(Usable(file, ctx.Images) ?? file);
+            ctx.Report(L.T("integrations.lockScreen.done", ("file", Path.GetFileName(file))));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Mostly a policy (Personalization\LockScreenImage or NoChangingLockScreen).
+            ctx.Report(L.T("integrations.lockScreen.failed", ("detail", Net.Describe(ex))));
+            Log.Warn(L.T("integrations.lockScreen.failed", ("detail", Net.Describe(ex))));
+            return false;
+        }
     }
 
     /// <summary>Windows sets JPEG, PNG and BMP reliably; WebP only with a codec, so it is converted once.</summary>

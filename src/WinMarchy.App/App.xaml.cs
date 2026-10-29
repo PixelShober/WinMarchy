@@ -137,11 +137,21 @@ public partial class App : Application
 
     static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        Log.Error(L.T("app.unexpectedError") + ": " + Net.Describe(e.Exception));
+        // With the place it happened: "Access denied" alone does not say which file.
+        Log.Error(L.T("app.unexpectedError") + ": " + Net.Describe(e.Exception) + Environment.NewLine + Where(e.Exception));
         Log.Debug(e.Exception.ToString());
-        // In the background a message box would be in the way; the notification and the log are enough.
-        if (MainVisible) MessageBox.Show(Net.Describe(e.Exception), L.T("app.unexpectedError"), MessageBoxButton.OK, MessageBoxImage.Error);
+        // A message box would steal the focus and close open menus; a toast or a notification is enough.
+        if (MainVisible) Toasts.Show(ToastKind.Error, L.T("app.unexpectedError") + ": " + Net.Describe(e.Exception));
         else Overlays.Osd.Show(L.T("app.unexpectedError") + ": " + Net.Describe(e.Exception));
         e.Handled = true;
+    }
+
+    /// <summary>Exception type and the first lines of the stack trace that belong to WinMarchy.</summary>
+    static string Where(Exception ex)
+    {
+        var lines = (ex.StackTrace ?? "").Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var ours = lines.Where(l => l.Contains("WinMarchy", StringComparison.Ordinal)).Take(4).ToList();
+        if (ours.Count == 0) ours = lines.Take(3).ToList();
+        return ex.GetType().Name + Environment.NewLine + string.Join(Environment.NewLine, ours);
     }
 }

@@ -31,6 +31,7 @@ public sealed class GlazeConfigOptions
 public static class GlazeConfig
 {
     public const string ScratchpadWorkspace = "scratchpad";
+    public const int WorkspaceCount = 10;
     public const string OverlayTitle = "WinMarchy Overlay";
 
     public static GlazeConfigOptions FromSettings(UserSettings s, Palette palette, int barHeight) => new()
@@ -90,7 +91,7 @@ public static class GlazeConfig
         Line("      shown_on_top: false");
         Line();
         Line("workspaces:");
-        for (int i = 1; i <= 10; i++) Line($"  - name: '{i}'");
+        for (int i = 1; i <= WorkspaceCount; i++) Line($"  - name: '{i}'");
         // Hidden workspace for Win+S / Win+Alt+S. WinMarchy moves windows in and out of it.
         Line($"  - name: '{ScratchpadWorkspace}'");
         Line();

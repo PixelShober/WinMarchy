@@ -27,21 +27,30 @@ public sealed class GlazeIpc : IAsyncDisposable
 
     public bool Connected => _ws?.State == WebSocketState.Open;
 
+    /// <summary>Why the last <see cref="ConnectAsync"/> failed, for the log.</summary>
+    public string? LastError { get; private set; }
+
     public async Task<bool> ConnectAsync(CancellationToken ct)
     {
+        var ws = new ClientWebSocket();
+        // Straight to 127.0.0.1. With the system proxy (usual in companies) the connection would go
+        // to the proxy, which refuses or answers too late.
+        ws.Options.Proxy = null;
         try
         {
-            var ws = new ClientWebSocket();
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(2));
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
             await ws.ConnectAsync(new Uri($"ws://127.0.0.1:{Port}"), cts.Token);
             _ws = ws;
             _readCts = new CancellationTokenSource();
             _reader = Task.Run(() => ReadLoopAsync(ws, _readCts.Token));
+            LastError = null;
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
+            LastError = ex is OperationCanceledException ? "Timeout" : Net.Describe(ex);
+            ws.Dispose();
             return false;
         }
     }

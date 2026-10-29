@@ -10,7 +10,7 @@ public partial class TilingPage : UserControl, IPage
 {
     static readonly int[] Gaps = { 0, 5, 10, 15, 20, 30 };
     readonly Dictionary<string, RadioButton> _layouts = new();
-    readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar;
+    readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _minimize;
 
     public TilingPage()
     {
@@ -38,8 +38,16 @@ public partial class TilingPage : UserControl, IPage
         foreach (var c in new[] { _square, _titleBars, _dim, _focusFollows }) Look.Children.Add(c);
         _taskbar = UiKit.Switch(L.T("setup.taskbar"), s.HideTaskbar, L.T("tiling.taskbarHint"));
         _bar = UiKit.Switch(L.T("setup.bar"), s.ShowBar, L.T("setup.barHint"));
+        _minimize = UiKit.Switch(L.T("tiling.minimizeToScratchpad"), s.MinimizeToScratchpad, L.T("tiling.minimizeHint"));
         Desktop.Children.Add(_taskbar);
         Desktop.Children.Add(_bar);
+        Desktop.Children.Add(_minimize);
+        var touchpad = UiKit.Text(L.T("tiling.touchpadHint"), "Small", new Thickness(0, 4, 0, 8));
+        touchpad.TextWrapping = TextWrapping.Wrap;
+        Desktop.Children.Add(touchpad);
+        var gestures = new Button { Content = L.T("tiling.touchpad"), HorizontalAlignment = HorizontalAlignment.Left };
+        gestures.Click += (_, _) => Core.Platform.AppLauncher.Open("ms-settings:devices-touchpad");
+        Desktop.Children.Add(gestures);
     }
 
     /// <summary>A tiny picture of the layout: tiles in the accent and two neutral shades.</summary>
@@ -152,6 +160,7 @@ public partial class TilingPage : UserControl, IPage
             s.FocusFollowsCursor = _focusFollows.IsChecked == true;
             s.HideTaskbar = _taskbar.IsChecked == true;
             s.ShowBar = _bar.IsChecked == true;
+            s.MinimizeToScratchpad = _minimize.IsChecked == true;
         });
         try
         {

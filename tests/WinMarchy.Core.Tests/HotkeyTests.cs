@@ -132,7 +132,10 @@ public class HotkeySetTests
         var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
         Assert.Empty(set.Problems);
         Assert.Contains(set.Active, b => b.Keys == "Win+Enter" && b.Do == "app:terminal");
-        Assert.Contains(set.Active, b => b.Keys == "Win+Shift+G" && b.Do == "app:teams");
+        Assert.Contains(set.Active, b => b.Keys == "Win+Shift+G" && b.Do == "app:stackfield");
+        Assert.Contains(set.Active, b => b.Keys == "Win+N" && b.Do == "app:notepad");
+        Assert.Contains(set.Active, b => b.Keys == "Win+J" && b.Do == "do:toggle-split");
+        Assert.Contains(set.Active, b => b.Keys == "Win+Ctrl+D" && b.Do == "do:desktop-new");
     }
 
     [Fact]
@@ -140,9 +143,11 @@ public class HotkeySetTests
     {
         var set = HotkeySet.Build(personal: true, new CustomHotkeys(), "autohotkey");
         Assert.DoesNotContain(set.Problems, p => p.Blocking);
-        var signal = Assert.Single(set.Active, b => b.Keys == "Win+Shift+G");
-        Assert.Equal("app:signal", signal.Do);
-        Assert.Equal("app:teams", signal.Replaces?.Do);
+        var chat = Assert.Single(set.Active, b => b.Keys == "Win+Shift+A");
+        Assert.Equal("web:https://chatgpt.com/", chat.Do);
+        Assert.Equal("web:https://m365.cloud.microsoft/chat", chat.Replaces?.Do);
+        // Win+Shift+G stays Stackfield with the personal profile too; Signal moved.
+        Assert.Equal("app:stackfield", Assert.Single(set.Active, b => b.Keys == "Win+Shift+G").Do);
     }
 
     [Fact]

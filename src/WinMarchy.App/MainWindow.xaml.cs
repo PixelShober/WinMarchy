@@ -151,7 +151,8 @@ public partial class MainWindow : Window
         }
         else if (Core.Services.Components.IsRunning("glazewm"))
         {
-            text = L.T("status.glazeConnecting");
+            // After two failed tries the reason is in the log; the line says so instead of "connecting".
+            text = agent?.GlazeProblem != null ? L.T("status.glazeUnreachable") : L.T("status.glazeConnecting");
             brush = "Warn";
         }
         else
@@ -160,6 +161,7 @@ public partial class MainWindow : Window
             brush = "TextMuted";
         }
         StatusText.Text = text;
+        StatusText.ToolTip = agent?.GlazeProblem;
         StatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, brush);
     }
 
@@ -183,10 +185,22 @@ public partial class MainWindow : Window
         if (route != null) Navigate(route);
         if (!IsVisible) Show();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
-        Activate();
+        // A shortcut arrives through AutoHotkey while another program is in front; Windows only lets
+        // that program hand over the focus, so the overlays' way of taking it is needed here too.
+        Overlays.Placement.ForceForeground(this);
         Topmost = true;
         Topmost = false;
         Focus();
+        // Left on another workspace, GlazeWM keeps the window hidden there: let GlazeWM switch to it.
+        if (AppModel.Agent?.Windows is { } windows)
+        {
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle.ToInt64();
+            _ = Task.Run(async () =>
+            {
+                try { await windows.FocusHandleAsync(hwnd, CancellationToken.None); }
+                catch (Exception ex) { Log.Debug("Focus via GlazeWM: " + ex.Message); }
+            });
+        }
     }
 
     bool _hintShown;

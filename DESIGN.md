@@ -52,5 +52,6 @@ Farben aus dem aktiven Omarchy-Theme: `background`, `foreground`, `accent`, `mut
 
 - Menü (`Win+Alt+Space`): Karte 360 px, mittig auf dem Monitor unter der Maus, abgedunkelter Hintergrund. Zeilen 40 px, die gewählte mit 3 px Akzentbalken links und leicht getöntem Grund. Tippen filtert, Pfeile bewegen, Eingabe führt aus, Esc oder Rücktaste geht zurück.
 - Tastenkürzel (`Win+K`): dieselbe Karte, 700 px breit, Tasten rechtsbündig.
+- Hintergrund (`Win+Strg+Alt+Space`, Menü → Stil → Hintergrund): Karte 520 px, Zeilen 48 px mit Vorschau 64 × 36 px und 1 px Rahmen, der beim gewählten Bild im Akzent steht.
 - Benachrichtigungen: oben rechts unter der Leiste, 360 px, höchstens vier, nach 3 bis 8 Sekunden weg, klicken geht durch.
 - Leiste (Zebar): 26 px, Workspaces links, Uhr in der Mitte, Netz, Ton, CPU und Akku rechts, wie Waybar.

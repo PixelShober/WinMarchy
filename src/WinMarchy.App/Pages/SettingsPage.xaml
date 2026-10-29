@@ -51,6 +51,19 @@
 
     <Border Style="{StaticResource Card}" Margin="0,20,0,0">
       <StackPanel>
+        <TextBlock Text="{ui:T settings.fileManager}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T settings.fileManagerText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
+        <CheckBox x:Name="FilesDefaultSwitch" Style="{StaticResource Switch}" Click="OnFilesDefault">
+          <StackPanel>
+            <TextBlock Text="{ui:T settings.filesDefault}" Style="{StaticResource Body}" />
+            <TextBlock x:Name="FilesDefaultHint" Style="{StaticResource Small}" TextWrapping="Wrap" />
+          </StackPanel>
+        </CheckBox>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
         <TextBlock Text="{ui:T settings.paths}" Style="{StaticResource H2}" Margin="0,0,0,14" />
         <TextBlock Text="{ui:T settings.personalScript}" Style="{StaticResource H3}" Margin="0,0,0,4" />
         <DockPanel>

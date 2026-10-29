@@ -107,6 +107,8 @@ public class NetTests
     [InlineData("autohotkey", "AutoHotkey_2.0.19.zip")]
     [InlineData("flow", "Flow-Launcher-Setup.exe")]
     [InlineData("pwsh", "PowerShell-7.5.4-win-x64.zip")]
+    [InlineData("herdr", "herdr-windows-x86_64.zip")]
+    [InlineData("pi", "pi-windows-x64.zip")]
     public void Tool_patterns_match_the_vendor_assets(string tool, string asset) =>
         Assert.Matches(ToolCatalog.Get(tool).Asset!, asset);
 
@@ -116,6 +118,8 @@ public class NetTests
         Assert.DoesNotMatch(ToolCatalog.GlazeWm.Asset!, "standalone-glazewm-v3.10.0-arm64.msi");
         Assert.DoesNotMatch(ToolCatalog.PowerShell.Asset!, "PowerShell-7.5.4-win-arm64.zip");
         Assert.DoesNotMatch(ToolCatalog.AutoHotkey.Asset!, "AutoHotkey_1.1.37.02.zip");
+        Assert.DoesNotMatch(ToolCatalog.Pi.Asset!, "pi-windows-arm64.zip");
+        Assert.DoesNotMatch(ToolCatalog.Herdr.Asset!, "herdr-linux-x86_64");
     }
 }
 

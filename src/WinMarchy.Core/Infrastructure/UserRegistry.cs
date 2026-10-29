@@ -25,6 +25,9 @@ public interface IUserRegistry
     RegistryData? Read(string key, string name);
     void Write(string key, string name, RegistryData data);
     void Delete(string key, string name);
+    bool KeyExists(string key);
+    /// <summary>Removes the key with everything below it.</summary>
+    void DeleteKey(string key);
 }
 
 [SupportedOSPlatform("windows")]
@@ -66,6 +69,14 @@ public sealed class WindowsUserRegistry : IUserRegistry
         using var k = Registry.CurrentUser.OpenSubKey(key, writable: true);
         k?.DeleteValue(name, throwOnMissingValue: false);
     }
+
+    public bool KeyExists(string key)
+    {
+        using var k = Registry.CurrentUser.OpenSubKey(key);
+        return k != null;
+    }
+
+    public void DeleteKey(string key) => Registry.CurrentUser.DeleteSubKeyTree(key, throwOnMissingSubKey: false);
 }
 
 /// <summary>For tests and for running on Linux.</summary>
@@ -78,6 +89,16 @@ public sealed class MemoryUserRegistry : IUserRegistry
     public RegistryData? Read(string key, string name) => _values.TryGetValue(Id(key, name), out var v) ? v : null;
     public void Write(string key, string name, RegistryData data) => _values[Id(key, name)] = data;
     public void Delete(string key, string name) => _values.Remove(Id(key, name));
+
+    static bool Below(string id, string key) => id.StartsWith(key.TrimEnd('\\') + "|", StringComparison.OrdinalIgnoreCase) ||
+                                               id.StartsWith(key.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
+
+    public bool KeyExists(string key) => _values.Keys.Any(id => Below(id, key));
+
+    public void DeleteKey(string key)
+    {
+        foreach (var id in _values.Keys.Where(id => Below(id, key)).ToList()) _values.Remove(id);
+    }
 }
 
 public static class UserRegistry

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using WinMarchy.App.Ui;
 using WinMarchy.Core;
+using WinMarchy.Core.Platform;
 
 namespace WinMarchy.App.Pages;
 
@@ -142,6 +143,72 @@ public partial class LogPage : UserControl, IPage
             // The clipboard can be held by another program for a moment.
             Toasts.Show(ToastKind.Error, ex.Message);
         }
+    }
+
+    string? _policyReport;
+
+    /// <summary>
+    /// Which group policies or MDM settings override WinMarchy here. The findings go to the log and
+    /// into a report next to it, together with the policy objects gpresult lists for this user.
+    /// </summary>
+    async void OnPolicies(object sender, RoutedEventArgs e)
+    {
+        PoliciesButton.IsEnabled = false;
+        try
+        {
+            var findings = await Task.Run(() => OperatingSystem.IsWindows() ? PolicyCheck.Run() : Array.Empty<PolicyFinding>());
+            string? gpresult = null;
+            try { gpresult = await PolicyCheck.GpResultAsync(CancellationToken.None); }
+            catch (Exception ex) { Log.Debug("gpresult: " + Net.Describe(ex)); }
+
+            Log.Info(L.T("policies.logStart", ("count", findings.Count)));
+            foreach (var f in findings) Log.Warn(L.T("policies.logLine", ("effect", f.Effect), ("location", f.Location)));
+            _policyReport = Path.Combine(Paths.LogDir, $"{L.T("policies.fileName")}-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+            FileSafety.WriteText(_policyReport, PolicyCheck.Report(findings, gpresult));
+            RenderPolicies(findings);
+            Toasts.Show(findings.Count == 0 ? ToastKind.Ok : ToastKind.Info,
+                findings.Count == 0 ? L.T("policies.none") : L.T("policies.found", ("count", findings.Count)));
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show(ToastKind.Error, L.T("policies.failed", ("detail", Net.Describe(ex))));
+        }
+        finally
+        {
+            PoliciesButton.IsEnabled = true;
+        }
+    }
+
+    void RenderPolicies(IReadOnlyList<PolicyFinding> findings)
+    {
+        PoliciesBlock.Visibility = Visibility.Visible;
+        Policies.Children.Clear();
+        if (findings.Count == 0)
+        {
+            Policies.Children.Add(new Border { Padding = new Thickness(20, 14, 20, 14), Child = UiKit.Text(L.T("policies.none"), "Muted") });
+            return;
+        }
+        bool first = true;
+        foreach (var f in findings)
+        {
+            var info = new StackPanel();
+            var effect = UiKit.Text(f.Effect);
+            effect.TextWrapping = TextWrapping.Wrap;
+            info.Children.Add(effect);
+            var where = UiKit.Text(f.Location + (f.Value.Length > 0 ? " = " + f.Value : ""), "Small");
+            where.FontFamily = (System.Windows.Media.FontFamily)FindResource("MonoFont");
+            where.TextWrapping = TextWrapping.Wrap;
+            info.Children.Add(where);
+            var border = new Border { Child = info, Padding = new Thickness(20, 12, 20, 12), BorderThickness = new Thickness(0, first ? 0 : 1, 0, 0) };
+            border.SetResourceReference(Border.BorderBrushProperty, "Border");
+            Policies.Children.Add(border);
+            first = false;
+        }
+    }
+
+    void OnPoliciesReport(object sender, RoutedEventArgs e)
+    {
+        if (_policyReport != null && File.Exists(_policyReport)) AppLauncher.Start(_policyReport);
     }
 
     void OnOpenFolder(object sender, RoutedEventArgs e) => UiKit.OpenFolder(File.Exists(Log.CurrentFile) ? Log.CurrentFile : Paths.LogDir);

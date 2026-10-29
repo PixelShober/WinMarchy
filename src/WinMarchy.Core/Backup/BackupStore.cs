@@ -51,6 +51,14 @@ public interface IWallpaperAccess
     void Set(string path);
 }
 
+/// <summary>Reads and writes the user's lock screen picture.</summary>
+public interface ILockScreenAccess
+{
+    /// <summary>The picture itself; Windows keeps it where a normal user cannot read the file.</summary>
+    byte[]? Current();
+    void Set(string path);
+}
+
 /// <summary>
 /// Restore points under C:\WinMarchy\Backups. Every change WinMarchy makes to a file, folder,
 /// registry value or the wallpaper is captured beforehand into the restore point of that change.
@@ -73,6 +81,7 @@ public sealed class BackupStore
     public string Root { get; }
     public IUserRegistry Registry { get; }
     public IWallpaperAccess? Wallpaper { get; }
+    public ILockScreenAccess? LockScreen { get; set; }
 
     string BlobDir => Path.Combine(Root, "blobs");
 
@@ -124,6 +133,32 @@ public sealed class BackupStore
             if (!string.IsNullOrEmpty(current) && File.Exists(current)) item.Blob = StoreBlob(File.ReadAllBytes(current), Path.GetExtension(current));
             return item;
         });
+
+    /// <summary>
+    /// Whether a registry key exists. A key WinMarchy creates (a context menu verb, say) is removed
+    /// again as a whole; otherwise empty keys would stay behind.
+    /// </summary>
+    public void CaptureRegistryKey(RestorePoint point, string key) =>
+        Capture(point, "regkey", key, () => new CapturedItem { Existed = Registry.KeyExists(key) });
+
+    public void CaptureLockScreen(RestorePoint point) =>
+        Capture(point, "lockscreen", "lockscreen", () =>
+        {
+            byte[]? image = null;
+            try { image = LockScreen?.Current(); }
+            catch (Exception ex) { Log.Debug("Lock screen: " + ex.Message); }
+            // Without the picture (Spotlight, policy) only the lock screen settings in the registry go back.
+            return image is { Length: > 0 }
+                ? new CapturedItem { Existed = true, Blob = StoreBlob(image, ImageExtension(image)) }
+                : new CapturedItem { Existed = false };
+        });
+
+    static string ImageExtension(byte[] data) => data switch
+    {
+        [0x89, 0x50, 0x4E, 0x47, ..] => ".png",
+        [0x42, 0x4D, ..] => ".bmp",
+        _ => ".jpg",
+    };
 
     void Capture(RestorePoint point, string kind, string target, Func<CapturedItem> capture)
     {
@@ -306,6 +341,15 @@ public sealed class BackupStore
                     if (!originalIntact) path = copy;
                 }
                 if (path != null) Wallpaper.Set(path);
+                break;
+
+            case "regkey":
+                // Only keys of our own depth (Software\Classes\…\verb), never a hive or "Software".
+                if (!item.Existed && item.Target.Count(c => c == '\\') >= 3) Registry.DeleteKey(item.Target);
+                break;
+
+            case "lockscreen":
+                if (LockScreen != null && item.Existed) LockScreen.Set(BlobPath(item.Blob));
                 break;
         }
     }

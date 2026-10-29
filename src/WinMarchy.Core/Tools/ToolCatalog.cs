@@ -26,7 +26,8 @@ public sealed record ToolDef(
     InstallKind Kind,
     string Exe,
     bool Required,
-    string? InstallerArgs = null)
+    string? InstallerArgs = null,
+    bool Extra = false)
 {
     public Regex? Asset => AssetPattern == null ? null : new Regex(AssetPattern, RegexOptions.IgnoreCase);
 
@@ -53,7 +54,7 @@ public static class ToolCatalog
         "Flow-Launcher/Flow.Launcher", @"^Flow-Launcher-Setup\.exe$", InstallKind.Installer, "Flow.Launcher.exe", Required: false, "--silent");
 
     public static readonly ToolDef PowerShell = new("pwsh", "PowerShell 7", "MIT", "https://github.com/PowerShell/PowerShell",
-        "PowerShell/PowerShell", @"^PowerShell-7[\d.]+-win-x64\.zip$", InstallKind.Zip, "pwsh.exe", Required: false);
+        "PowerShell/PowerShell", @"^PowerShell-7[\d.]+-win-x64\.zip$", InstallKind.Zip, "pwsh.exe", Required: false, Extra: true);
 
     public static readonly ToolDef Terminal = new("terminal", "Windows Terminal", "MIT", "https://aka.ms/terminal",
         null, null, InstallKind.None, "wt.exe", Required: false);
@@ -64,10 +65,25 @@ public static class ToolCatalog
     public static readonly ToolDef VsCode = new("vscode", "Visual Studio Code", "MIT (Code-OSS) / Microsoft-Lizenz", "https://code.visualstudio.com",
         null, null, InstallKind.None, "Code.exe", Required: false);
 
-    public static readonly ToolDef Herdr = new("herdr", "Herdr", "–", "https://herdr.dev",
-        null, null, InstallKind.None, "herdr.exe", Required: false);
+    /// <summary>Terminal workspace for coding agents (Win+Ctrl+Enter). Windows support is still beta at the vendor.</summary>
+    public static readonly ToolDef Herdr = new("herdr", "Herdr", "Apache-2.0", "https://herdr.dev",
+        "herdrdev/herdr", @"^herdr-windows-x86_64\.zip$", InstallKind.Zip, "herdr.exe", Required: false, Extra: true);
 
-    public static IReadOnlyList<ToolDef> All { get; } = new[] { GlazeWm, Zebar, AutoHotkey, Flow, PowerShell, Terminal, Files, VsCode, Herdr };
+    /// <summary>The Pi coding agent (Win+Alt+Enter). Needs a bash on Windows, usually Git Bash.</summary>
+    public static readonly ToolDef Pi = new("pi", "Pi", "MIT", "https://pi.dev",
+        "earendil-works/pi", @"^pi-windows-x64\.zip$", InstallKind.Zip, "pi.exe", Required: false, Extra: true);
+
+    public static IReadOnlyList<ToolDef> All { get; } = new[] { GlazeWm, Zebar, AutoHotkey, Flow, PowerShell, Herdr, Pi, Terminal, Files, VsCode };
+
+    /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
+    public static IReadOnlyList<ToolDef> Extras { get; } = All.Where(t => t.Extra).ToList();
+
+    /// <summary>Git Bash, which Pi needs on Windows.</summary>
+    public static string? GitBash(Locations loc) => new[]
+    {
+        Path.Combine(loc.ProgramFiles, "Git", "bin", "bash.exe"),
+        Path.Combine(loc.LocalAppData, "Programs", "Git", "bin", "bash.exe"),
+    }.FirstOrDefault(File.Exists) ?? OnPath("bash.exe");
 
     public static ToolDef Get(string id) => All.First(t => t.Id == id);
 
@@ -86,6 +102,9 @@ public static class ToolCatalog
             Path.Combine(loc.LocalAppData, "Programs", "AutoHotkey", "v2", "AutoHotkey64.exe"),
         },
         "flow" => new[] { Path.Combine(loc.LocalAppData, "FlowLauncher", "Flow.Launcher.exe") },
+        // Where Herdr's and Pi's own install scripts put them.
+        "herdr" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Herdr", "herdr.exe"), Path.Combine(loc.LocalAppData, "Programs", "Herdr", "winarchy-lite", "herdr.exe") },
+        "pi" => new[] { Path.Combine(loc.LocalAppData, "Programs", "pi", "pi.exe"), Path.Combine(loc.UserProfile, ".pi", "bin", "pi.exe") },
         "pwsh" => new[] { Path.Combine(loc.ProgramFiles, "PowerShell", "7", "pwsh.exe") },
         "terminal" => new[] { Path.Combine(loc.LocalAppData, "Microsoft", "WindowsApps", "wt.exe") },
         "vscode" => new[]

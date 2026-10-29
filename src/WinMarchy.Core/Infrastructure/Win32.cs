@@ -21,6 +21,12 @@ public static class Win32
         SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, IntPtr.Zero, area, 0x0002 /* SMTO_ABORTIFHUNG */, 2000, out _);
     }
 
+    /// <summary>Explorer re-reads file and folder associations (after the default file manager changed).</summary>
+    public static void AssociationsChanged()
+    {
+        if (OperatingSystem.IsWindows()) SHChangeNotify(0x08000000 /* SHCNE_ASSOCCHANGED */, 0, IntPtr.Zero, IntPtr.Zero);
+    }
+
     public static string? GetWallpaper()
     {
         if (!OperatingSystem.IsWindows()) return null;
@@ -50,6 +56,9 @@ public static class Win32
 
     [DllImport("user32.dll")]
     static extern bool LockWorkStation();
+
+    [DllImport("shell32.dll")]
+    static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 }
 
 /// <summary>The real wallpaper of the signed-in user.</summary>

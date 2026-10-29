@@ -46,13 +46,14 @@ public sealed class LayoutEngine
     readonly LayoutStore _store = LayoutStore.Load();
     /// <summary>Windows the floating mode floated (and will tile again).</summary>
     readonly ConcurrentDictionary<string, string> _floatedBy = new();
-    readonly SemaphoreSlim _busy = new(1, 1);
+    readonly SemaphoreSlim _busy;
 
-    public LayoutEngine(GlazeIpc ipc, Func<LayoutMode> defaultMode, Action<string> notify)
+    public LayoutEngine(GlazeIpc ipc, Func<LayoutMode> defaultMode, Action<string> notify, SemaphoreSlim? gate = null)
     {
         _ipc = ipc;
         _default = defaultMode;
         _notify = notify;
+        _busy = gate ?? new SemaphoreSlim(1, 1);
     }
 
     public static readonly string[] Events = { "focus_changed", "window_managed" };
@@ -136,36 +137,118 @@ public sealed class LayoutEngine
 
     public async Task SetAsync(string workspace, LayoutMode mode, CancellationToken ct)
     {
-        var before = ModeOf(workspace);
-        if (mode == _default()) _store.Workspaces.Remove(workspace);
-        else _store.Workspaces[workspace] = mode;
-        _store.Save();
-
-        var workspaces = await _ipc.QueryAsync("workspaces", ct);
-        var ws = GlazeTree.List(workspaces, "workspaces").Cast<JsonElement?>().FirstOrDefault(w => GlazeTree.Str(w!.Value, "name") == workspace);
-        if (ws is { } w)
+        await _busy.WaitAsync(ct);
+        try
         {
-            if (before == LayoutMode.Floating && mode != LayoutMode.Floating)
+            var before = ModeOf(workspace);
+            if (mode == _default()) _store.Workspaces.Remove(workspace);
+            else _store.Workspaces[workspace] = mode;
+            _store.Save();
+
+            var workspaces = await _ipc.QueryAsync("workspaces", ct);
+            var ws = GlazeTree.List(workspaces, "workspaces").Cast<JsonElement?>().FirstOrDefault(w => GlazeTree.Str(w!.Value, "name") == workspace);
+            if (ws is { } w)
             {
-                foreach (var (id, owner) in _floatedBy.ToArray())
+                if (before == LayoutMode.Floating && mode != LayoutMode.Floating)
                 {
-                    if (owner != workspace) continue;
-                    try { await _ipc.CommandAsync("set-tiling", ct, id); } catch { /* window closed */ }
-                    _floatedBy.TryRemove(id, out _);
+                    foreach (var (id, owner) in _floatedBy.ToArray())
+                    {
+                        if (owner != workspace) continue;
+                        try { await _ipc.CommandAsync("set-tiling", ct, id); } catch { /* window closed */ }
+                        _floatedBy.TryRemove(id, out _);
+                    }
                 }
-            }
-            if (mode == LayoutMode.Floating)
-            {
-                foreach (var win in GlazeTree.Windows(w).Where(x => GlazeTree.WindowState(x) == "tiling").ToList())
+                if (mode == LayoutMode.Floating)
                 {
-                    if (GlazeTree.Str(win, "id") is not { } id) continue;
-                    await _ipc.CommandAsync("set-floating --centered", ct, id);
-                    _floatedBy[id] = workspace;
+                    foreach (var win in GlazeTree.TilingWindows(w).ToList())
+                    {
+                        if (GlazeTree.Str(win, "id") is not { } id) continue;
+                        await _ipc.CommandAsync("set-floating --centered", ct, id);
+                        _floatedBy[id] = workspace;
+                    }
                 }
+                if (mode is LayoutMode.Dwindle or LayoutMode.Columns && GlazeTree.Bool(w, "isDisplayed"))
+                    await RelayoutAsync(workspace, mode, ct);
             }
-            if (mode == LayoutMode.Columns && GlazeTree.Str(w, "id") is { } wsId && GlazeTree.Str(w, "tilingDirection") == "vertical")
-                await _ipc.CommandAsync("set-tiling-direction horizontal", ct, wsId);
+        }
+        finally
+        {
+            _busy.Release();
         }
         _notify(L.T("layouts.changed", ("workspace", workspace), ("layout", Name(mode))));
+    }
+
+    /// <summary>
+    /// GlazeWM only places new windows. So that a layout change shows at once, the windows of the
+    /// workspace go out one by one (into the hidden scratchpad workspace) and come back in the new
+    /// arrangement: Columns side by side in their old order, Dwindle each one halving the last.
+    /// </summary>
+    async Task RelayoutAsync(string workspace, LayoutMode mode, CancellationToken ct)
+    {
+        var data = await _ipc.QueryAsync("workspaces", ct);
+        var ws = GlazeTree.List(data, "workspaces").FirstOrDefault(w => GlazeTree.Str(w, "name") == workspace);
+        if (ws.ValueKind != JsonValueKind.Object || GlazeTree.Str(ws, "id") is not { } wsId) return;
+        var ids = GlazeTree.TilingWindows(ws).Select(w => GlazeTree.Str(w, "id")).OfType<string>().ToList();
+        if (ids.Count < 2) return;
+        var focused = GlazeTree.Windows(ws).Where(w => GlazeTree.Bool(w, "hasFocus")).Select(w => GlazeTree.Str(w, "id")).FirstOrDefault();
+
+        var first = ids[0];
+        var staged = new List<string>();
+        try
+        {
+            foreach (var id in ids.Skip(1))
+            {
+                await _ipc.CommandAsync($"move --workspace {GlazeConfig.ScratchpadWorkspace}", ct, id);
+                staged.Add(id);
+            }
+            await _ipc.CommandAsync($"focus --container-id {first}", ct);
+            if (mode == LayoutMode.Columns)
+            {
+                // One row: the workspace horizontal, the first window directly in it. Each window
+                // returns right after the first, so the last one goes back first.
+                await _ipc.CommandAsync("set-tiling-direction horizontal", ct, wsId);
+                await _ipc.CommandAsync("set-tiling-direction horizontal", ct, first);
+                for (int i = staged.Count - 1; i >= 0; i--)
+                {
+                    await _ipc.CommandAsync($"move --workspace {workspace}", ct, staged[i]);
+                    staged.RemoveAt(i);
+                }
+            }
+            else
+            {
+                var last = first;
+                while (staged.Count > 0)
+                {
+                    var shape = await WindowAsync(last, ct);
+                    if (shape is { } s && GlazeTree.Int(s, "width") > 0)
+                        await _ipc.CommandAsync("set-tiling-direction " + (GlazeTree.Int(s, "width") >= GlazeTree.Int(s, "height") ? "horizontal" : "vertical"), ct, last);
+                    var next = staged[0];
+                    await _ipc.CommandAsync($"move --workspace {workspace}", ct, next);
+                    staged.RemoveAt(0);
+                    await _ipc.CommandAsync($"focus --container-id {next}", ct);
+                    last = next;
+                }
+            }
+        }
+        finally
+        {
+            // Whatever went wrong, no window stays behind in the hidden workspace.
+            foreach (var id in staged)
+            {
+                try { await _ipc.CommandAsync($"move --workspace {workspace}", CancellationToken.None, id); } catch { /* closed */ }
+            }
+            if (focused != null)
+            {
+                try { await _ipc.CommandAsync($"focus --container-id {focused}", CancellationToken.None); } catch { }
+            }
+        }
+    }
+
+    async Task<JsonElement?> WindowAsync(string id, CancellationToken ct)
+    {
+        var data = await _ipc.QueryAsync("windows", ct);
+        foreach (var w in GlazeTree.List(data, "windows"))
+            if (GlazeTree.Str(w, "id") == id) return w;
+        return null;
     }
 }

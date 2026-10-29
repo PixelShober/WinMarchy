@@ -5,6 +5,7 @@
   <StackPanel>
     <DockPanel Margin="0,0,0,22">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+        <Button x:Name="PoliciesButton" Content="{ui:T log.policies}" Click="OnPolicies" ToolTip="{ui:T log.policiesHint}" Margin="0,0,8,0" />
         <Button Content="{ui:T log.copy}" Click="OnCopy" />
         <Button Content="{ui:T log.openFolder}" Click="OnOpenFolder" Margin="8,0,0,0" />
       </StackPanel>
@@ -13,6 +14,16 @@
         <TextBlock x:Name="Subtitle" Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap" />
       </StackPanel>
     </DockPanel>
+
+    <StackPanel x:Name="PoliciesBlock" Visibility="Collapsed" Margin="0,0,0,24">
+      <DockPanel Margin="0,0,0,10">
+        <Button x:Name="PoliciesReport" DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{ui:T log.policiesReport}" Click="OnPoliciesReport" />
+        <TextBlock Text="{ui:T log.policiesTitle}" Style="{StaticResource H2}" />
+      </DockPanel>
+      <Border Style="{StaticResource Card}" Padding="0">
+        <StackPanel x:Name="Policies" />
+      </Border>
+    </StackPanel>
 
     <StackPanel x:Name="JobsBlock" Visibility="Collapsed" Margin="0,0,0,24">
       <TextBlock Text="{ui:T log.jobs}" Style="{StaticResource H2}" Margin="0,0,0,10" />

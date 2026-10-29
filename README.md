@@ -38,7 +38,7 @@ Installierte Versionen schauen alle sechs Stunden in die GitHub-Releases. Eine n
 
 ## Was WinMarchy installiert
 
-Alles kommt direkt aus dem GitHub-Release des Herstellers, wird per SHA-256 geprüft und landet unter `C:\WinMarchy\Tools`. Kein winget, kein Store, keine Administratorrechte.
+Alles kommt direkt aus dem GitHub-Release des Herstellers, wird vor dem Entpacken geprüft (SHA-256) und landet unter `C:\WinMarchy\Tools`. Kein winget, kein Store, keine Administratorrechte.
 
 | Programm | Wofür | Lizenz |
 |-|-|-|
@@ -46,9 +46,16 @@ Alles kommt direkt aus dem GitHub-Release des Herstellers, wird per SHA-256 gepr
 | Zebar | Leiste oben | GPL-3.0 |
 | AutoHotkey v2 | Tastenkürzel, auch die Win-Taste allein | GPL-2.0 |
 | Flow Launcher | Programme suchen (Win+Space) | MIT |
-| PowerShell 7 | Shell im Terminal (optional) | MIT |
 
-Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Herdr lässt sich unter **Einstellungen** aus einer ZIP übernehmen.
+Optionale Extras, in der Einrichtung einzeln anzuhaken:
+
+| Programm | Wofür | Lizenz |
+|-|-|-|
+| PowerShell 7 | Shell im Terminal | MIT |
+| Herdr | Terminal-Arbeitsplatz für Coding-Agents (Win+Strg+Eingabe), unter Windows noch Beta | Apache-2.0 |
+| Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
+
+Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Files lässt sich unter **Einstellungen** als Standard-Dateimanager festlegen: Ordner, Laufwerke und Win+E öffnen dann Files, Dieser PC und Papierkorb bleiben beim Explorer. Ohne Internet nimmt **Einstellungen** Herdr auch aus der ZIP von herdr.dev.
 
 Alle Programme dürfen kostenlos in Firmen eingesetzt werden. Komorebi war deshalb keine Option: Für den geschäftlichen Einsatz braucht es eine kostenpflichtige Lizenz.
 
@@ -77,16 +84,23 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+K` | Alle Kürzel anzeigen (Eingabe führt das gewählte aus) |
 | `Win+W` | Fenster schließen |
 | `Win+Pfeiltasten` | Fokus wechseln, mit Umschalt Fenster tauschen |
+| `Win+J` | Teilung drehen, sofort sichtbar |
 | `Win+1` … `Win+0` | Workspace 1 bis 10 |
+| `Win+Strg+D` | Neuer Workspace auf jedem Bildschirm, `Win+Strg+Pfeil` schaltet alle weiter |
 | `Win+Alt+L` | Layout des Workspace wechseln (Omarchy: Super+L) |
-| `Win+S` | Scratchpad |
+| `Win+S` | Scratchpad ein- und ausblenden, `Win+Alt+S` legt ein Fenster hinein |
+| `Win+N` | Editor |
+| `Win+Umschalt+G` | Stackfield |
 | `Win+Ctrl+Umschalt+Space` | Theme wählen |
+| `Win+Strg+Alt+Space` | Hintergrund wählen |
 
 Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Wie die Layouts Dwindle, Scrolling und Floating auf GlazeWM abgebildet sind, erklärt [docs/tiling.md](docs/tiling.md).
 
 ## Rückgängig machen
 
-Vor jedem Vorgang (Einrichtung, Theme, Tastenkürzel, Tiling) legt WinMarchy einen Sicherungspunkt an. Er enthält jede Datei, jeden Registry-Wert unter `HKEY_CURRENT_USER` und das Hintergrundbild, so wie sie vorher waren. Außerdem merkt sich WinMarchy beim ersten Anfassen jedes Ziels den Originalzustand.
+Vor jedem Vorgang (Einrichtung, Theme, Tastenkürzel, Tiling, Files als Standard) legt WinMarchy einen Sicherungspunkt an. Er enthält jede Datei, jeden Registry-Wert und -Schlüssel unter `HKEY_CURRENT_USER`, das Hintergrundbild und, wenn du ihn mitändern lässt, den Sperrbildschirm, so wie sie vorher waren. Außerdem merkt sich WinMarchy beim ersten Anfassen jedes Ziels den Originalzustand.
+
+Greift eine Gruppenrichtlinie oder Intune ein (Hintergrund, Sperrbildschirm, Farben, AppLocker, Skripte), zeigt das **Protokoll → Richtlinien prüfen**. Die Liste landet auch als Bericht in `C:\WinMarchy\Logs`.
 
 **Alles zurücksetzen** stellt diesen Originalzustand her, beendet Leiste und Tastenkürzel-Skript, holt die Taskleiste zurück und entfernt auf Wunsch die Programme unter `C:\WinMarchy\Tools`.
 

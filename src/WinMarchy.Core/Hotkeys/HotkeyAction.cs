@@ -36,7 +36,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
     {
         "terminal", "browser", "browser-private", "files", "editor", "launcher", "calculator", "taskmanager",
         "settings", "explorer", "mail", "calendar", "teams", "notes", "word", "herdr", "winmarchy",
-        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden",
+        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi",
     };
 
     /// <summary>WinMarchy functions behind "do:…" (first word; some take an argument).</summary>
@@ -46,6 +46,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         "layout-next", "layout-prev", "layout", "scratch-toggle", "scratch-store", "workspace-next", "workspace-prev",
         "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "gaps-toggle",
         "transparency-toggle", "move-window-monitor", "restore-minimized", "copy", "paste", "reload",
+        "toggle-split", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
     };
 
     /// <summary>Link schemes "open:" may use.</summary>

@@ -21,6 +21,8 @@ Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotk
 | Scrolling-Layout | Spalten | GlazeWM kann Fenster nicht über den Bildschirmrand hinaus laufen lassen. Siehe [tiling.md](tiling.md). |
 | `Super+Shift+L` (Sperrbildschirm-Explorer) | nicht belegt | Windows hat kein Gegenstück. |
 | Spotify-Playlists mit Autoplay | Playlist öffnet sich | Unter Windows gibt es kein `playerctl`. Spotify zeigt die Playlist, starten musst du selbst. |
+| `Super+J` (Teilung drehen) | `Win+J` | Gleiche Taste. GlazeWMs eigener Befehl gilt erst fürs nächste Fenster, WinMarchy baut die Teilung deshalb selbst um, damit man sie sofort sieht. Das alte Verhalten liegt auf `Win+Alt+J`. |
+| Minimieren | gibt es in Omarchy nicht | Unter **Tiling** lässt sich einschalten, dass minimierte Fenster ins Scratchpad wandern. |
 | Idle-Sperre (`Super+Ctrl+I`) | Wach bleiben | Windows regelt die Sperre über Energieoptionen und oft per Richtlinie. WinMarchy verhindert nur den Ruhezustand, solange der Schalter an ist. |
 
 ## Aus deiner bindings.lua
@@ -35,7 +37,7 @@ Diese Kürzel stehen im Profil **Persönlich**:
 | `Win+Umschalt+P` | Google Fotos | Omarchy-Standard |
 | `Win+Umschalt+X` | X | Omarchy-Standard |
 | `Win+Umschalt+Alt+X` | X-Beitrag | Omarchy-Standard |
-| `Win+Umschalt+G` | Signal | Omarchy-Standard |
+| `Win+Umschalt+Alt+S` | Signal (Win+Umschalt+G ist Stackfield.) | bindings.lua: Super + Umschalt + G |
 | `Win+Umschalt+O` | Obsidian | Omarchy-Standard |
 | `Win+Umschalt+Alt+G` | WhatsApp Web | Omarchy-Standard |
 | `Win+Umschalt+Strg+G` | Google Messages | Omarchy-Standard |
@@ -53,7 +55,7 @@ Diese Kürzel stehen im Profil **Persönlich**:
 | `Win+Alt+C` | Smartphone-Link | bindings.lua: Super + Alt + C (omaconnect) |
 | `Win+Alt+Y` | Bildschirme | bindings.lua: Super + Alt + Y (screens) |
 
-`Win+Shift+S` bleibt bewusst frei: Du hattest Super+Shift+S auf das Bildschirmfoto gelegt, und unter Windows macht genau diese Taste das schon (Snipping Tool). `Win+Alt+P` (bei dir Omaplug) öffnet WinMarchy selbst.
+`Win+Shift+S` bleibt bewusst frei: Du hattest Super+Shift+S auf das Bildschirmfoto gelegt, und unter Windows macht genau diese Taste das schon (Snipping Tool). `Win+Alt+P` (bei dir Omaplug) öffnet WinMarchy selbst. Signal liegt auf `Win+Umschalt+Alt+S`, weil `Win+Umschalt+G` jetzt Stackfield öffnet, in beiden Profilen.
 
 Das Skript hinter `Win+Ctrl+T` trägst du unter **Einstellungen → Persönliches Skript** ein. PowerShell-Skripte laufen unter der Ausführungsrichtlinie des Rechners; WinMarchy umgeht sie nicht.
 
@@ -65,7 +67,8 @@ Das Skript hinter `Win+Ctrl+T` trägst du unter **Einstellungen → Persönliche
 |-|-|-|
 | `Win+W` | Fenster schließen | gleich |
 | `Win+Q` | Fenster schließen | gleich |
-| `Win+J` | Teilung drehen | gleich |
+| `Win+J` | Teilung drehen (Nebeneinander wird übereinander und zurück, sofort.) | gleich |
+| `Win+Alt+J` | Teilung für das nächste Fenster | gleich |
 | `Win+T` | Schwebend oder gekachelt | gleich |
 | `Win+F` | Vollbild | gleich |
 | `Win+Alt+F` | Volle Breite | gleich |
@@ -111,6 +114,9 @@ Das Skript hinter `Win+Ctrl+T` trägst du unter **Einstellungen → Persönliche
 | `Win+Tab` | Nächster Workspace | gleich |
 | `Win+Umschalt+Tab` | Vorheriger Workspace | gleich |
 | `Win+Strg+Tab` | Zuletzt benutzter Workspace | gleich |
+| `Win+Strg+D` | Neuer Workspace auf jedem Bildschirm (Wie ein neuer virtueller Desktop in Windows.) | gleich |
+| `Win+Strg+Right` | Alle Bildschirme: nächster Workspace (Lässt sich aufs Drei-Finger-Wischen legen.) | gleich |
+| `Win+Strg+Left` | Alle Bildschirme: vorheriger Workspace (Lässt sich aufs Drei-Finger-Wischen legen.) | gleich |
 | `Win+WheelDown` | Nächster Workspace (Mausrad) | gleich |
 | `Win+WheelUp` | Vorheriger Workspace (Mausrad) | gleich |
 | `Win+Umschalt+Alt+Left` | Workspace auf linken Monitor | gleich |
@@ -131,14 +137,17 @@ Das Skript hinter `Win+Ctrl+T` trägst du unter **Einstellungen → Persönliche
 | `Win+Umschalt+B` | Browser | gleich |
 | `Win+Umschalt+Alt+B` | Browser (privat) | gleich |
 | `Win+Umschalt+F` | Dateimanager | gleich |
-| `Win+Umschalt+N` | Editor | gleich |
+| `Win+N` | Editor | gleich |
+| `Win+Umschalt+N` | Code-Editor (VS Code) | Super + Umschalt + N (Neovim) |
 | `Win+Strg+Enter` | Herdr | gleich |
+| `Win+Alt+Enter` | Pi (Coding-Agent) | gleich |
 | `Win+Umschalt+Q` | Rechner | gleich |
 | `Win+Umschalt+T` | Task-Manager | Super + Umschalt + T (btop) |
 | `Win+Umschalt+E` | E-Mail (Outlook) | Super + Umschalt + E (HEY) |
 | `Win+Umschalt+Alt+E` | Neue E-Mail | gleich |
 | `Win+Umschalt+C` | Kalender | Super + Umschalt + C (HEY Calendar) |
-| `Win+Umschalt+G` | Teams | Super + Umschalt + G (Signal) |
+| `Win+Umschalt+G` | Stackfield | Super + Umschalt + G (Signal) |
+| `Win+Umschalt+Alt+T` | Teams | gleich |
 | `Win+Umschalt+O` | Notizen (OneNote) | Super + Umschalt + O (Obsidian) |
 | `Win+Umschalt+W` | Schreiben (Word) | Super + Umschalt + W (Omawrite) |
 | `Win+Umschalt+A` | Copilot | Super + Umschalt + A (ChatGPT) |
@@ -154,6 +163,7 @@ Das Skript hinter `Win+Ctrl+T` trägst du unter **Einstellungen → Persönliche
 | `Win+K` | Tastenkürzel anzeigen | gleich |
 | `Win+Umschalt+Space` | Leiste ein oder aus | gleich |
 | `Win+Strg+Space` | Nächstes Hintergrundbild | gleich |
+| `Win+Strg+Alt+Space` | Hintergrund wählen | gleich |
 | `Win+Strg+W` | Nächstes Hintergrundbild | gleich |
 | `Win+Strg+Umschalt+Space` | Theme wählen | gleich |
 | `Win+Strg+T` | Theme wählen | gleich |
@@ -191,7 +201,7 @@ Das Skript hinter `Win+Ctrl+T` trägst du unter **Einstellungen → Persönliche
 | `Win+Strg+I` | Bildschirm wach halten | Super + Strg + I (Idle-Sperre) |
 | `Win+Strg+A` | Audio | gleich |
 | `Win+Strg+B` | Bluetooth | gleich |
-| `Win+Strg+D` | Anzeige | gleich |
+| `Win+Strg+Umschalt+D` | Anzeige | gleich |
 | `Win+Strg+N` | Netzwerk | gleich |
 | `Win+Strg+P` | Energie | gleich |
 | `Strg+Alt+Umschalt+T` | Windows-Taskleiste ein oder aus | gleich |

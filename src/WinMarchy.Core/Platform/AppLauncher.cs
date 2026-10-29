@@ -30,6 +30,13 @@ public sealed class AppLauncher
             case "herdr":
                 var herdr = Tool(ToolCatalog.Herdr);
                 return herdr != null ? Terminal(herdr) : false;
+            case "pi":
+                var pi = Tool(ToolCatalog.Pi);
+                return pi != null ? Terminal(pi) : false;
+            case "notepad": return Start("notepad.exe");
+            case "stackfield":
+                // The desktop app if it is installed (found through its Start menu entry), else the web app.
+                return StartMenuEntry("Stackfield") is { } sf ? Start(sf) : Web("https://www.stackfield.com/");
             case "browser": return Browser(privateWindow: false);
             case "browser-private": return Browser(privateWindow: true);
             case "files":
@@ -134,6 +141,26 @@ public sealed class AppLauncher
             {
                 using var key = hive.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" + exe);
                 if (key?.GetValue(null) is string path && File.Exists(path.Trim('"'))) return path.Trim('"');
+            }
+            catch { }
+        }
+        return null;
+    }
+
+    /// <summary>A program's Start menu shortcut (per user or for everyone), by the start of its name.</summary>
+    string? StartMenuEntry(string name)
+    {
+        var roots = new[]
+        {
+            Path.Combine(_loc.AppData, "Microsoft", "Windows", "Start Menu", "Programs"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft", "Windows", "Start Menu", "Programs"),
+        };
+        foreach (var root in roots.Where(Directory.Exists))
+        {
+            try
+            {
+                var link = Directory.EnumerateFiles(root, name + "*.lnk", SearchOption.AllDirectories).FirstOrDefault();
+                if (link != null) return link;
             }
             catch { }
         }

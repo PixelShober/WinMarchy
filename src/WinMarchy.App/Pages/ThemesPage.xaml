@@ -6,6 +6,7 @@
     <DockPanel Margin="0,0,0,22">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
         <Button x:Name="LoadPreviews" Click="OnLoadPreviews" Margin="0,0,8,0" />
+        <Button x:Name="LoadAllWallpapers" Click="OnLoadAllWallpapers" Margin="0,0,8,0" />
         <Button Content="{ui:T themes.import}" Click="OnImport" />
       </StackPanel>
       <StackPanel MaxWidth="700" HorizontalAlignment="Left">

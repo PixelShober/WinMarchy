@@ -36,8 +36,10 @@ public static class FlowTheme
         root["Hotkey"] = Hotkey;
         root["Theme"] = ThemeName;
         root["ColorScheme"] = light ? "Light" : "Dark";
-        // Older Flow versions store the backdrop as a number, newer ones as a name.
-        root["BackdropType"] = root["BackdropType"] is JsonValue v && v.TryGetValue<string>(out _) ? "None" : 0;
+        // Older Flow versions store the backdrop as a number, newer ones as a name. A fresh file
+        // leaves it to Flow.
+        if (root.ContainsKey("BackdropType"))
+            root["BackdropType"] = root["BackdropType"] is JsonValue v && v.TryGetValue<string>(out _) ? "None" : 0;
         root["UseSound"] = false;
         return Json.WriteLike(root, original);
     }
@@ -56,10 +58,17 @@ public static class FlowTheme
     public static async Task ApplyAsync(IntegrationContext ctx, Palette palette, string? flowExe, CancellationToken ct)
     {
         var settingsFile = SettingsFile(ctx.Loc, flowExe);
+        bool fresh = false;
         if (!File.Exists(settingsFile))
         {
-            ctx.Report(L.T("integrations.flow.notFound"));
-            return;
+            if (flowExe == null || !File.Exists(flowExe))
+            {
+                ctx.Report(L.T("integrations.flow.notFound"));
+                return;
+            }
+            // Just installed: Flow writes its Settings.json only when it exits for the first time.
+            // A file with the few values WinMarchy needs is enough; Flow fills in the rest.
+            fresh = true;
         }
         var themeFile = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(settingsFile)!)!, "Themes", ThemeName + ".xaml");
 
@@ -72,10 +81,11 @@ public static class FlowTheme
         if (running.Length > 0) await StopAsync(running, ct);
 
         ctx.WriteFile(themeFile, Xaml(palette));
-        ctx.WriteFile(settingsFile, PatchSettings(FileSafety.ReadShared(settingsFile), palette.IsLight));
+        ctx.WriteFile(settingsFile, PatchSettings(fresh ? "{}" : FileSafety.ReadShared(settingsFile), palette.IsLight));
         ctx.Report(L.T("integrations.flow.done"));
 
-        if (running.Length > 0 && exe != null && File.Exists(exe))
+        // Flow is the launcher behind Win and Win+Space: afterwards it runs, whether it did before or not.
+        if (exe != null && File.Exists(exe))
             Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true })?.Dispose();
     }
 

@@ -19,6 +19,11 @@
           <TextBlock Text="{ui:T setup.programs}" Style="{StaticResource H2}" />
           <TextBlock Text="{ui:T setup.programsText}" Style="{StaticResource Muted}" Margin="0,4,0,16" />
           <StackPanel x:Name="ToolChoices" />
+          <Border Height="1" Background="{DynamicResource Border}" Margin="0,4,0,16" />
+          <TextBlock Text="{ui:T setup.extras}" Style="{StaticResource H3}" />
+          <TextBlock Text="{ui:T setup.extrasText}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,2,0,14" />
+          <StackPanel x:Name="ExtraChoices" />
+          <Button x:Name="InstallExtras" Content="{ui:T setup.installExtras}" Click="OnInstallExtras" HorizontalAlignment="Left" Margin="0,0,0,14" />
           <TextBlock x:Name="Detected" Style="{StaticResource Small}" Margin="0,6,0,0" />
         </StackPanel>
       </Border>

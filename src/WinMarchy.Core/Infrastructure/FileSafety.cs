@@ -54,18 +54,45 @@ public static class FileSafety
     /// </summary>
     public static void WriteText(string path, string text, bool bom = false)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        var tmp = path + ".winmarchy-tmp";
-        File.WriteAllText(tmp, text, bom ? new UTF8Encoding(true) : Utf8NoBom);
-        File.Move(tmp, path, overwrite: true);
+        var encoding = bom ? new UTF8Encoding(true) : Utf8NoBom;
+        WriteBytes(path, [.. encoding.GetPreamble(), .. encoding.GetBytes(text)]);
     }
 
+    /// <summary>
+    /// Through a temporary file of its own (two writers never share one) and a rename. A virus scanner,
+    /// the search indexer or a program reading the file can hold it for a moment; that is waited out
+    /// a few times before the error goes up.
+    /// </summary>
     public static void WriteBytes(string path, byte[] data)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        var tmp = path + ".winmarchy-tmp";
-        File.WriteAllBytes(tmp, data);
-        File.Move(tmp, path, overwrite: true);
+        var tmp = $"{path}.{Guid.NewGuid():N}.winmarchy-tmp";
+        try
+        {
+            File.WriteAllBytes(tmp, data);
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    if (File.Exists(path) && File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly))
+                        File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
+                    File.Move(tmp, path, overwrite: true);
+                    return;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < 5)
+                {
+                    Thread.Sleep(80 * attempt);
+                }
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new UnauthorizedAccessException($"{ex.Message} ({path})", ex);
+        }
+        finally
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+        }
     }
 
     /// <summary>Reads a file another program may have open (Flow Launcher, Terminal).</summary>

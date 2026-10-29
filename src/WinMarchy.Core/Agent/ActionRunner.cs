@@ -150,6 +150,7 @@ public sealed class ActionRunner
             case "theme-menu": _host.ShowThemeMenu(); break;
             case "keybindings": _host.ShowKeybindings(); break;
             case "wallpaper-next": await _host.NextWallpaperAsync(ct); break;
+            case "wallpaper-menu": _host.ShowMenu("wallpaper"); break;
             case "bar-toggle": _host.ToggleBar(); break;
             case "taskbar-toggle": _host.ToggleTaskbar(); break;
             case "keep-awake": _host.ToggleKeepAwake(); break;
@@ -190,6 +191,10 @@ public sealed class ActionRunner
                 break;
             case "scratch-toggle": await windows.ScratchToggleAsync(ct); break;
             case "scratch-store": await windows.ScratchStoreAsync(ct); break;
+            case "toggle-split": await windows.ToggleSplitAsync(ct); break;
+            case "desktop-new": await windows.NewDesktopAsync(GlazeConfig.WorkspaceCount, ct); break;
+            case "desktop-next": await windows.DesktopStepAsync(1, ct); break;
+            case "desktop-prev": await windows.DesktopStepAsync(-1, ct); break;
             case "workspace-next": await windows.WorkspaceStepAsync(1, ct); break;
             case "workspace-prev": await windows.WorkspaceStepAsync(-1, ct); break;
             case "move-window-monitor": await windows.MoveWindowToMonitorAsync(arg ?? "right", ct); break;

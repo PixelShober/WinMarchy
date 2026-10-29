@@ -68,6 +68,9 @@ jobs:
         run: |
           $p = Start-Process -FilePath artifacts/exe/WinMarchy.exe -ArgumentList '--selftest', "$PWD/artifacts/selftest" -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Selbsttest hängt' }
+          # Lock screen calls and policy check, only answerable on Windows.
+          if (Test-Path artifacts/selftest/windows-checks.txt) { Get-Content artifacts/selftest/windows-checks.txt }
+          if (-not (Test-Path artifacts/selftest/selftest.txt)) { throw "Selbsttest abgestürzt (Exit-Code $($p.ExitCode))" }
           Get-Content artifacts/selftest/selftest.txt
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
 
