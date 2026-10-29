@@ -1,0 +1,771 @@
+{
+  "app": {
+    "tagline": "Omarchy for Windows",
+    "modes": { "installed": "installed", "portable": "portable", "dev": "development" },
+    "started": "WinMarchy {version} started ({mode})",
+    "shortcutDescription": "WinMarchy: the Omarchy look for Windows, with GlazeWM",
+    "stillRunning": "WinMarchy keeps running in the notification area. Win+Alt+P brings the window back.",
+    "closeTitle": "Quit anyway?",
+    "confirmClose": "A job is still running. Quitting now stops it halfway. Whatever it changed so far is in the restore point.",
+    "closeAnyway": "Quit",
+    "unexpectedError": "Unexpected error"
+  },
+
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "light": "light",
+    "dark": "dark"
+  },
+
+  "appearance": {
+    "system": "Like Windows",
+    "light": "Light",
+    "dark": "Dark"
+  },
+
+  "nav": {
+    "start": "Start",
+    "setup": "Setup",
+    "themes": "Themes",
+    "hotkeys": "Shortcuts",
+    "tiling": "Tiling",
+    "restore": "Undo",
+    "settings": "Settings",
+    "log": "Log"
+  },
+
+  "status": {
+    "connected": "Workspace {workspace} · {layout}",
+    "glazeConnected": "Connected to GlazeWM",
+    "glazeConnecting": "Connecting to GlazeWM …",
+    "glazeStopped": "GlazeWM is not running"
+  },
+
+  "overview": {
+    "title": "Start",
+    "subtitle": "What is running, which theme is on and where you are working.",
+    "refresh": "Refresh",
+    "refreshed": "Read again.",
+    "notSetUp": "Not set up yet",
+    "notSetUpText": "Setup gets GlazeWM and the other programs straight from their vendors, applies the theme and the shortcuts, and makes a restore point first.",
+    "notSetUpLegacy": "Winarchy Lite is already in use on this PC. Setup takes over its themes and wallpapers, stops the old shortcut script and removes its autostart entry. All of it can be undone.",
+    "setupNow": "Set up now",
+    "programs": "Programs",
+    "programsHint": "Something missing? Setup downloads it straight from the vendor.",
+    "theme": "Theme",
+    "changeTheme": "Change",
+    "workspace": "Workspace",
+    "workspaceHint": "Win+Alt+L switches this workspace's layout, Win+K shows every shortcut.",
+    "glazeHint": "Without GlazeWM there is no tiling and no workspaces. Win+Shift+Alt+R starts it."
+  },
+
+  "tools": {
+    "roles": {
+      "glazewm": "Window tiling",
+      "zebar": "Top bar",
+      "autohotkey": "Shortcuts",
+      "flow": "App launcher",
+      "pwsh": "Shell",
+      "terminal": "Terminal",
+      "files": "File manager",
+      "vscode": "Editor",
+      "herdr": "Terminal sessions"
+    },
+    "running": "Running",
+    "installedBadge": "Installed",
+    "missing": "Missing",
+    "optional": "Optional",
+    "notFound": "Not found",
+    "lookup": "Looking up the current version of {tool} …",
+    "downloading": "Downloading {tool} {version} …",
+    "verified": "{file}: checksum matches",
+    "signedBy": "{file} is signed by {signer}",
+    "installed": "{tool} is now in {path}",
+    "removed": "{tool} removed"
+  },
+
+  "setup": {
+    "title": "Setup",
+    "subtitle": "Run it once and Windows looks like Omarchy. A restore point comes first, and Undo takes you back at any time.",
+    "programs": "Programs",
+    "programsText": "Each program comes straight from the vendor's GitHub release and is checked against its SHA-256 before it is unpacked. Everything goes to C:\\WinMarchy\\Tools, no admin rights needed.",
+    "why": {
+      "glazewm": "Tiles the windows and runs the workspaces. Nothing works without it.",
+      "zebar": "The top bar with workspaces, clock, network, sound and battery.",
+      "autohotkey": "Catches the shortcuts, including the Win key on its own.",
+      "flow": "The launcher behind Win+Space, like Walker in Omarchy.",
+      "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1."
+    },
+    "detected": "{tool} found",
+    "notDetected": "{tool} not found",
+    "options": "Options",
+    "autostart": "Start with Windows",
+    "autostartHint": "One entry in the Startup folder. WinMarchy then starts GlazeWM, the bar and the shortcuts.",
+    "taskbar": "Hide the taskbar",
+    "taskbarHint": "The top bar takes over. The taskbar comes back when you quit WinMarchy.",
+    "bar": "Show the top bar",
+    "barHint": "Workspaces, clock, network, sound and battery, like Waybar in Omarchy.",
+    "wallpapers": "Download wallpapers",
+    "wallpapersHint": "The pictures for {theme}, about {size}.",
+    "start": "Start setup",
+    "startHint": "Takes one to three minutes, depending on your connection.",
+    "done": "All set. Win+K shows every shortcut."
+  },
+
+  "themes": {
+    "title": "Themes",
+    "subtitle": "Omarchy's 22 themes. A theme colours GlazeWM, the bar, the terminal, VS Code, Flow Launcher and Windows.",
+    "import": "Import folder",
+    "importTitle": "Choose a folder with Omarchy themes",
+    "importDone": "{count} themes imported.",
+    "importNone": "The folder had no matching theme.",
+    "imported": "{theme} taken from the folder",
+    "loadPreviews": "Download previews ({size})",
+    "previewsLoaded": "Previews downloaded.",
+    "previewsFailed": "Could not download the previews: {detail}",
+    "downloading": "Downloading {file} ({size}) …",
+    "active": "Active",
+    "targets": "What gets coloured",
+    "target": {
+      "glazewm": "GlazeWM",
+      "zebar": "Bar",
+      "terminal": "Terminal",
+      "powershell": "PowerShell",
+      "vscode": "VS Code",
+      "flow": "Flow Launcher",
+      "files": "Files",
+      "windows": "Windows",
+      "wallpaper": "Wallpaper"
+    },
+    "wallpapers": "{total} wallpapers, {have} already downloaded ({size})",
+    "noWallpapers": "This theme has no wallpapers.",
+    "apply": "Apply",
+    "reapply": "Apply again",
+    "withWallpapers": "With wallpapers",
+    "applied": "{theme} is on.",
+    "all": "All themes",
+    "credit": "Themes from Omarchy {tag} · MIT, Copyright (c) David Heinemeier Hansson"
+  },
+
+  "hotkeys": {
+    "title": "Shortcuts",
+    "subtitle": "Omarchy's shortcuts, moved to Windows. The Win key plays the part of Super.",
+    "engine": "Who catches the keys",
+    "engineAhk": "AutoHotkey",
+    "engineGlaze": "GlazeWM",
+    "engineAhkText": "AutoHotkey catches every shortcut and passes window commands on to GlazeWM. This is the only way the Win key on its own can open the launcher.",
+    "engineGlazeText": "GlazeWM catches the shortcuts itself. Meant for PCs where AutoHotkey is blocked. The Win key on its own and the mouse wheel do not work then.",
+    "ahkNotInstalled": "AutoHotkey is not installed yet, GlazeWM fills in until it is.",
+    "winAlone": "Win key on its own opens the launcher",
+    "winAloneHint": "Like Super in Omarchy. Ctrl+Esc still opens the Start menu.",
+    "profiles": "Profiles",
+    "profilesText": "Business is always on: Outlook, Teams, OneNote, Word and Copilot instead of HEY, Signal and Obsidian.",
+    "personal": "Personal",
+    "personalHint": "Spotify, WhatsApp, Telegram and your shortcuts from bindings.lua.",
+    "search": "Search shortcuts",
+    "add": "New shortcut",
+    "apply": "Apply",
+    "applied": "Shortcuts are active.",
+    "savedNotApplied": "Saved. It takes effect with “Apply”.",
+    "empty": "No shortcut matches the search.",
+    "editTip": "Edit",
+    "deleteTip": "Delete",
+    "disableTip": "Turn off",
+    "enableTip": "Turn back on",
+    "omarchy": "Omarchy: {binding}",
+    "replaces": "replaces “{label}”",
+    "validating": "AutoHotkey is checking the script …",
+    "activeAhk": "{count} shortcuts active (AutoHotkey)",
+    "activeGlaze": "{count} shortcuts active (GlazeWM)",
+    "ahkMissingFallback": "AutoHotkey is missing, GlazeWM takes the shortcuts.",
+    "customUnreadable": "Could not read your own shortcuts: {detail}",
+    "groups": {
+      "all": "All",
+      "tiling": "Windows",
+      "workspaces": "Workspaces",
+      "apps": "Programs",
+      "menus": "Menus",
+      "utilities": "Tools",
+      "system": "System"
+    },
+    "sources": {
+      "business": "Business",
+      "personal": "Personal",
+      "custom": "Own"
+    },
+    "kinds": {
+      "wm": "Window command",
+      "app": "Program",
+      "web": "Web app",
+      "open": "Link or setting",
+      "send": "Send keys",
+      "do": "WinMarchy function",
+      "run": "Script"
+    },
+    "kindHints": {
+      "wm": "A GlazeWM command, e.g. focus --direction left. Separate several with ;.",
+      "app": "One of the programs WinMarchy knows.",
+      "web": "An https address. It opens in its own window, like Omarchy's web apps.",
+      "open": "For example ms-settings:display, mailto: or spotify:.",
+      "send": "Keys sent to the window in front, e.g. Ctrl+Shift+T.",
+      "do": "Menus, layouts, the scratchpad and other WinMarchy functions.",
+      "run": "Path to a script or program. %personal-script% stands for your script from the settings."
+    },
+    "edit": {
+      "newTitle": "New shortcut",
+      "title": "Edit {keys}",
+      "keys": "Keys",
+      "keysHint": "For example Win+Shift+Enter",
+      "kind": "Kind",
+      "value": "What happens",
+      "label": "Description",
+      "save": "Save"
+    },
+    "reserved": {
+      "winL": "Win+L always locks Windows and cannot be used.",
+      "ctrlAltDel": "Ctrl+Alt+Del belongs to Windows."
+    },
+    "errors": {
+      "empty": "No keys given.",
+      "unknownModifier": "“{modifier}” in “{combo}” is not a modifier. Use Win, Ctrl, Alt and Shift.",
+      "duplicateModifier": "“{combo}” has a modifier twice.",
+      "unknownKey": "WinMarchy does not know the key “{key}” in “{combo}”.",
+      "needsModifier": "“{combo}” needs a modifier, otherwise the key would be gone for typing.",
+      "actionFormat": "“{action}” is not in the form kind:value, e.g. app:terminal.",
+      "wmVerb": "“{verb}” is not a GlazeWM command WinMarchy allows.",
+      "unknownApp": "WinMarchy does not know the program “{app}”.",
+      "webUrl": "“{url}” is not an https address.",
+      "openScheme": "WinMarchy does not open “{scheme}:” links.",
+      "unknownCommand": "“{command}” is not a WinMarchy function.",
+      "runEmpty": "Enter a path.",
+      "duplicate": "{keys} is bound twice. The last entry wins.",
+      "wheelNeedsAhk": "Mouse wheel shortcuts only work with AutoHotkey."
+    }
+  },
+
+  "apps": {
+    "terminal": "Terminal",
+    "browser": "Browser",
+    "browser-private": "Browser (private)",
+    "files": "File manager",
+    "editor": "Editor",
+    "launcher": "App launcher",
+    "calculator": "Calculator",
+    "taskmanager": "Task Manager",
+    "settings": "Windows Settings",
+    "explorer": "Explorer",
+    "mail": "Email (Outlook)",
+    "calendar": "Calendar",
+    "teams": "Teams",
+    "notes": "Notes (OneNote)",
+    "word": "Word",
+    "herdr": "Herdr",
+    "winmarchy": "WinMarchy",
+    "signal": "Signal",
+    "telegram": "Telegram",
+    "whatsapp": "WhatsApp",
+    "spotify": "Spotify",
+    "obsidian": "Obsidian",
+    "bitwarden": "Bitwarden"
+  },
+
+  "commands": {
+    "menu": "Open the menu",
+    "theme-menu": "Pick a theme",
+    "keybindings": "Show shortcuts",
+    "wallpaper-next": "Next wallpaper",
+    "bar-toggle": "Top bar on or off",
+    "taskbar-toggle": "Taskbar on or off",
+    "layout-next": "Next layout",
+    "layout-prev": "Previous layout",
+    "layout": "Set layout (dwindle, columns, floating, manual)",
+    "scratch-toggle": "Show or hide the scratchpad",
+    "scratch-store": "Move window to the scratchpad",
+    "workspace-next": "Next workspace",
+    "workspace-prev": "Previous workspace",
+    "scale-up": "Display larger",
+    "scale-down": "Display smaller",
+    "lock": "Lock",
+    "show-time": "Show the time",
+    "show-battery": "Show the battery",
+    "keep-awake": "Stay awake",
+    "gaps-toggle": "Gaps on or off",
+    "transparency-toggle": "Window see-through",
+    "move-window-monitor": "Window to another monitor (left, right, up, down)",
+    "restore-minimized": "Bring back minimized windows",
+    "copy": "Copy, also in the terminal",
+    "paste": "Paste, also in the terminal",
+    "reload": "Reload GlazeWM"
+  },
+
+  "tiling": {
+    "title": "Tiling",
+    "subtitle": "How GlazeWM arranges your windows. As in Omarchy, each workspace has its own layout.",
+    "defaultLayout": "Default layout",
+    "defaultLayoutText": "Used for new workspaces. Win+Alt+L switches the layout of the workspace you are on.",
+    "scrollingNote": "Real scrolling, where windows run past the edge of the screen, is something GlazeWM cannot do. Columns is the closest.",
+    "workspaces": "Workspaces",
+    "refresh": "Refresh",
+    "workspaceRow": "Workspace {name} · {count} windows",
+    "noWorkspaces": "GlazeWM reports no workspaces.",
+    "notConnected": "Your workspaces show up here once GlazeWM runs.",
+    "look": "Look",
+    "innerGap": "Gap between windows",
+    "outerGap": "Gap to the edge",
+    "square": "Square windows",
+    "squareHint": "Windows 11 rounds the corners otherwise.",
+    "titleBars": "Hide title bars",
+    "titleBarsHint": "Not every program plays along.",
+    "dim": "Dim inactive windows",
+    "dimHint": "Windows without focus become slightly see-through.",
+    "focusFollows": "Focus follows the mouse",
+    "desktop": "Desktop",
+    "taskbarHint": "Comes back as soon as you quit WinMarchy.",
+    "apply": "Apply",
+    "applyHint": "Rewrites the GlazeWM config and reloads it. A restore point comes first.",
+    "applied": "GlazeWM has the new settings."
+  },
+
+  "layouts": {
+    "dwindle": "Dwindle",
+    "dwindleText": "Each new window splits the space of the focused one. Omarchy's default.",
+    "columns": "Columns",
+    "columnsText": "Windows side by side, equally wide. The closest thing to Omarchy's scrolling.",
+    "floating": "Floating",
+    "floatingText": "Windows lie freely on top of each other.",
+    "manual": "Manual",
+    "manualText": "You split yourself, with Win+J.",
+    "changed": "Workspace {workspace}: {layout}"
+  },
+
+  "scratchpad": {
+    "stored": "In the scratchpad. Win+S brings it back.",
+    "empty": "The scratchpad is empty. Win+Alt+S puts a window in."
+  },
+
+  "restore": {
+    "title": "Undo",
+    "subtitle": "Before WinMarchy changes anything, it saves the old state. Here you undo single changes or all of them.",
+    "openFolder": "Open folder",
+    "original": "State before WinMarchy",
+    "originalText": "WinMarchy changed {count} things since {date}. This puts all of them back the way they were.",
+    "nothingYet": "WinMarchy has not changed anything yet.",
+    "resetAll": "Reset everything",
+    "removeTools": "Remove WinMarchy's programs",
+    "noTools": "WinMarchy has not installed any programs.",
+    "confirmAllTitle": "Reset everything?",
+    "confirmAll": "{count} files and settings go back to how they were before WinMarchy. The bar and the shortcut script stop, the taskbar comes back.",
+    "confirmAllTools": "The programs in C:\\WinMarchy\\Tools are deleted.",
+    "allDone": "Everything is back to how it was before WinMarchy.",
+    "points": "Restore points",
+    "pointsText": "One per job, newest first.",
+    "noPoints": "No restore points yet.",
+    "pointLine": "{date} · {count} entries",
+    "restoredAt": "restored on {date}",
+    "details": "Details",
+    "restore": "Restore",
+    "confirmPointTitle": "Restore this point?",
+    "confirmPoint": "“{title}” sets {count} files and settings back to how they were before.",
+    "pointDone": "Restored.",
+    "delete": "Delete",
+    "confirmDeleteTitle": "Delete restore point?",
+    "confirmDelete": "“{title}” cannot be restored afterwards. The state before WinMarchy is kept.",
+    "wasMissing": "did not exist before",
+    "kinds": {
+      "file": "File",
+      "dir": "Folder",
+      "registry": "Registry",
+      "wallpaper": "Wallpaper"
+    }
+  },
+
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Saved in {path}",
+    "appearance": "Appearance",
+    "appearanceText": "For this window. The accent colour comes from the active theme.",
+    "language": "Language",
+    "languages": {
+      "auto": "Like Windows",
+      "de": "Deutsch",
+      "deCH": "Deutsch (Schweiz)",
+      "en": "English"
+    },
+    "languageHint": "Takes effect the next time WinMarchy starts.",
+    "updates": "Updates",
+    "version": "Version {version} ({mode})",
+    "updateAvailable": "Version {version} is out",
+    "upToDate": "Up to date",
+    "lastCheck": "last checked {date}",
+    "prerelease": "Test build, does not update itself",
+    "checkUpdates": "Check now",
+    "autoUpdate": "Update automatically",
+    "autoUpdateHint": "WinMarchy downloads new versions from GitHub, checks the SHA-256 and swaps itself while the window is closed.",
+    "paths": "Paths",
+    "choose": "Choose …",
+    "personalScript": "Personal script",
+    "personalScriptHint": "Runs with Win+Ctrl+T when the Personal profile is on. PowerShell scripts run under the PC's execution policy.",
+    "scriptFilter": "Scripts (*.ps1;*.cmd;*.bat;*.exe)|*.ps1;*.cmd;*.bat;*.exe|All files|*.*",
+    "filesPath": "Files settings file",
+    "filesPathHint": "Only needed when WinMarchy cannot find the file itself.",
+    "herdr": "Herdr",
+    "herdrInstall": "Install from ZIP …",
+    "herdrFound": "Found: {path}",
+    "herdrMissing": "Not installed. Download the ZIP from herdr.dev and choose it here.",
+    "herdrDone": "Herdr is installed.",
+    "folders": "Folders",
+    "folder": {
+      "root": "WinMarchy",
+      "logs": "Logs",
+      "backups": "Backups",
+      "tools": "Programs",
+      "glazewm": "GlazeWM config",
+      "zebar": "Bar"
+    },
+    "unreadable": "Could not read the settings, WinMarchy starts with the defaults: {detail}"
+  },
+
+  "log": {
+    "title": "Log",
+    "subtitle": "What WinMarchy did. The files are in {path} and kept for 30 days.",
+    "copy": "Copy",
+    "copied": "{count} lines copied.",
+    "openFolder": "Open folder",
+    "jobs": "Recent jobs",
+    "showJob": "Show",
+    "search": "Search the log",
+    "empty": "No entries yet.",
+    "levels": {
+      "all": "Everything",
+      "info": "Normal",
+      "warnings": "Warnings"
+    }
+  },
+
+  "jobs": {
+    "setup": "Setup",
+    "theme": "Theme {theme}",
+    "hotkeys": "Shortcuts",
+    "tiling": "Tiling settings",
+    "wallpaper": "Wallpaper",
+    "restore": "Restore: {title}",
+    "restoreAll": "Reset everything",
+    "alreadyRunning": "“{title}” is already running.",
+    "cancel": "Cancel",
+    "retry": "Retry from here",
+    "started": "started",
+    "finished": "finished",
+    "done": "{title} is done.",
+    "failedAt": "Stopped at “{step}”",
+    "cancelled": "Cancelled",
+    "skipped": "skipped",
+    "retryFrom": "retrying from “{step}”",
+    "state": {
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    }
+  },
+
+  "steps": {
+    "restorePoint": "Create restore point",
+    "restorePointCreated": "Restore point {id}",
+    "install": "Install {tool}",
+    "notChosen": "not selected",
+    "alreadyInstalled": "already there: {path}",
+    "legacy": "Replace Winarchy Lite",
+    "zebarPack": "Set up the bar",
+    "zebarMissing": "Zebar is not installed",
+    "glazeStart": "Start GlazeWM",
+    "hotkeys": "Turn on shortcuts",
+    "autostart": "Autostart",
+    "autostartOn": "WinMarchy starts with Windows.",
+    "autostartOff": "No autostart.",
+    "themeAssets": "Download theme files",
+    "glazewm": "Colour GlazeWM",
+    "zebar": "Colour the bar",
+    "terminal": "Colour Windows Terminal",
+    "powershell": "Colour PowerShell",
+    "vscode": "Colour VS Code",
+    "flow": "Colour Flow Launcher",
+    "files": "Colour Files",
+    "windows": "Set Windows colours",
+    "wallpaper": "Set wallpaper",
+    "saveTheme": "Remember theme",
+    "off": "turned off",
+    "bar": "Start the bar",
+    "stopPrograms": "Stop programs",
+    "restoreFiles": "Restore files and settings",
+    "afterRestore": "Reload programs",
+    "removeTools": "Remove programs"
+  },
+
+  "integrations": {
+    "glazewm": { "done": "Config written: {path}" },
+    "zebar": { "done": "Bar set up: {path}" },
+    "terminal": {
+      "done": "Colour scheme “WinMarchy” set: {path}",
+      "failed": "Could not change Windows Terminal ({path}): {detail}",
+      "notFound": "Windows Terminal is not installed."
+    },
+    "powershell": {
+      "done": "Colours set in the profile: {path}",
+      "blocked": "The execution policy ({policy}) does not allow profiles. WinMarchy does not bypass it, PowerShell keeps its default colours."
+    },
+    "vscode": {
+      "done": "Theme set: {path}",
+      "failed": "Could not change VS Code ({path}): {detail}",
+      "notFound": "VS Code is not installed.",
+      "installing": "Installing the extension {extension} …",
+      "installFailed": "Could not install the extension {extension}. VS Code gets the colours through colorCustomizations instead."
+    },
+    "flow": {
+      "done": "Flow Launcher has the “WinMarchy” theme and listens on Alt+F24.",
+      "notFound": "Flow Launcher is not installed."
+    },
+    "files": {
+      "done": "Colours set: {path}",
+      "notFound": "Files is not installed, or its settings file is missing.",
+      "running": "Files is open and would overwrite the colours when it closes. Close Files and apply the theme again."
+    },
+    "windows": { "done": "Windows is now {mode}, with the theme's accent colour." },
+    "wallpaper": {
+      "done": "Wallpaper: {file}",
+      "none": "No wallpaper downloaded for {theme} yet.",
+      "unsupported": "Windows cannot use {file} as a wallpaper."
+    }
+  },
+
+  "legacy": {
+    "none": "No Winarchy Lite found.",
+    "stoppedScript": "Old shortcut script stopped (PID {pid})",
+    "removedAutostart": "Autostart entry “{name}” removed",
+    "themesImported": "{count} themes taken over from Winarchy Lite"
+  },
+
+  "backup": {
+    "restored": "{count} restored, {failed} failed",
+    "itemFailed": "Could not restore {target}: {detail}"
+  },
+
+  "bar": {
+    "paused": "Tiling paused",
+    "direction": "Direction for the next window",
+    "offline": "No network"
+  },
+
+  "actions": {
+    "rejected": "Action “{action}” rejected: {detail}",
+    "failed": "Action “{action}” failed: {detail}",
+    "appMissing": "{app} is not on this PC.",
+    "flowMissing": "Flow Launcher is missing. Setup can install it.",
+    "glazeMissing": "GlazeWM is missing. Setup can install it.",
+    "glazeNotRunning": "This needs GlazeWM running.",
+    "scriptMissing": "No personal script set, or the file is gone. See Settings.",
+    "scale": "Display: {percent} %",
+    "scaleFailed": "Could not change the scaling.",
+    "noBattery": "No battery found.",
+    "battery": "Battery: {percent} %",
+    "batteryCharging": "Battery: {percent} %, charging",
+    "batteryLeft": "Battery: {percent} %, {hours} h {minutes} min left"
+  },
+
+  "agent": {
+    "started": "WinMarchy {version} is running in the background",
+    "glazeMissing": "GlazeWM is not installed, tiling stays off.",
+    "startFailed": "Something went wrong while starting the programs: {detail}",
+    "glazeConnected": "Connected to GlazeWM",
+    "glazeDisconnected": "Lost the connection to GlazeWM",
+    "reloaded": "GlazeWM reloaded.",
+    "setupFirst": "Run setup first.",
+    "gapsOff": "Gaps off.",
+    "gapsOn": "Gaps on.",
+    "taskbarSettingOff": "The taskbar is not hidden in the first place. Turn that on under Tiling.",
+    "taskbarShown": "Taskbar shown.",
+    "taskbarHidden": "Taskbar hidden.",
+    "zebarMissing": "Zebar is not installed.",
+    "awakeOn": "Staying awake. Screen and PC will not go to sleep.",
+    "awakeOff": "Sleep back to normal.",
+    "wallpaper": "Wallpaper: {name}",
+    "noWallpapers": "No wallpapers downloaded for this theme yet.",
+    "restored": "Everything reset. WinMarchy stays in the notification area until you quit it."
+  },
+
+  "tray": {
+    "open": "Open WinMarchy",
+    "menu": "Menu",
+    "keybindings": "Shortcuts",
+    "theme": "Pick a theme",
+    "reload": "Reload GlazeWM",
+    "bar": "Top bar on or off",
+    "taskbar": "Taskbar on or off",
+    "quit": "Quit"
+  },
+
+  "menu": {
+    "nothingFound": "Nothing found.",
+    "themeApplying": "Applying {theme} …",
+    "themeFailed": "{theme} was not fully applied: {detail}",
+    "titles": {
+      "root": "Menu",
+      "learn": "Learn",
+      "trigger": "Trigger",
+      "capture": "Capture",
+      "toggle": "Toggle",
+      "hardware": "Hardware",
+      "style": "Style",
+      "setup": "Setup",
+      "update": "Update",
+      "system": "System",
+      "themes": "Theme",
+      "keybindings": "Shortcuts ({count})"
+    },
+    "root": {
+      "apps": "Apps",
+      "learn": "Learn",
+      "trigger": "Trigger",
+      "style": "Style",
+      "setup": "Setup",
+      "restore": "Undo",
+      "update": "Update",
+      "about": "About",
+      "system": "System"
+    },
+    "learn": {
+      "keybindings": "Shortcuts",
+      "omarchy": "Omarchy manual",
+      "glazewm": "GlazeWM",
+      "winmarchy": "WinMarchy",
+      "terminal": "Windows Terminal",
+      "powershell": "PowerShell"
+    },
+    "trigger": {
+      "capture": "Capture",
+      "toggle": "Toggle",
+      "hardware": "Hardware",
+      "emoji": "Emoji",
+      "clipboard": "Clipboard"
+    },
+    "capture": {
+      "screenshot": "Screenshot",
+      "record": "Screen recording",
+      "screenshotsFolder": "Screenshots folder"
+    },
+    "toggle": {
+      "awake": "Stay awake",
+      "notifications": "Notifications",
+      "nightlight": "Night light",
+      "bar": "Top bar",
+      "taskbar": "Taskbar",
+      "layout": "Workspace layout",
+      "gaps": "Window gaps",
+      "transparency": "See-through window"
+    },
+    "hardware": {
+      "project": "Project",
+      "displays": "Displays",
+      "sound": "Sound",
+      "bluetooth": "Bluetooth",
+      "wifi": "Wi-Fi",
+      "battery": "Battery"
+    },
+    "style": {
+      "theme": "Theme",
+      "background": "Background",
+      "bar": "Top bar",
+      "windows": "Windows and gaps",
+      "winmarchy": "All themes in WinMarchy"
+    },
+    "setup": {
+      "winmarchy": "WinMarchy",
+      "keybindings": "Shortcuts",
+      "displays": "Displays",
+      "input": "Keyboard",
+      "network": "Network",
+      "bluetooth": "Bluetooth",
+      "sound": "Sound",
+      "power": "Power",
+      "defaults": "Default apps"
+    },
+    "update": {
+      "winmarchy": "Check WinMarchy",
+      "checking": "Looking for a new version …",
+      "glazewm": "Reload GlazeWM",
+      "windows": "Windows Update"
+    },
+    "system": {
+      "lock": "Lock",
+      "suspend": "Sleep",
+      "logout": "Sign out",
+      "restart": "Restart",
+      "shutdown": "Shut down"
+    }
+  },
+
+  "install": {
+    "copied": "WinMarchy {version} copied to {path}",
+    "newerInstalled": "C:\\WinMarchy\\App already has version {version}, starting that one instead.",
+    "noRights": "No write access to {path}, WinMarchy runs portable: {detail}",
+    "locked": "{path} is in use right now, WinMarchy runs from here: {detail}",
+    "failed": "Copying to C:\\WinMarchy\\App failed: {detail}",
+    "notSingleFile": "Developer build, WinMarchy runs from here.",
+    "portable": "Started portable, no copy to {path}.",
+    "prerelease": "Test build {version}, runs from here and does not update itself.",
+    "shortcut": "Start menu entry created: {path}",
+    "shortcutFailed": "Could not create a Start menu entry: {detail}"
+  },
+
+  "update": {
+    "checked": "Latest version {latest}, installed is {current}",
+    "ready": "Version {version} is downloaded and checked",
+    "readyBanner": "Version {version} is ready.",
+    "readyNotice": "WinMarchy {version} is ready and installs on the next start.",
+    "restartNow": "Restart now",
+    "restarting": "Starting the new version …",
+    "installingQuietly": "Installing version {version} in the background",
+    "installed": "WinMarchy is now on version {version}.",
+    "applyFailed": "Could not install the update: {detail}",
+    "failed": "Update check failed: {detail}"
+  },
+
+  "net": {
+    "githubRateLimit": "GitHub is limiting requests right now. WinMarchy reads the release page directly instead."
+  },
+
+  "launcher": {
+    "failed": "Could not start {target}: {detail}"
+  },
+
+  "errors": {
+    "ahkInvalid": "AutoHotkey rejected the script, the old one stays active: {detail}",
+    "ahkMissing": "AutoHotkey is not installed.",
+    "backupBlobMissing": "The saved file {blob} is missing from the backup folder.",
+    "backupDangerous": "{path} is a system folder. WinMarchy does not restore it.",
+    "exeUpdateMissing": "No downloaded update is waiting.",
+    "glazeCommandFailed": "GlazeWM rejected the command: {detail}",
+    "glazeMissing": "GlazeWM is not installed.",
+    "glazeNotConnected": "No connection to GlazeWM.",
+    "herdrZipInvalid": "The ZIP must contain exactly one herdr.exe.",
+    "hotkeysInvalid": "Some shortcuts are invalid: {detail}",
+    "installerFailed": "The {tool} installer ended with code {code}.",
+    "jobRunning": "“{title}” is already running.",
+    "jobUnknown": "This job no longer exists.",
+    "jsonNotObject": "The file does not contain a JSON object.",
+    "msiExtractFailed": "Could not unpack {tool} (msiexec code {code}). Details: {log}",
+    "processStart": "Could not start {file}.",
+    "processTimeout": "{file} did not answer within {seconds} seconds.",
+    "proxyAuth": "the proxy wants you to sign in",
+    "releaseTagUnknown": "Could not find the current version of {repo}.",
+    "restorePartial": "{failed} entries could not be restored. The log has the details.",
+    "shaMismatch": "{file} is damaged or was changed (SHA-256 expected {expected}, got {actual}). The file was thrown away.",
+    "timeoutSuffix": "timed out",
+    "toolAssetMissing": "The {tool} release {tag} has no matching file.",
+    "toolExeMissing": "{exe} is missing from the {tool} package.",
+    "toolNoChecksum": "GitHub publishes no checksum for {file} of {tool}. WinMarchy installs nothing it cannot check.",
+    "toolNotFoundAfterInstall": "{tool} cannot be found after installing it.",
+    "toolNotInstallable": "WinMarchy does not install {tool} itself. The link to the vendor is on Start.",
+    "zipInvalidPath": "The ZIP contains an invalid path: {entry}"
+  }
+}

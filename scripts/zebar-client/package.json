@@ -1,0 +1,16 @@
+{
+  "name": "winmarchy-zebar-client",
+  "private": true,
+  "description": "Bundles the Zebar client API into one file for the WinMarchy bar (no CDN at runtime).",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild entry.js --bundle --format=esm --minify --legal-comments=eof --target=es2022 --outfile=../../src/WinMarchy.Core/Resources/Zebar/zebar.js"
+  },
+  "dependencies": {
+    "zebar": "3.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}

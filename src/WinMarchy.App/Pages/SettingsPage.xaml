@@ -1,0 +1,82 @@
+<UserControl x:Class="WinMarchy.App.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:WinMarchy.App.Ui">
+  <StackPanel MaxWidth="860" HorizontalAlignment="Left">
+    <StackPanel Margin="0,0,0,22">
+      <TextBlock Text="{ui:T settings.title}" Style="{StaticResource H1}" />
+      <TextBlock x:Name="Subtitle" Style="{StaticResource Muted}" Margin="0,6,0,0" />
+    </StackPanel>
+
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="{ui:T settings.appearance}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T settings.appearanceText}" Style="{StaticResource Muted}" Margin="0,4,0,14" />
+        <Border Style="{StaticResource SegmentGroup}">
+          <StackPanel Orientation="Horizontal">
+            <RadioButton x:Name="CardSystem" Style="{StaticResource Segment}" GroupName="scheme-card" Tag="system" Checked="OnScheme" MinHeight="34" Padding="12,0">
+              <StackPanel Orientation="Horizontal"><ui:Icon Kind="monitor" Size="15" /><TextBlock Text="{ui:T appearance.system}" Margin="8,0,0,0" /></StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="CardLight" Style="{StaticResource Segment}" GroupName="scheme-card" Tag="light" Checked="OnScheme" MinHeight="34" Padding="12,0">
+              <StackPanel Orientation="Horizontal"><ui:Icon Kind="sun" Size="15" /><TextBlock Text="{ui:T appearance.light}" Margin="8,0,0,0" /></StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="CardDark" Style="{StaticResource Segment}" GroupName="scheme-card" Tag="dark" Checked="OnScheme" MinHeight="34" Padding="12,0">
+              <StackPanel Orientation="Horizontal"><ui:Icon Kind="moon" Size="15" /><TextBlock Text="{ui:T appearance.dark}" Margin="8,0,0,0" /></StackPanel>
+            </RadioButton>
+          </StackPanel>
+        </Border>
+        <TextBlock Text="{ui:T settings.language}" Style="{StaticResource H3}" Margin="0,18,0,4" />
+        <ComboBox x:Name="LanguageBox" Width="240" HorizontalAlignment="Left" SelectionChanged="OnLanguage" />
+        <TextBlock x:Name="LanguageHint" Text="{ui:T settings.languageHint}" Style="{StaticResource Small}" Margin="0,4,0,0" Visibility="Collapsed" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="{ui:T settings.checkUpdates}" Click="OnCheckUpdates" VerticalAlignment="Top" />
+          <StackPanel>
+            <TextBlock Text="{ui:T settings.updates}" Style="{StaticResource H2}" />
+            <TextBlock x:Name="UpdateText" Style="{StaticResource Muted}" Margin="0,4,0,0" />
+          </StackPanel>
+        </DockPanel>
+        <CheckBox x:Name="AutoUpdate" Style="{StaticResource Switch}" Margin="0,16,0,0" Click="OnAutoUpdate">
+          <StackPanel>
+            <TextBlock Text="{ui:T settings.autoUpdate}" Style="{StaticResource Body}" />
+            <TextBlock Text="{ui:T settings.autoUpdateHint}" Style="{StaticResource Small}" />
+          </StackPanel>
+        </CheckBox>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <TextBlock Text="{ui:T settings.paths}" Style="{StaticResource H2}" Margin="0,0,0,14" />
+        <TextBlock Text="{ui:T settings.personalScript}" Style="{StaticResource H3}" Margin="0,0,0,4" />
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="{ui:T settings.choose}" Click="OnChooseScript" Margin="8,0,0,0" />
+          <TextBox x:Name="ScriptPath" Style="{StaticResource MonoBox}" LostFocus="OnPathsChanged" />
+        </DockPanel>
+        <TextBlock Text="{ui:T settings.personalScriptHint}" Style="{StaticResource Small}" Margin="0,4,0,16" />
+        <TextBlock Text="{ui:T settings.filesPath}" Style="{StaticResource H3}" Margin="0,0,0,4" />
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="{ui:T settings.choose}" Click="OnChooseFiles" Margin="8,0,0,0" />
+          <TextBox x:Name="FilesPath" Style="{StaticResource MonoBox}" LostFocus="OnPathsChanged" />
+        </DockPanel>
+        <TextBlock Text="{ui:T settings.filesPathHint}" Style="{StaticResource Small}" Margin="0,4,0,16" />
+        <TextBlock Text="{ui:T settings.herdr}" Style="{StaticResource H3}" Margin="0,0,0,4" />
+        <StackPanel Orientation="Horizontal">
+          <Button Content="{ui:T settings.herdrInstall}" Click="OnHerdr" />
+          <TextBlock x:Name="HerdrState" Style="{StaticResource Small}" VerticalAlignment="Center" Margin="12,0,0,0" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <TextBlock Text="{ui:T settings.folders}" Style="{StaticResource H2}" Margin="0,0,0,14" />
+        <WrapPanel x:Name="Folders" />
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

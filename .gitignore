@@ -1,0 +1,18 @@
+# .NET
+bin/
+obj/
+publish/
+*.user
+.vs/
+TestResults/
+
+# Node
+node_modules/
+
+# Release scratch
+artifacts/
+release/
+
+# OS
+.DS_Store
+Thumbs.db

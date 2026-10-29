@@ -1,0 +1,29 @@
+{
+  "title": { "de": "Persönlich", "en": "Personal" },
+  "bindings": [
+    { "keys": "Win+Shift+A", "do": "web:https://chatgpt.com/", "group": "apps", "label": { "de": "ChatGPT", "en": "ChatGPT" } },
+    { "keys": "Win+Shift+Alt+A", "do": "web:https://grok.com/", "group": "apps", "label": { "de": "Grok", "en": "Grok" } },
+    { "keys": "Win+Shift+Y", "do": "web:https://youtube.com/", "group": "apps", "label": { "de": "YouTube", "en": "YouTube" } },
+    { "keys": "Win+Shift+P", "do": "web:https://photos.google.com/", "group": "apps", "label": { "de": "Google Fotos", "en": "Google Photos" } },
+    { "keys": "Win+Shift+X", "do": "web:https://x.com/", "group": "apps", "label": { "de": "X", "en": "X" } },
+    { "keys": "Win+Shift+Alt+X", "do": "web:https://x.com/compose/post", "group": "apps", "label": { "de": "X-Beitrag", "en": "X post" } },
+    { "keys": "Win+Shift+G", "do": "app:signal", "group": "apps", "label": { "de": "Signal", "en": "Signal" } },
+    { "keys": "Win+Shift+O", "do": "app:obsidian", "group": "apps", "label": { "de": "Obsidian", "en": "Obsidian" } },
+    { "keys": "Win+Shift+Alt+G", "do": "web:https://web.whatsapp.com/", "group": "apps", "label": { "de": "WhatsApp Web", "en": "WhatsApp Web" } },
+    { "keys": "Win+Shift+Ctrl+G", "do": "web:https://messages.google.com/web/conversations", "group": "apps", "label": { "de": "Google Messages", "en": "Google Messages" } },
+    { "keys": "Win+Shift+Slash", "do": "app:bitwarden", "group": "apps", "omarchy": "SUPER + SHIFT + SLASH (1Password)", "label": { "de": "Passwörter (Bitwarden)", "en": "Passwords (Bitwarden)" } },
+
+    { "keys": "Win+Shift+T", "do": "app:telegram", "group": "apps", "omarchy": "bindings.lua: SUPER + SHIFT + T", "label": { "de": "Telegram", "en": "Telegram" } },
+    { "keys": "Win+Shift+M", "do": "app:spotify", "group": "apps", "omarchy": "bindings.lua: SUPER + SHIFT + M", "label": { "de": "Spotify", "en": "Spotify" } },
+    { "keys": "Win+Alt+W", "do": "open:spotify:playlist:37i9dQZEVXcIg4SLyC8ODz", "group": "apps", "omarchy": "bindings.lua: SUPER + ALT + W", "label": { "de": "Spotify: Discover Weekly", "en": "Spotify: Discover Weekly" }, "note": { "de": "Öffnet die Playlist in Spotify; abspielen startest du dort.", "en": "Opens the playlist in Spotify; start playback there." } },
+    { "keys": "Win+Alt+R", "do": "open:spotify:playlist:37i9dQZEVXbpgQ9IAiH8Fm", "group": "apps", "omarchy": "bindings.lua: SUPER + ALT + R", "label": { "de": "Spotify: Release Radar", "en": "Spotify: Release Radar" } },
+    { "keys": "Win+Shift+Q", "do": "app:whatsapp", "group": "apps", "omarchy": "bindings.lua: SUPER + SHIFT + Q", "label": { "de": "WhatsApp", "en": "WhatsApp" } },
+    { "keys": "Win+Alt+M", "do": "web:https://maps.google.com/", "group": "apps", "omarchy": "bindings.lua: SUPER + ALT + M", "label": { "de": "Google Maps", "en": "Google Maps" } },
+    { "keys": "Win+Ctrl+T", "do": "run:%personal-script%", "group": "apps", "omarchy": "bindings.lua: SUPER + CTRL + T", "label": { "de": "Connect-Login mit Defender-Token", "en": "Connect login with Defender token" }, "note": { "de": "Führt das Skript aus, das du in den Einstellungen unter „Persönliches Skript“ einträgst.", "en": "Runs the script you set under “Personal script” in the settings." } },
+    { "keys": "Win+Alt+N", "do": "send:Win+N", "group": "utilities", "omarchy": "bindings.lua: SUPER + ALT + N", "label": { "de": "Benachrichtigungen", "en": "Notifications" } },
+    { "keys": "Win+Alt+B", "do": "open:ms-settings:bluetooth", "group": "system", "omarchy": "bindings.lua: SUPER + ALT + B", "label": { "de": "Bluetooth", "en": "Bluetooth" } },
+    { "keys": "Win+Alt+V", "do": "open:ms-settings:network-vpn", "group": "system", "omarchy": "bindings.lua: SUPER + ALT + V", "label": { "de": "VPN", "en": "VPN" } },
+    { "keys": "Win+Alt+C", "do": "open:ms-phone:", "group": "system", "omarchy": "bindings.lua: SUPER + ALT + C (omaconnect)", "label": { "de": "Smartphone-Link", "en": "Phone Link" } },
+    { "keys": "Win+Alt+Y", "do": "open:ms-settings:display", "group": "system", "omarchy": "bindings.lua: SUPER + ALT + Y (screens)", "label": { "de": "Bildschirme", "en": "Displays" } }
+  ]
+}

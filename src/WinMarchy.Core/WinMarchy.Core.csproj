@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>WinMarchy.Core</RootNamespace>
+    <AssemblyName>WinMarchy.Core</AssemblyName>
+    <!-- No NuGet packages on purpose: everything here uses the base class library,
+         P/Invoke or late-bound COM. That keeps it testable on Linux. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- One source of truth for all texts, shared by the WPF app and the core. -->
+    <EmbeddedResource Include="Resources\Locales\*.json" LogicalName="WinMarchy.Locales.%(Filename).json" />
+    <!-- Omarchy theme palettes and the download manifest for previews and wallpapers. -->
+    <EmbeddedResource Include="Resources\omarchy-themes.json" LogicalName="WinMarchy.omarchy-themes.json" />
+    <!-- Hotkey profiles (Business, Persönlich) and the AutoHotkey runtime part. -->
+    <EmbeddedResource Include="Resources\Hotkeys\*.json" LogicalName="WinMarchy.Hotkeys.%(Filename).json" />
+    <EmbeddedResource Include="Resources\Hotkeys\runtime.ahk" LogicalName="WinMarchy.Hotkeys.runtime.ahk" />
+    <!-- Zebar widget pack (Omarchy-style bar). -->
+    <EmbeddedResource Include="Resources\Zebar\**\*" LogicalName="WinMarchy.Zebar.%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="WinMarchy.Core.Tests" />
+    <InternalsVisibleTo Include="WinMarchy" />
+  </ItemGroup>
+
+</Project>

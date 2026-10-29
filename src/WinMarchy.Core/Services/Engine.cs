@@ -1,0 +1,353 @@
+using System.Diagnostics;
+using WinMarchy.Core.Backup;
+using WinMarchy.Core.GlazeWm;
+using WinMarchy.Core.Hotkeys;
+using WinMarchy.Core.Integrations;
+using WinMarchy.Core.Themes;
+using WinMarchy.Core.Tools;
+
+namespace WinMarchy.Core.Services;
+
+/// <summary>Which programs the full setup installs if they are missing.</summary>
+public sealed record SetupOptions(bool InstallGlazeWm, bool InstallZebar, bool InstallAutoHotkey, bool InstallFlow, bool InstallPowerShell, bool DownloadWallpapers);
+
+/// <summary>
+/// Everything that changes the system, as step lists for the job manager: setup, theme, hotkeys and
+/// undo. Each job starts its own restore point before the first change.
+/// </summary>
+public sealed class Engine
+{
+    readonly Locations _loc;
+    readonly Func<UserSettings> _settings;
+    readonly Action<UserSettings> _save;
+
+    public Engine(Locations loc, BackupStore backups, Func<UserSettings> settings, Action<UserSettings> save, IImageConverter? images)
+    {
+        _loc = loc;
+        Backups = backups;
+        _settings = settings;
+        _save = save;
+        Images = images;
+        Components = new Components(loc, settings);
+    }
+
+    public BackupStore Backups { get; }
+    public Components Components { get; }
+    public IImageConverter? Images { get; }
+
+    /// <summary>The open GlazeWM connection of the agent, if any (for reloads).</summary>
+    public Func<GlazeIpc?> Glaze { get; set; } = () => null;
+
+    UserSettings S => _settings();
+
+    OmarchyTheme CurrentTheme => ThemeCatalog.Find(S.Theme) ?? ThemeCatalog.Default;
+
+    IntegrationContext Context(RestorePoint point, SetupStep step) =>
+        new(_loc, Backups, point, S, text => step.Report(text)) { Images = Images };
+
+    /// <summary>A step that only opens the restore point (so the job shows where its backup is).</summary>
+    SetupStep BeginStep(string kind, string title, Action<RestorePoint> set) =>
+        new(L.T("steps.restorePoint"), (step, _) =>
+        {
+            var point = Backups.Begin(kind, title);
+            set(point);
+            step.Report(L.T("steps.restorePointCreated", ("id", point.Id)), log: true);
+            return Task.CompletedTask;
+        });
+
+    // ------------------------------------------------------------------ GlazeWM
+
+    public string GlazeConfigText(Palette palette, bool gapsOff = false)
+    {
+        var s = S;
+        var options = GlazeConfig.FromSettings(s, palette, ZebarPack.BarHeight);
+        if (gapsOff)
+        {
+            options.InnerGap = 0;
+            options.OuterGap = 0;
+        }
+        if (s.HotkeyEngine == "glazewm")
+        {
+            var set = HotkeySet.Build(s.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), "glazewm");
+            options.Keybindings = GlazeConfig.Keybindings(set, KeyboardLayouts.Current, Components.SelfExe);
+        }
+        return GlazeConfig.Generate(options);
+    }
+
+    public void WriteGlazeConfig(IntegrationContext ctx, Palette palette, bool gapsOff = false)
+    {
+        ctx.WriteFile(_loc.GlazeWmConfig, GlazeConfigText(palette, gapsOff));
+        ctx.Report(L.T("integrations.glazewm.done", ("path", _loc.GlazeWmConfig)));
+    }
+
+    /// <summary>Gaps, borders and title bars from the Tiling page: a new GlazeWM config in its own restore point.</summary>
+    public async Task ApplyTilingAsync(CancellationToken ct)
+    {
+        var point = Backups.Begin("tiling", L.T("jobs.tiling"));
+        var step = new SetupStep(L.T("steps.glazewm"), (_, _) => Task.CompletedTask);
+        WriteGlazeConfig(Context(point, step), CurrentTheme.Palette);
+        await Components.ReloadGlazeAsync(Glaze(), ct);
+    }
+
+    /// <summary>
+    /// Omarchy's "window gaps" toggle: gaps off until it is pressed again. No restore point of its own;
+    /// the config file is already in the setup's point, and the next toggle writes it back.
+    /// </summary>
+    public async Task SetGapsAsync(bool off, CancellationToken ct)
+    {
+        FileSafety.WriteText(_loc.GlazeWmConfig, GlazeConfigText(CurrentTheme.Palette, gapsOff: off));
+        await Components.ReloadGlazeAsync(Glaze(), ct);
+    }
+
+    // ------------------------------------------------------------------ hotkeys
+
+    public HotkeySet CurrentHotkeys() => HotkeySet.Build(S.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), S.HotkeyEngine);
+
+    async Task ApplyHotkeysAsync(IntegrationContext ctx, SetupStep step, CancellationToken ct)
+    {
+        var s = S;
+        var set = CurrentHotkeys();
+        if (set.HasBlockingProblems)
+            throw new WinMarchyException("hotkeysInvalid", ("detail", string.Join("; ", set.Problems.Where(p => p.Blocking).Select(p => $"{p.Keys}: {p.Message}"))));
+
+        if (s.HotkeyEngine == "autohotkey" && Components.AhkExe != null)
+        {
+            var glazeCli = ToolCatalog.GlazeCli(Components.GlazeExe) ?? "";
+            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher));
+            step.Report(L.T("hotkeys.validating"));
+            var (ok, output) = await Components.ValidateAhkAsync(script, ct);
+            if (!ok) throw new WinMarchyException("ahkInvalid", ("detail", output));
+            ctx.WriteFile(Paths.AhkScript, script, bom: true);
+            WriteGlazeConfig(ctx, CurrentTheme.Palette);
+            await Components.ReloadGlazeAsync(Glaze(), ct);
+            Components.StartAhk();
+            step.Report(L.T("hotkeys.activeAhk", ("count", set.Active.Count)));
+        }
+        else
+        {
+            if (s.HotkeyEngine == "autohotkey") step.Report(L.T("hotkeys.ahkMissingFallback"));
+            Components.StopAhk();
+            WriteGlazeConfig(ctx, CurrentTheme.Palette);
+            await Components.ReloadGlazeAsync(Glaze(), ct);
+            step.Report(L.T("hotkeys.activeGlaze", ("count", set.Active.Count)));
+        }
+    }
+
+    public List<SetupStep> HotkeySteps()
+    {
+        RestorePoint? point = null;
+        return new List<SetupStep>
+        {
+            BeginStep("hotkeys", L.T("jobs.hotkeys"), p => point = p),
+            new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)),
+        };
+    }
+
+    // ------------------------------------------------------------------ themes
+
+    public List<SetupStep> ThemeSteps(OmarchyTheme theme, bool downloadWallpapers)
+    {
+        RestorePoint? point = null;
+        var steps = new List<SetupStep> { BeginStep("theme", L.T("jobs.theme", ("theme", theme.Title)), p => point = p) };
+        steps.AddRange(ThemeChanges(theme, downloadWallpapers, () => point!));
+        return steps;
+    }
+
+    /// <summary>The theme steps without their own restore point (the full setup shares its point).</summary>
+    List<SetupStep> ThemeChanges(OmarchyTheme theme, bool downloadWallpapers, Func<RestorePoint> pointOf)
+    {
+        var targets = S.ThemeTargets;
+        var palette = theme.Palette;
+        IntegrationContext Ctx(SetupStep step) => Context(pointOf(), step);
+        return new List<SetupStep>
+        {
+            new(L.T("steps.themeAssets"), async (step, ct) =>
+            {
+                using var http = Net.CreateClient(TimeSpan.FromMinutes(10));
+                await ThemeAssets.DownloadAsync(http, theme, downloadWallpapers && targets.Wallpaper, t => step.Report(t), ct);
+            }),
+            new(L.T("steps.glazewm"), async (step, ct) =>
+            {
+                WriteGlazeConfig(Ctx(step), palette);
+                await Components.ReloadGlazeAsync(Glaze(), ct);
+            }, () => targets.GlazeWm ? null : L.T("steps.off")),
+            new(L.T("steps.zebar"), (step, _) => { ZebarPack.ApplyTheme(Ctx(step), palette); return Task.CompletedTask; },
+                () => targets.Zebar ? null : L.T("steps.off")),
+            new(L.T("steps.terminal"), (step, _) => { TerminalTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
+                () => targets.Terminal ? null : L.T("steps.off")),
+            new(L.T("steps.powershell"), (step, _) => { TerminalTheme.ApplyPowerShell(Ctx(step), palette); return Task.CompletedTask; },
+                () => targets.PowerShell ? null : L.T("steps.off")),
+            new(L.T("steps.vscode"), (step, ct) => VsCodeTheme.ApplyAsync(Ctx(step), theme, ct),
+                () => targets.VsCode ? null : L.T("steps.off")),
+            new(L.T("steps.flow"), (step, ct) => FlowTheme.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.Flow).Path, ct),
+                () => targets.Flow ? null : L.T("steps.off")),
+            new(L.T("steps.files"), (step, _) => { FilesTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
+                () => targets.Files ? null : L.T("steps.off")),
+            new(L.T("steps.windows"), (step, _) => { WindowsAppearance.Apply(Ctx(step), palette); return Task.CompletedTask; },
+                () => targets.Windows ? null : L.T("steps.off")),
+            new(L.T("steps.wallpaper"), (step, _) =>
+            {
+                var index = AppState.Load().WallpaperIndex.GetValueOrDefault(theme.Name);
+                Wallpapers.Apply(Ctx(step), theme, index);
+                return Task.CompletedTask;
+            }, () => targets.Wallpaper ? null : L.T("steps.off")),
+            new(L.T("steps.saveTheme"), (step, _) =>
+            {
+                var s = S.Clone();
+                s.Theme = theme.Name;
+                _save(s);
+                AppState.Update(st => st.LastApplied = DateTime.Now);
+                step.Report(L.T("themes.applied", ("theme", theme.Title)));
+                return Task.CompletedTask;
+            }),
+        };
+    }
+
+    /// <summary>Win+Ctrl+Space: the next downloaded wallpaper of the current theme.</summary>
+    public string? NextWallpaper()
+    {
+        var theme = CurrentTheme;
+        int index = 0;
+        AppState.Update(st => index = st.WallpaperIndex[theme.Name] = st.WallpaperIndex.GetValueOrDefault(theme.Name) + 1);
+        var point = Backups.Reuse("wallpaper", L.T("jobs.wallpaper"), TimeSpan.FromHours(1));
+        var step = new SetupStep("wallpaper", (_, _) => Task.CompletedTask);
+        return Wallpapers.Apply(Context(point, step), theme, index);
+    }
+
+    // ------------------------------------------------------------------ full setup
+
+    public List<SetupStep> SetupSteps(SetupOptions o)
+    {
+        RestorePoint? point = null;
+        var steps = new List<SetupStep> { BeginStep("setup", L.T("jobs.setup"), p => point = p) };
+
+        void Install(ToolDef tool, bool wanted) => steps.Add(new SetupStep(L.T("steps.install", ("tool", tool.Name)),
+            async (step, ct) => await ToolInstaller.InstallAsync(tool, step, ct),
+            () => !wanted ? L.T("steps.notChosen")
+                : Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null));
+
+        Install(ToolCatalog.GlazeWm, o.InstallGlazeWm);
+        Install(ToolCatalog.Zebar, o.InstallZebar);
+        Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
+        Install(ToolCatalog.Flow, o.InstallFlow);
+        Install(ToolCatalog.PowerShell, o.InstallPowerShell);
+
+        steps.Add(new SetupStep(L.T("steps.legacy"), (step, _) =>
+        {
+            var done = Components.RetireLegacy(Backups, point!);
+            step.Report(done.Count == 0 ? L.T("legacy.none") : string.Join(" · ", done));
+            ImportLegacyThemes(step);
+            return Task.CompletedTask;
+        }));
+        steps.Add(new SetupStep(L.T("steps.zebarPack"), (step, _) =>
+        {
+            ZebarPack.Install(Context(point!, step), CurrentTheme.Palette, Components.SelfExe);
+            return Task.CompletedTask;
+        }, () => Components.ZebarExe == null ? L.T("steps.zebarMissing") : null));
+        steps.Add(new SetupStep(L.T("steps.glazeStart"), async (step, ct) =>
+        {
+            WriteGlazeConfig(Context(point!, step), CurrentTheme.Palette);
+            if (!Components.StartGlaze()) throw new WinMarchyException("glazeMissing");
+            await Components.ReloadGlazeAsync(Glaze(), ct);
+        }));
+        steps.Add(new SetupStep(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)));
+        steps.Add(new SetupStep(L.T("steps.autostart"), (step, _) =>
+        {
+            Components.SetAutostart(Backups, point!, S.StartWithWindows);
+            step.Report(S.StartWithWindows ? L.T("steps.autostartOn") : L.T("steps.autostartOff"));
+            return Task.CompletedTask;
+        }));
+
+        // The theme runs last: it styles everything that was just installed.
+        steps.AddRange(ThemeChanges(CurrentTheme, o.DownloadWallpapers, () => point!));
+        steps.Add(new SetupStep(L.T("steps.bar"), (step, _) =>
+        {
+            if (S.ShowBar) Components.StartBar();
+            AppState.Update(st => st.SetupDone = true);
+            return Task.CompletedTask;
+        }));
+        return steps;
+    }
+
+    /// <summary>Previews and wallpapers Winarchy Lite already downloaded are taken over instead of downloading them again.</summary>
+    void ImportLegacyThemes(SetupStep step)
+    {
+        var legacyThemes = Path.Combine(_loc.LegacyStateDir, "themes");
+        if (!Directory.Exists(legacyThemes)) return;
+        int n = ThemeAssets.ImportFolder(legacyThemes, null);
+        var walls = Path.Combine(_loc.LegacyStateDir, "wallpapers");
+        if (Directory.Exists(walls))
+        {
+            foreach (var dir in Directory.EnumerateDirectories(walls))
+            {
+                var target = Path.Combine(ThemeAssets.Dir(Path.GetFileName(dir)), "backgrounds");
+                Directory.CreateDirectory(target);
+                foreach (var f in Directory.EnumerateFiles(dir))
+                {
+                    var dest = Path.Combine(target, Path.GetFileName(f));
+                    if (!File.Exists(dest)) File.Copy(f, dest);
+                }
+            }
+        }
+        if (n > 0) step.Report(L.T("legacy.themesImported", ("count", n)));
+    }
+
+    // ------------------------------------------------------------------ undo
+
+    public List<SetupStep> RestoreSteps(RestorePoint point, bool removeTools)
+    {
+        var steps = new List<SetupStep>
+        {
+            new(L.T("steps.stopPrograms"), async (step, ct) =>
+            {
+                // Flow and Files write their settings on exit: stop them before the files go back.
+                await FlowTheme.StopAsync(Process.GetProcessesByName("Flow.Launcher"), ct);
+                foreach (var p in Process.GetProcessesByName("Files")) { try { p.CloseMainWindow(); } catch { } }
+                if (point.IsOriginal)
+                {
+                    Components.StopAhk();
+                    Components.StopBar();
+                }
+            }),
+            new(L.T("steps.restoreFiles"), (step, _) =>
+            {
+                var results = Backups.Restore(point);
+                var failed = results.Count(r => !r.Ok);
+                step.Report(L.T("backup.restored", ("count", results.Count - failed), ("failed", failed)));
+                if (failed > 0) throw new WinMarchyException("restorePartial", ("failed", failed));
+                return Task.CompletedTask;
+            }),
+            new(L.T("steps.afterRestore"), async (step, ct) =>
+            {
+                Win32.BroadcastSettingChange("ImmersiveColorSet");
+                await Components.ReloadGlazeAsync(Glaze(), ct);
+                var flow = Components.Status(ToolCatalog.Flow).Path;
+                if (flow != null) Platform.AppLauncher.Start(flow);
+                if (point.IsOriginal)
+                {
+                    var before = AppState.Load().TaskbarAutoHideBefore;
+                    Platform.Taskbar.Show();
+                    if (before != null) Platform.Taskbar.SetAutoHide(before.Value);
+                    AppState.Update(st => { st.TaskbarAutoHideBefore = null; st.SetupDone = false; });
+                    var s = S.Clone();
+                    s.HideTaskbar = false;
+                    _save(s);
+                }
+            }),
+        };
+        if (removeTools)
+        {
+            steps.Add(new SetupStep(L.T("steps.removeTools"), (step, _) =>
+            {
+                foreach (var id in AppState.Load().InstalledTools.ToList())
+                {
+                    var tool = ToolCatalog.Get(id);
+                    ToolInstaller.Remove(tool, _loc);
+                    step.Report(L.T("tools.removed", ("tool", tool.Name)));
+                }
+                return Task.CompletedTask;
+            }));
+        }
+        return steps;
+    }
+}
