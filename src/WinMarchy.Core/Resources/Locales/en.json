@@ -231,7 +231,7 @@
       "open": "For example ms-settings:display, mailto: or spotify:.",
       "send": "Keys sent to the window in front, e.g. Ctrl+Shift+T.",
       "do": "Menus, layouts, the scratchpad and other WinMarchy functions.",
-      "run": "Path to a script or program. %personal-script% stands for your script from the settings."
+      "run": "Path to a script or program."
     },
     "edit": {
       "newTitle": "New shortcut",
@@ -268,12 +268,26 @@
     "exportFile": "winmarchy-shortcuts",
     "exported": "Saved to {path}.",
     "import": "Import",
-    "importTip": "Load an exported file. Your current shortcuts go into a restore point first.",
+    "importTip": "Load a WinMarchy export, Omarchy's bindings.lua or Hyprland's bindings.conf and pick what to take over.",
     "importFailed": "Import failed: {detail}",
     "savedAndApplied": "Saved and active.",
     "savedWithProblems": "Saved, but not active yet: one shortcut has an error (see above).",
     "starTip": "Mark as favourite: Win+K shows it at the top",
-    "unstarTip": "No longer a favourite: Win+K lists it under “Optional”"
+    "unstarTip": "No longer a favourite: Win+K lists it under “Optional”",
+    "greenshotRegion": "Screenshot (Greenshot)",
+    "importFilter": "Shortcuts (*.json;*.lua;*.conf)|*.json;*.lua;*.conf|All files (*.*)|*.*",
+    "importTitle": "{count} shortcuts in {file}",
+    "importText": "Ticked is what is new and takes no keys in use. WinMarchy translates Linux commands where Windows can do the same: web apps, Spotify links, known programs.",
+    "importAll": "All",
+    "importNone": "None",
+    "importApply": "Take over the ticked ones",
+    "importEmpty": "The file holds no shortcut WinMarchy can read.",
+    "importExtras": "Also take over favourites and switched-off shortcuts from the file ({count})",
+    "importNoCounterpart": "Windows has nothing like it.",
+    "importBadKeys": "“{keys}” is not a key combination Windows knows.",
+    "importReplaces": "Replaces “{label}” · {action}",
+    "importSame": "Already set like this.",
+    "imported": "Imported {count} shortcuts."
   },
 
   "apps": {
@@ -349,7 +363,7 @@
     "subtitle": "How GlazeWM arranges your windows. As in Omarchy, each workspace has its own layout.",
     "defaultLayout": "Default layout",
     "defaultLayoutText": "Used for new workspaces. Win+Alt+L moves the workspace you are on to the next layout: dwindle, columns, scrolling.",
-    "scrollingNote": "Scrolling puts the windows into a row of columns that may be wider than the screen. Win+Left and Right scroll, Win+Shift+Arrow moves the column. GlazeWM cannot do this itself, so WinMarchy places these windows (they float for it).",
+    "scrollingNote": "Scrolling puts the windows into a row of columns that may be wider than the screen. Win+Left and Right scroll, Win+Shift+Arrow moves the column. Columns off the screen wait out of sight until the row scrolls to them. GlazeWM cannot do this itself, so WinMarchy places these windows (they float for it).",
     "workspaces": "Workspaces",
     "refresh": "Refresh",
     "workspaceRow": "Workspace {name} · {count} windows",
@@ -394,7 +408,10 @@
     "monitorAppNone": "Win+Ctrl+D starts nothing",
     "monitorAppPrefix": "Win+Ctrl+D starts",
     "monitorAppHint": "Starts on this monitor's new workspace with Win+Ctrl+D.",
-    "desktopAppLate": "{action} showed no window within 12 seconds; it was meant for workspace {workspace}."
+    "desktopAppLate": "{action} showed no window within 12 seconds; it was meant for workspace {workspace}.",
+    "monitorsFailed": "Could not move workspaces to their monitors: {detail}",
+    "trayPinned": "Always visible in the tray",
+    "trayPinnedHint": "Part of the name, separated by commas, such as Teams, OneDrive. The rest waits behind the small arrow; middle click on an icon pins it there."
   },
 
   "layouts": {
@@ -480,16 +497,8 @@
     "autoUpdateHint": "WinMarchy downloads new versions from GitHub, checks them and switches when the window is closed.",
     "paths": "Paths",
     "choose": "Choose …",
-    "personalScript": "Personal script",
-    "personalScriptHint": "Runs with Win+Ctrl+Shift+T when the Personal profile is on. PowerShell scripts run under the PC's execution policy.",
-    "scriptFilter": "Scripts (*.ps1;*.cmd;*.bat;*.exe)|*.ps1;*.cmd;*.bat;*.exe|All files|*.*",
     "filesPath": "Files settings file",
     "filesPathHint": "Only needed when WinMarchy cannot find the file itself.",
-    "herdr": "Herdr offline",
-    "herdrInstall": "Install from ZIP …",
-    "herdrFound": "Found: {path}",
-    "herdrMissing": "Not installed. Setup → Optional extras downloads Herdr for you. Without internet, pick the ZIP from herdr.dev here.",
-    "herdrDone": "Herdr is installed.",
     "folders": "Folders",
     "folder": {
       "root": "WinMarchy",
@@ -543,7 +552,15 @@
     "policies": "Check policies",
     "policiesHint": "Looks for group policies and Intune settings that override WinMarchy.",
     "policiesTitle": "Policies on this PC",
-    "policiesReport": "Open report"
+    "policiesReport": "Open report",
+    "diagnose": "Diagnosis report",
+    "diagnoseHint": "Writes to a file what WinMarchy sees right now: GlazeWM, monitors, Flow, taskbar, bar, shortcuts. No window titles.",
+    "diagnoseFile": "diagnosis",
+    "diagnoseWritten": "Diagnosis report written: {path}",
+    "verbose": "Verbose log",
+    "verboseHint": "For finding faults: every shortcut, every GlazeWM command and what Flow, the taskbar, the scratchpad, scrolling and Win+Ctrl+D do. Shown under “All”. Switch it off afterwards, it is a lot.",
+    "verboseOn": "Verbose log is on.",
+    "verboseOff": "Verbose log is off."
   },
 
   "jobs": {
@@ -697,7 +714,9 @@
       "cpu": "CPU",
       "memory": "Memory",
       "battery": "Battery"
-    }
+    },
+    "trayOpen": "Show all tray icons. Middle click on an icon pins it.",
+    "trayClose": "Fold the tray away"
   },
 
   "actions": {
@@ -707,7 +726,7 @@
     "flowMissing": "Flow Launcher is missing. Setup can install it.",
     "glazeMissing": "GlazeWM is missing. Setup can install it.",
     "glazeNotRunning": "This needs GlazeWM running.",
-    "scriptMissing": "No personal script set, or the file is gone. See Settings.",
+    "scriptMissing": "The file behind this shortcut is missing.",
     "scale": "Display: {percent} %",
     "scaleFailed": "Could not change the scaling.",
     "noBattery": "No battery found.",
@@ -863,7 +882,9 @@
       "addOwn": "Add your own picture …"
     },
     "keybindingsOptional": "Optional",
-    "sectionApps": "Apps"
+    "sectionApps": "Apps",
+    "keybindingsFavorites": "Favourites",
+    "keybindingsOthers": "All the others"
   },
 
   "install": {
@@ -909,7 +930,6 @@
     "glazeCommandFailed": "GlazeWM rejected the command: {detail}",
     "glazeMissing": "GlazeWM is not installed.",
     "glazeNotConnected": "No connection to GlazeWM.",
-    "herdrZipInvalid": "The ZIP must contain exactly one herdr.exe.",
     "hotkeysInvalid": "Some shortcuts are invalid: {detail}",
     "installerFailed": "The {tool} installer ended with code {code}.",
     "jobRunning": "“{title}” is already running.",
@@ -959,7 +979,7 @@
       "appLocker": "AppLocker is set up. Programs in C:\\WinMarchy\\Tools may need approval.",
       "srp": "Software restriction policies are active. Programs in C:\\WinMarchy\\Tools may be blocked.",
       "runIgnored": "The user's autostart entries are ignored.",
-      "scriptHost": "Windows Script Host is off. Start menu and autostart shortcuts cannot be created.",
+      "scriptHost": "Windows Script Host is off. WinMarchy does not need it; it creates shortcuts without it.",
       "powershell": "PowerShell scripts only run under the policy “{value}”.",
       "cmd": "The command prompt is blocked.",
       "lockWorkstation": "Locking is switched off. Win+Ctrl+L does nothing.",

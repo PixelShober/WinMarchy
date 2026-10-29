@@ -21,6 +21,7 @@ public partial class TilingPage : UserControl, IPage
     readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _minimize;
     readonly List<(TextBox Workspaces, ComboBox App)> _monitorRows = new();
     readonly Dictionary<string, CheckBox> _barModules = new();
+    readonly TextBox _trayPinned = new();
 
     public TilingPage()
     {
@@ -62,6 +63,13 @@ public partial class TilingPage : UserControl, IPage
             modules.Children.Add(box);
         }
         Desktop.Children.Add(modules);
+        Desktop.Children.Add(UiKit.Text(L.T("tiling.trayPinned"), "H3", new Thickness(0, 0, 0, 4)));
+        _trayPinned.Text = string.Join(", ", s.BarTrayPinned);
+        System.Windows.Automation.AutomationProperties.SetName(_trayPinned, L.T("tiling.trayPinned"));
+        Desktop.Children.Add(_trayPinned);
+        var trayHint = UiKit.Text(L.T("tiling.trayPinnedHint"), "Small", new Thickness(0, 4, 0, 12));
+        trayHint.TextWrapping = TextWrapping.Wrap;
+        Desktop.Children.Add(trayHint);
         Desktop.Children.Add(_minimize);
         var touchpad = UiKit.Text(L.T("tiling.touchpadHint"), "Small", new Thickness(0, 4, 0, 8));
         touchpad.TextWrapping = TextWrapping.Wrap;
@@ -316,6 +324,7 @@ public partial class TilingPage : UserControl, IPage
             s.ShowBar = _bar.IsChecked == true;
             s.BlockMinimize = _minimize.IsChecked == true;
             s.BarModules = _barModules.ToDictionary(m => m.Key, m => m.Value.IsChecked == true);
+            s.BarTrayPinned = _trayPinned.Text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         });
         try
         {

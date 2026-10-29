@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.IO.Compression;
 using System.Text;
 
@@ -103,34 +104,78 @@ public static class FileSafety
         return reader.ReadToEnd();
     }
 
-    /// <summary>Creates a .lnk through WScript.Shell (late-bound, no interop assembly).</summary>
+    /// <summary>
+    /// A .lnk through the shell's own IShellLink. Not through WScript.Shell: companies switch Windows
+    /// Script Host off, and then the autostart entry would be missing.
+    /// </summary>
     public static void CreateShortcut(string link, string target, string arguments, string workingDir, string description)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(link)!);
-        var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("WScript.Shell");
-        dynamic shell = Activator.CreateInstance(shellType)!;
-        dynamic shortcut = shell.CreateShortcut(link);
-        shortcut.TargetPath = target;
-        shortcut.Arguments = arguments;
-        shortcut.WorkingDirectory = workingDir;
-        shortcut.Description = description;
-        shortcut.Save();
+        var shell = (IShellLinkW)new ShellLink();
+        try
+        {
+            shell.SetPath(target);
+            shell.SetArguments(arguments);
+            shell.SetWorkingDirectory(workingDir);
+            shell.SetDescription(description);
+            ((System.Runtime.InteropServices.ComTypes.IPersistFile)shell).Save(link, true);
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(shell);
+        }
     }
 
     /// <summary>Target and arguments of a .lnk, or null if it cannot be read.</summary>
     public static (string Target, string Arguments)? ReadShortcut(string link)
     {
+        if (!OperatingSystem.IsWindows()) return null;
         try
         {
-            var shellType = Type.GetTypeFromProgID("WScript.Shell");
-            if (shellType == null) return null;
-            dynamic shell = Activator.CreateInstance(shellType)!;
-            dynamic shortcut = shell.CreateShortcut(link);
-            return ((string)shortcut.TargetPath, (string)shortcut.Arguments);
+            var shell = (IShellLinkW)new ShellLink();
+            try
+            {
+                ((System.Runtime.InteropServices.ComTypes.IPersistFile)shell).Load(link, 0);
+                var target = new StringBuilder(1024);
+                var args = new StringBuilder(2048);
+                shell.GetPath(target, target.Capacity, IntPtr.Zero, 0);
+                shell.GetArguments(args, args.Capacity);
+                return (target.ToString(), args.ToString());
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(shell);
+            }
         }
         catch
         {
             return null;
         }
+    }
+
+    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+    class ShellLink { }
+
+    [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("000214F9-0000-0000-C000-000000000046")]
+    interface IShellLinkW
+    {
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder file, int max, IntPtr findData, uint flags);
+        void GetIDList(out IntPtr idList);
+        void SetIDList(IntPtr idList);
+        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder name, int max);
+        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string name);
+        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder dir, int max);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string dir);
+        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder args, int max);
+        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string args);
+        void GetHotkey(out short hotkey);
+        void SetHotkey(short hotkey);
+        void GetShowCmd(out int showCmd);
+        void SetShowCmd(int showCmd);
+        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int max, out int icon);
+        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int icon);
+        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+        void Resolve(IntPtr hwnd, uint flags);
+        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string file);
     }
 }

@@ -35,6 +35,7 @@ public partial class LogPage : UserControl, IPage
     public void OnShown()
     {
         _visible = true;
+        Verbose.IsChecked = AppModel.Settings.VerboseLog;
         Reload();
         RenderJobs();
     }
@@ -209,6 +210,40 @@ public partial class LogPage : UserControl, IPage
     void OnPoliciesReport(object sender, RoutedEventArgs e)
     {
         if (_policyReport != null && File.Exists(_policyReport)) AppLauncher.Start(_policyReport);
+    }
+
+    /// <summary>Every shortcut and GlazeWM command into the log; the "all" filter shows them.</summary>
+    void OnVerbose(object sender, RoutedEventArgs e)
+    {
+        var on = Verbose.IsChecked == true;
+        AppModel.Update(s => s.VerboseLog = on);
+        Log.Info(L.T(on ? "log.verboseOn" : "log.verboseOff"));
+        Toasts.Show(ToastKind.Info, L.T(on ? "log.verboseOn" : "log.verboseOff"));
+    }
+
+    /// <summary>What WinMarchy sees right now, as a file next to the logs, opened right away.</summary>
+    async void OnDiagnose(object sender, RoutedEventArgs e)
+    {
+        DiagnoseButton.IsEnabled = false;
+        try
+        {
+            var screens = System.Windows.Forms.Screen.AllScreens.OrderBy(m => m.Bounds.X).ThenBy(m => m.Bounds.Y)
+                .Select((m, i) => $"{i}: {m.DeviceName} {m.Bounds.X},{m.Bounds.Y} {m.Bounds.Width}×{m.Bounds.Height}{(m.Primary ? " (primary)" : "")}").ToList();
+            var agent = AppModel.Agent;
+            var text = await Task.Run(() => Diagnostics.BuildAsync(agent?.Glaze, agent?.GlazeProblem, screens, CancellationToken.None));
+            var file = Path.Combine(Paths.LogDir, $"{L.T("log.diagnoseFile")}-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+            FileSafety.WriteText(file, text);
+            Log.Info(L.T("log.diagnoseWritten", ("path", file)));
+            AppLauncher.Start(file);
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show(ToastKind.Error, Net.Describe(ex));
+        }
+        finally
+        {
+            DiagnoseButton.IsEnabled = true;
+        }
     }
 
     void OnOpenFolder(object sender, RoutedEventArgs e) => UiKit.OpenFolder(File.Exists(Log.CurrentFile) ? Log.CurrentFile : Paths.LogDir);

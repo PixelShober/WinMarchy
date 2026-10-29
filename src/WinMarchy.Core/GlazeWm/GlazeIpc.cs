@@ -60,6 +60,8 @@ public sealed class GlazeIpc : IAsyncDisposable
     {
         var ws = _ws ?? throw new WinMarchyException("glazeNotConnected");
         await _send.WaitAsync(ct);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        bool queries = message.StartsWith("query", StringComparison.Ordinal);
         try
         {
             var tcs = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -72,7 +74,17 @@ public sealed class GlazeIpc : IAsyncDisposable
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(5));
             await using (timeout.Token.Register(() => tcs.TrySetCanceled()))
-                return await tcs.Task;
+            {
+                var result = await tcs.Task;
+                // Queries are many and say little; commands are what a fault report needs.
+                if (!queries) Log.Trace($"{message} → ok ({clock.ElapsedMilliseconds} ms)", "glazewm");
+                return result;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            Log.Trace($"{message} → {(ex is OperationCanceledException ? "timeout" : Net.Describe(ex))} ({clock.ElapsedMilliseconds} ms)", "glazewm");
+            throw;
         }
         finally
         {

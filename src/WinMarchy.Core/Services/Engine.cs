@@ -73,7 +73,7 @@ public sealed class Engine
         if (s.HotkeyEngine == "glazewm")
         {
             var set = HotkeySet.Build(s.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), "glazewm");
-            options.Keybindings = GlazeConfig.Keybindings(set, KeyboardLayouts.Current, Components.SelfExe, LeaveAlone(s));
+            options.Keybindings = GlazeConfig.Keybindings(set, KeyboardLayouts.Current, Components.SelfExe, LeaveAlone(s), Extra(s));
         }
         return GlazeConfig.Generate(options);
     }
@@ -113,6 +113,14 @@ public sealed class Engine
 
     // ------------------------------------------------------------------ hotkeys
 
+    /// <summary>
+    /// With Greenshot, Windows' own Win+Shift+S (Snipping Tool) goes to Greenshot too, unless the
+    /// user put something else on those keys.
+    /// </summary>
+    static IReadOnlyList<HotkeyBinding>? Extra(UserSettings s) => s.ScreenshotTool == Platform.Screenshots.Greenshot
+        ? new[] { new HotkeyBinding { Keys = "Win+Shift+S", Do = "do:screenshot", Group = "utilities", Label = LocalizedText.Same(L.T("hotkeys.greenshotRegion")) } }
+        : null;
+
     /// <summary>With Greenshot, its Print keys belong to it.</summary>
     static IReadOnlyCollection<string>? LeaveAlone(UserSettings s) =>
         s.ScreenshotTool == Platform.Screenshots.Greenshot ? Platform.Screenshots.GreenshotKeys.ToHashSet() : null;
@@ -129,7 +137,7 @@ public sealed class Engine
         if (s.HotkeyEngine == "autohotkey" && Components.AhkExe != null)
         {
             var glazeCli = ToolCatalog.GlazeCli(Components.GlazeExe) ?? "";
-            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s)));
+            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s), Extra: Extra(s)));
             step.Report(L.T("hotkeys.validating"));
             var (ok, output) = await Components.ValidateAhkAsync(script, ct);
             if (!ok) throw new WinMarchyException("ahkInvalid", ("detail", output));

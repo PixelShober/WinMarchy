@@ -40,6 +40,7 @@ public static class ZebarPack
         {
             ["exe"] = winMarchyExe,
             ["modules"] = modules,
+            ["trayPinned"] = new JsonArray((settings ?? new UserSettings()).BarTrayPinned.Select(p => (JsonNode?)JsonValue.Create(p)).ToArray()),
             ["locale"] = L.Culture.Name,
             ["clock"] = L.Language == "de" ? "cccc HH:mm" : "cccc h:mm a",
             ["text"] = new JsonObject
@@ -53,6 +54,8 @@ public static class ZebarPack
                 ["cpuTip"] = L.T("bar.cpuTip"),
                 ["batteryTip"] = L.T("bar.batteryTip"),
                 ["logoTip"] = L.T("bar.logoTip"),
+                ["trayOpen"] = L.T("bar.trayOpen"),
+                ["trayClose"] = L.T("bar.trayClose"),
             },
         };
         return "// Written by WinMarchy.\nexport default " + Json.Format(config) + ";\n";

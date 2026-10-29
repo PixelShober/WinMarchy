@@ -29,6 +29,9 @@ public static class Taskbar
         return ((int)SHAppBarMessage(ABM_GETSTATE, ref data) & ABS_AUTOHIDE) != 0;
     }
 
+    /// <summary>Whether any taskbar window is visible right now (diagnosis).</summary>
+    public static bool IsVisible() => OperatingSystem.IsWindows() && Windows().Any(IsWindowVisible);
+
     public static void SetAutoHide(bool on)
     {
         if (!OperatingSystem.IsWindows()) return;
@@ -151,8 +154,23 @@ public sealed class TaskbarGuard : IDisposable
         }
         if (_hide)
         {
-            try { Taskbar.EnforceHidden(); } catch { }
+            try
+            {
+                if (Taskbar.IsVisible()) Trace("timer");
+                Taskbar.EnforceHidden();
+            }
+            catch { }
         }
+    }
+
+    DateTime _lastTrace = DateTime.MinValue;
+
+    /// <summary>Verbose log only, at most every five seconds: the taskbar came back and was hidden again.</summary>
+    void Trace(string by)
+    {
+        if (!Log.Verbose || DateTime.Now - _lastTrace < TimeSpan.FromSeconds(5)) return;
+        _lastTrace = DateTime.Now;
+        Log.Trace($"taskbar was visible, hidden again ({by}, explorer pid {_hookedPid})", "taskbar");
     }
 
     void OnEvent(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
@@ -160,7 +178,9 @@ public sealed class TaskbarGuard : IDisposable
         if (!_hide || idObject != 0 || hwnd == IntPtr.Zero) return;
         try
         {
-            if (Taskbar.IsTaskbarWindow(hwnd)) Taskbar.EnforceHidden();
+            if (!Taskbar.IsTaskbarWindow(hwnd)) return;
+            Trace("show event");
+            Taskbar.EnforceHidden();
         }
         catch { }
     }

@@ -224,17 +224,26 @@ public sealed class MenuWindow : Window
         _card.Width = 700;
         var layout = KeyboardLayouts.Current;
         var active = AppModel.Engine.CurrentHotkeys().Active;
+        // Starred ones first (once there are any), then the rest, the profile's optional ones last.
         var favorites = BindingRows(active.Where(b => b.Favorite), layout);
-        var optional = BindingRows(active.Where(b => !b.Favorite), layout);
-        var list = new List<MenuEntry>(favorites);
+        var others = BindingRows(active.Where(b => !b.Favorite && !b.Optional), layout);
+        var optional = BindingRows(active.Where(b => !b.Favorite && b.Optional), layout);
+        var list = new List<MenuEntry>();
+        if (favorites.Count > 0)
+        {
+            list.Add(MenuEntry.Section(L.T("menu.keybindingsFavorites")));
+            list.AddRange(favorites);
+            if (others.Count > 0) list.Add(MenuEntry.Section(L.T("menu.keybindingsOthers")));
+        }
+        list.AddRange(others);
         if (optional.Count > 0)
         {
             list.Add(MenuEntry.Section(L.T("menu.keybindingsOptional")));
             list.AddRange(optional);
         }
         _all = list;
-        SetTitle(L.T("menu.titles.keybindings", ("count", favorites.Count + optional.Count)));
-        Reset(0);
+        SetTitle(L.T("menu.titles.keybindings", ("count", favorites.Count + others.Count + optional.Count)));
+        Reset(list.FindIndex(e => !e.Header));
     }
 
     /// <summary>One row per shortcut; the ten of "Win+1 … 0" become one row.</summary>
@@ -639,6 +648,15 @@ public sealed class MenuWindow : Window
         {
             _history.Push((_menu, _all.ToList().IndexOf(entry)));
             ShowEntries(entry.Menu, clearHistory: false);
+            return;
+        }
+        Log.Trace("menu: " + entry.Label + (entry.Action != null ? " → " + entry.Action : ""), "menu");
+        if (entry.OwnWindow)
+        {
+            // While the menu is in front, Windows lets WinMarchy's window take over the focus.
+            try { entry.Run?.Invoke(); }
+            catch (Exception ex) { Osd.Show(Net.Describe(ex)); }
+            Dismiss();
             return;
         }
         Dismiss();

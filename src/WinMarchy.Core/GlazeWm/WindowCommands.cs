@@ -1,4 +1,5 @@
 using System.Text.Json;
+using WinMarchy.Core.Platform;
 
 namespace WinMarchy.Core.GlazeWm;
 
@@ -97,7 +98,9 @@ public sealed class WindowCommands
         var (all, here) = await SnapshotAsync(ct);
         Prune(all);
         if (here == null) return;
-        var lost = all.Where(w => w.Workspace == GlazeConfig.StageWorkspace || (w.Workspace == GlazeConfig.ScratchpadWorkspace && !IsMember(w))).ToList();
+        // Columns of a scrolling workspace wait in the staging workspace on purpose.
+        var lost = all.Where(w => (w.Workspace == GlazeConfig.StageWorkspace && _layouts?.IsWaitingColumn(w.Handle) != true) ||
+                                  (w.Workspace == GlazeConfig.ScratchpadWorkspace && !IsMember(w))).ToList();
         foreach (var w in lost)
         {
             if (w.Floating) await Cmd("set-tiling", ct, w.Id);
@@ -123,6 +126,9 @@ public sealed class WindowCommands
             _pad.Save();
             await Cmd("set-tiling", ct, focused.Id);
             _notify(L.T("scratchpad.released"));
+            Log.Trace($"scratchpad: released {focused.Handle}, {_pad.Members.Count} left", "scratchpad");
+            // The others close the gap, as in Omarchy.
+            await RearrangeLockedAsync(all.Where(w => w.Id != focused.Id).ToList(), focused.Workspace, ct);
             return;
         }
         bool scrolling = _layouts?.StripOf(focused.Workspace) != null;
@@ -132,6 +138,7 @@ public sealed class WindowCommands
         _pad.Members.Add(focused.Handle);
         _pad.Save();
         _notify(L.T("scratchpad.stored"));
+        Log.Trace($"scratchpad: stored {focused.Handle} ({focused.Workspace}), {_pad.Members.Count} in it", "scratchpad");
         if (scrolling) await _layouts!.ArrangeLockedAsync(focused.Workspace, null, ct, focus: false);
     }, ct);
 
@@ -154,11 +161,41 @@ public sealed class WindowCommands
         var shown = members.Where(w => GlazeConfig.IsRegular(w.Workspace)).ToList();
         if (shown.Any(w => w.Workspace == here))
         {
+            Log.Trace($"scratchpad: hide {shown.Count}", "scratchpad");
             await HideLockedAsync(shown, ct);
             return;
         }
-        await ShowLockedAsync(members, here, ct);
+        Log.Trace($"scratchpad: show {members.Count} on {here}", "scratchpad");
+        await ShowLockedAsync(members, here, ct, animate: true);
     }, ct);
+
+    /// <summary>The scratchpad windows still shown on a workspace take up the space again (one left, or one closed).</summary>
+    async Task RearrangeLockedAsync(List<WindowInfo> all, string workspace, CancellationToken ct)
+    {
+        var rest = Members(all).Where(w => w.Workspace == workspace).ToList();
+        if (rest.Count > 0) await ShowLockedAsync(rest, workspace, ct, animate: false, focus: false);
+    }
+
+    /// <summary>A closed window leaves the scratchpad; the ones still shown close the gap.</summary>
+    public async Task OnEventAsync(GlazeEvent e, CancellationToken ct)
+    {
+        if (e.Type != "window_unmanaged" || !e.Data.TryGetProperty("unmanagedHandle", out var h) || !h.TryGetInt64(out var handle)) return;
+        if (!_pad.Members.Contains(handle)) return;
+        try
+        {
+            await Exclusive(async () =>
+            {
+                var (all, _) = await SnapshotAsync(ct);
+                Prune(all);
+                foreach (var workspace in Members(all).Where(w => GlazeConfig.IsRegular(w.Workspace)).Select(w => w.Workspace).Distinct().ToList())
+                    await RearrangeLockedAsync(all, workspace, ct);
+            }, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Debug("Scratchpad: " + Net.Describe(ex));
+        }
+    }
 
     /// <summary>Scratchpad windows in the order they went in.</summary>
     List<WindowInfo> Members(List<WindowInfo> all) =>
@@ -166,33 +203,60 @@ public sealed class WindowCommands
 
     async Task HideLockedAsync(IEnumerable<WindowInfo> shown, CancellationToken ct)
     {
-        foreach (var w in shown) await Cmd($"move --workspace {GlazeConfig.ScratchpadWorkspace}", ct, w.Id);
+        var list = shown.ToList();
+        if (list.Count == 0) return;
+        // Back down the way they came, then out of sight.
+        if (WindowSlide.Enabled && WorkspaceArea.All(await _ipc.QueryAsync("monitors", ct)).FirstOrDefault(a => a.Name == list[0].Workspace) is { } area)
+        {
+            int dy = area.Y + area.Height - list.Min(w => w.Y);
+            await WindowSlide.OutAsync(list.Select(w => w.Handle).ToList(), dy, ct);
+        }
+        foreach (var w in list) await Cmd($"move --workspace {GlazeConfig.ScratchpadWorkspace}", ct, w.Id);
     }
 
-    async Task ShowLockedAsync(List<WindowInfo> members, string here, CancellationToken ct)
+    /// <summary>
+    /// Puts the scratchpad windows over a workspace: one overlay of 80 % of the screen, the windows
+    /// side by side in it (more than three: two rows). With <paramref name="animate"/> the ones that
+    /// were hidden glide up from the bottom edge, like Omarchy's special workspace.
+    /// </summary>
+    async Task ShowLockedAsync(List<WindowInfo> members, string here, CancellationToken ct, bool animate, bool focus = true)
     {
-        foreach (var w in members)
-        {
-            if (w.Workspace != here) await Cmd($"move --workspace {here}", ct, w.Id);
-            await Cmd("set-floating --shown-on-top", ct, w.Id);
-        }
         var area = WorkspaceArea.All(await _ipc.QueryAsync("monitors", ct)).FirstOrDefault(a => a.Name == here);
+        var rects = new List<(int X, int Y, int W, int H)>();
         if (area != null)
         {
-            // One overlay of 80 % with the windows side by side in it (more than three: two rows).
             int count = members.Count, cols = Math.Min(count, 3), rows = (count + cols - 1) / cols;
             int gap = (int)Math.Round(_settings().InnerGap * area.Scale);
             int ow = (int)(area.Width * ScratchShare), oh = (int)(area.Height * ScratchShare);
             int ox = area.X + (area.Width - ow) / 2, oy = area.Y + (area.Height - oh) / 2;
             int cw = (ow - gap * (cols - 1)) / cols, ch = (oh - gap * (rows - 1)) / rows;
             for (int i = 0; i < count; i++)
-            {
-                int col = i % cols, row = i / cols;
-                await Cmd($"size --width {cw}px --height {ch}px", ct, members[i].Id);
-                await Cmd($"position --x-pos {ox + col * (cw + gap)} --y-pos {oy + row * (ch + gap)}", ct, members[i].Id);
-            }
+                rects.Add((ox + i % cols * (cw + gap), oy + i / cols * (ch + gap), cw, ch));
         }
-        await Cmd($"focus --container-id {members[^1].Id}", ct);
+        bool slide = animate && area != null && WindowSlide.Enabled;
+        int dy = slide ? area!.Y + area.Height - rects.Min(r => r.Y) : 0;
+        var arriving = new List<long>();
+        for (int i = 0; i < members.Count; i++)
+        {
+            var w = members[i];
+            bool comes = w.Workspace != here;
+            await Cmd("set-floating --shown-on-top", ct, w.Id);
+            if (comes) await Cmd($"move --workspace {here}", ct, w.Id);
+            if (rects.Count == 0) continue;
+            var (x, y, width, height) = rects[i];
+            await Cmd($"size --width {width}px --height {height}px", ct, w.Id);
+            // Arriving windows start at the bottom edge and glide up; the others go straight to their place.
+            await Cmd($"position --x-pos {x} --y-pos {y + (comes ? dy : 0)}", ct, w.Id);
+            if (comes) arriving.Add(w.Handle);
+        }
+        if (slide && arriving.Count > 0)
+        {
+            await WindowSlide.InAsync(arriving, dy, ct);
+            // GlazeWM gets the final place too, so it keeps the window there.
+            for (int i = 0; i < members.Count; i++)
+                if (arriving.Contains(members[i].Handle)) await Cmd($"position --x-pos {rects[i].X} --y-pos {rects[i].Y}", ct, members[i].Id);
+        }
+        if (focus) await Cmd($"focus --container-id {members[^1].Id}", ct);
     }
 
     // ------------------------------------------------------------------ focus and swap
@@ -246,10 +310,7 @@ public sealed class WindowCommands
                 int a = _pad.Members.IndexOf(focused.Handle), b = _pad.Members.IndexOf(other.Handle);
                 (_pad.Members[a], _pad.Members[b]) = (_pad.Members[b], _pad.Members[a]);
                 _pad.Save();
-                var members = Members(all).Where(w => w.Workspace == here).ToList();
-                // The moved window keeps the focus: it goes last in the call, which focuses the last one.
-                members.Remove(focused);
-                await ShowLockedAsync(members.Append(focused).OrderBy(w => _pad.Members.IndexOf(w.Handle)).ToList(), here, ct);
+                await ShowLockedAsync(Members(all).Where(w => w.Workspace == here).ToList(), here, ct, animate: false, focus: false);
                 await Cmd($"focus --container-id {focused.Id}", ct);
             }
             return;
@@ -274,7 +335,8 @@ public sealed class WindowCommands
         }
         var source = focused.Workspace;
         bool fromScrolling = _layouts?.StripOf(source) != null;
-        if (IsMember(focused))
+        bool wasMember = IsMember(focused);
+        if (wasMember)
         {
             _pad.Members.Remove(focused.Handle);
             _pad.Save();
@@ -287,6 +349,7 @@ public sealed class WindowCommands
         }
         await Cmd($"move --workspace {target}", ct, focused.Id);
         await Cmd($"focus --workspace {target}", ct);
+        if (wasMember && source != target) await RearrangeLockedAsync(all.Where(w => w.Id != focused.Id).ToList(), source, ct);
         if (_layouts == null) return;
         if (fromScrolling && source != target) await _layouts.ArrangeLockedAsync(source, null, ct, focus: false);
         if (_layouts.ModeOf(target) == LayoutMode.Scrolling) await _layouts.ArrangeLockedAsync(target, focused.Id, ct);
@@ -324,13 +387,18 @@ public sealed class WindowCommands
         if (GlazeTree.Type(pair) == "workspace")
         {
             await Cmd("toggle-tiling-direction", ct, GlazeTree.Str(pair, "id"));
+            // GlazeWM changes the direction but does not draw it until something else moves.
+            await Cmd("wm-redraw", ct);
+            Log.Trace("toggle-split: workspace direction", "tiling");
             return;
         }
         if (others.Count != 1 || GlazeTree.Type(others[0]) != "window" || GlazeTree.Str(others[0], "id") is not { } otherId)
         {
-            // Deeper nesting: GlazeWM's toggle, which takes effect with the next window.
+            // Deeper nesting: GlazeWM can only turn a workspace or wrap a window, so its toggle
+            // takes effect with the next window.
             await Cmd("toggle-tiling-direction", ct, id);
             _notify(L.T("tiling.splitNext"));
+            Log.Trace("toggle-split: nested, applies to the next window", "tiling");
             return;
         }
 
@@ -358,6 +426,8 @@ public sealed class WindowCommands
         await Cmd("move --direction " + toward, ct, id);
         // GlazeWM puts the moved window second; the one that was left or on top stays first.
         if (selfFirst) await Cmd("move --direction " + (inverse == "vertical" ? "up" : "left"), ct, id);
+        await Cmd("wm-redraw", ct);
+        Log.Trace($"toggle-split: pair now {inverse}", "tiling");
     }, ct);
 
     async Task<JsonElement?> FocusedWindowAsync(CancellationToken ct)
@@ -407,6 +477,8 @@ public sealed class WindowCommands
             int focusedMonitor = Math.Max(0, monitors.FindIndex(m => GlazeTree.Bool(m, "hasFocus")));
             var active = monitors.SelectMany(GlazeTree.Children).Select(w => GlazeTree.Str(w, "name")).OfType<string>().ToHashSet();
             var names = Enumerable.Range(1, workspaceCount).Select(n => n.ToString()).ToList();
+            Log.Trace($"desktop-new: {monitors.Count} monitors, focus on {focusedMonitor}, open {string.Join(", ", active)}, " +
+                      $"pinned {string.Join(", ", pinned.Select(p => $"{p.Key}→{p.Value}"))}", "desktop");
 
             for (int i = 0; i < monitors.Count; i++)
             {
@@ -422,9 +494,11 @@ public sealed class WindowCommands
                     (hasOwn ? pinned.TryGetValue(n, out var m) && m == i : !pinned.ContainsKey(n)));
                 if (name == null)
                 {
+                    Log.Trace($"desktop-new: monitor {i} has no free workspace", "desktop");
                     _notify(L.T("tiling.allTaken", ("count", workspaceCount)));
                     continue;
                 }
+                Log.Trace($"desktop-new: monitor {i} → workspace {name}", "desktop");
                 active.Add(name);
                 await Cmd($"focus --monitor {i}", ct);
                 await Cmd($"focus --workspace {name}", ct);
@@ -435,6 +509,48 @@ public sealed class WindowCommands
         if (opened.Count > 0) _notify(L.T("tiling.newDesktop", ("workspaces", string.Join(" · ", opened.Select(o => o.Item2)))));
         return opened;
     }
+
+    /// <summary>
+    /// GlazeWM applies "bind_to_monitor" only when a workspace opens. Workspaces already open on the
+    /// wrong screen move over (move-workspace towards their monitor), one step at a time; the focus
+    /// goes back where it was.
+    /// </summary>
+    public Task EnforceMonitorsAsync(IReadOnlyDictionary<string, int> pinned, CancellationToken ct) => Exclusive(async () =>
+    {
+        if (pinned.Count == 0) return;
+        string? back = null, last = null;
+        for (int round = 0; round < 12; round++)
+        {
+            var data = await _ipc.QueryAsync("monitors", ct);
+            var monitors = GlazeTree.List(data, "monitors").ToList();
+            var workspaces = monitors.Select((m, i) => (Index: i, List: GlazeTree.Children(m).Where(c => GlazeTree.Type(c) == "workspace").ToList())).ToList();
+            if (round == 0)
+            {
+                back = workspaces.SelectMany(x => x.List).Where(w => GlazeTree.Bool(w, "hasFocus")).Select(w => GlazeTree.Str(w, "name")).FirstOrDefault();
+                Log.Trace($"monitors: {monitors.Count} in GlazeWM; pinned " + string.Join(", ", pinned.Select(p => $"{p.Key}→{p.Value}")) + "; open " +
+                          string.Join(", ", workspaces.SelectMany(x => x.List.Select(w => $"{GlazeTree.Str(w, "name")}@{x.Index}"))), "monitors");
+            }
+            var wrong = workspaces.SelectMany(x => x.List.Select(w => (Name: GlazeTree.Str(w, "name") ?? "", From: x.Index)))
+                .Where(w => pinned.TryGetValue(w.Name, out var to) && to != w.From && to < monitors.Count)
+                .Select(w => (w.Name, w.From, To: pinned[w.Name])).FirstOrDefault();
+            if (wrong.Name is null or "") break;
+            var key = $"{wrong.Name}@{wrong.From}";
+            if (key == last)
+            {
+                Log.Trace($"monitors: workspace {wrong.Name} does not move, giving up", "monitors");
+                break;
+            }
+            last = key;
+            double Cx(JsonElement m) => GlazeTree.Int(m, "x") + GlazeTree.Int(m, "width") / 2.0;
+            double Cy(JsonElement m) => GlazeTree.Int(m, "y") + GlazeTree.Int(m, "height") / 2.0;
+            double dx = Cx(monitors[wrong.To]) - Cx(monitors[wrong.From]), dy = Cy(monitors[wrong.To]) - Cy(monitors[wrong.From]);
+            var direction = Math.Abs(dx) >= Math.Abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+            Log.Trace($"monitors: workspace {wrong.Name} is on monitor {wrong.From}, belongs on {wrong.To}: moving {direction}", "monitors");
+            await Cmd($"focus --workspace {wrong.Name}", ct);
+            await Cmd($"move-workspace --direction {direction}", ct);
+        }
+        if (back != null && last != null) await Cmd($"focus --workspace {back}", ct);
+    }, ct);
 
     /// <summary>
     /// Waits for the next window GlazeWM takes on (an app that was just started) and moves it to the

@@ -26,7 +26,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromHours(6) };
     readonly Forms.NotifyIcon _tray = new();
     readonly TaskbarGuard _guard = new();
-    readonly DispatcherTimer _flowTimer = new() { Interval = TimeSpan.FromSeconds(15) };
+    readonly DispatcherTimer _flowTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     DateTime _flowStarted = DateTime.MinValue;
     HwndSource? _window;
     LayoutEngine? _layouts;
@@ -106,6 +106,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
             if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
                 c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
             // Win opens Flow Launcher; after the setup it has never run yet.
+            Log.Trace($"components: glazewm {Core.Services.Components.IsRunning("glazewm")}, zebar {Core.Services.Components.IsRunning("zebar")}, " +
+                      $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, flow {Core.Services.Components.IsRunning("Flow.Launcher")}", "agent");
             if (c.StartFlow())
             {
                 _flowStarted = DateTime.Now;
@@ -120,13 +122,18 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
     /// <summary>
     /// Win alone opens Flow Launcher, so it has to run. If it is gone (crashed, or a restart after a
-    /// theme change did not come up), it is started again; not more than once a minute, and not while
+    /// theme change did not come up), it is started again; not more than every 30 seconds, and not while
     /// a job runs (a theme change restarts it on purpose, the setup installs it).
     /// </summary>
     void KeepFlowRunning()
     {
         if (!SetupDone || _restoring || AppModel.Jobs.AnyRunning) return;
-        if (Core.Services.Components.IsRunning("Flow.Launcher") || DateTime.Now - _flowStarted < TimeSpan.FromMinutes(1)) return;
+        if (Core.Services.Components.IsRunning("Flow.Launcher")) return;
+        if (DateTime.Now - _flowStarted < TimeSpan.FromSeconds(30))
+        {
+            Log.Trace("flow: not running, started less than 30 s ago, waiting", "flow");
+            return;
+        }
         try
         {
             if (AppModel.Engine.Components.StartFlow())
@@ -182,6 +189,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         var chars = Math.Min(cds.cbData / 2, 4096);
         var text = chars > 0 && cds.lpData != IntPtr.Zero ? Marshal.PtrToStringUni(cds.lpData, chars).TrimEnd('\0').Trim() : "";
         handled = true;
+        Log.Trace((kind == ActionMessage ? "received " : "open window ") + text, "agent");
         // Answer at once (AutoHotkey waits for the reply); the work happens right after.
         Application.Current.Dispatcher.InvokeAsync(() =>
         {
@@ -272,6 +280,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         var layouts = new LayoutEngine(ipc, () => LayoutEngine.Parse(Settings.DefaultLayout), Notify, gate, () => Settings);
         var windows = new WindowCommands(ipc, Notify, gate, layouts, () => Settings);
         ipc.Event += e => _ = layouts.OnEventAsync(e, ct);
+        ipc.Event += e => _ = windows.OnEventAsync(e, ct);
         ipc.Disconnected += () =>
         {
             if (Glaze != ipc) return;
@@ -297,7 +306,11 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _lastGlazeError = null;
         GlazeProblem = null;
         Log.Info(L.T("agent.glazeConnected"));
-        try { await windows.RecoverAsync(ct); }
+        try
+        {
+            await windows.RecoverAsync(ct);
+            await windows.EnforceMonitorsAsync(Settings.WorkspaceMonitors, ct);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Recover: " + Net.Describe(ex)); }
         await RefreshStatusAsync(ct);
     }
@@ -353,6 +366,12 @@ public sealed class AgentHost : IAgentHost, IDisposable
     {
         _gapsOff = false;
         await AppModel.Engine.ApplyTilingAsync(_cts.Token);
+        // Workspaces already open on the wrong screen move to the one they are now pinned to.
+        if (_windows is { } windows)
+        {
+            try { await windows.EnforceMonitorsAsync(Settings.WorkspaceMonitors, _cts.Token); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { Log.Warn(L.T("tiling.monitorsFailed", ("detail", Net.Describe(ex)))); }
+        }
         _taskbarShownByUser = false;
         EnforceTaskbar();
         var running = Core.Services.Components.IsRunning("zebar");
@@ -512,6 +531,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
                 await Task.Delay(250, _cts.Token);
                 var h = new IntPtr(handle);
                 if (!IsIconic(h) || !IsWindowVisible(h) || !await windows.ManagesAsync(handle, _cts.Token)) return;
+                Log.Trace($"minimize blocked: hwnd {handle}", "agent");
                 ShowWindow(h, SW_RESTORE);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Minimize: " + Net.Describe(ex)); }

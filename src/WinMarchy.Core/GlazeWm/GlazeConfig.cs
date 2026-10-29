@@ -199,10 +199,12 @@ public static class GlazeConfig
     /// through WinMarchy.exe --action (GlazeWM cannot send keys or show menus).
     /// </summary>
     public static List<(IReadOnlyList<string> Commands, string Binding, string Comment)> Keybindings(
-        HotkeySet set, IKeyboardLayout layout, string winMarchyExe, IReadOnlyCollection<string>? leaveAlone = null)
+        HotkeySet set, IKeyboardLayout layout, string winMarchyExe, IReadOnlyCollection<string>? leaveAlone = null,
+        IReadOnlyList<HotkeyBinding>? extra = null)
     {
         var list = new List<(IReadOnlyList<string>, string, string)>();
-        foreach (var b in set.Active)
+        var taken = set.Active.Select(b => b.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var b in set.Active.Concat(extra?.Where(x => !taken.Contains(x.Keys)) ?? Enumerable.Empty<HotkeyBinding>()))
         {
             if (b.Combo is not { } combo || b.Action is not { } action) continue;
             if (leaveAlone?.Contains(combo.ToString()) == true) continue;

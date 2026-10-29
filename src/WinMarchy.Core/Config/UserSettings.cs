@@ -84,13 +84,17 @@ public sealed class UserSettings
     /// <summary>What the bar shows, by module id (see ZebarPack.Modules). Missing: the default.</summary>
     public Dictionary<string, bool> BarModules { get; set; } = new();
 
+    /// <summary>Tray icons that stay in sight while the tray is folded away (part of their name).</summary>
+    public List<string> BarTrayPinned { get; set; } = new();
+
     /// <summary>Settings file of the Files app, if it is not found automatically.</summary>
     public string? FilesSettingsPath { get; set; }
 
-    /// <summary>Script behind the personal "Win+Ctrl+Shift+T" binding (bindings.lua: Defender token login).</summary>
-    public string? PersonalScriptPath { get; set; }
 
     public bool AutoUpdate { get; set; } = true;
+
+    /// <summary>Log page: every shortcut and GlazeWM command goes into the log, for finding faults.</summary>
+    public bool VerboseLog { get; set; }
 
     /// <summary>Program paths that override detection (key: tool id).</summary>
     public Dictionary<string, string> ToolPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);

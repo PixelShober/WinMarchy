@@ -231,7 +231,7 @@
       "open": "Zum Beispiel ms-settings:display, mailto: oder spotify:.",
       "send": "Tasten, die an das Fenster vorne gehen, z. B. Ctrl+Shift+T.",
       "do": "Menüs, Layouts, Scratchpad und andere Funktionen von WinMarchy.",
-      "run": "Pfad zu einem Skript oder Programm. %personal-script% steht für dein Skript aus den Einstellungen."
+      "run": "Pfad zu einem Skript oder Programm."
     },
     "edit": {
       "newTitle": "Neues Kürzel",
@@ -268,12 +268,26 @@
     "exportFile": "winmarchy-tastenkuerzel",
     "exported": "Gesichert unter {path}.",
     "import": "Importieren",
-    "importTip": "Eine exportierte Datei laden. Deine jetzigen Kürzel kommen vorher in einen Sicherungspunkt.",
+    "importTip": "WinMarchy-Export, Omarchys bindings.lua oder Hyprlands bindings.conf laden und auswählen, was du übernimmst.",
     "importFailed": "Der Import ging nicht: {detail}",
     "savedAndApplied": "Gespeichert und aktiv.",
     "savedWithProblems": "Gespeichert, aber noch nicht aktiv: ein Kürzel hat einen Fehler (siehe oben).",
     "starTip": "Als Favorit markieren: Win+K zeigt es oben",
-    "unstarTip": "Kein Favorit mehr: Win+K zeigt es unter „Optional“"
+    "unstarTip": "Kein Favorit mehr: Win+K zeigt es unter „Optional“",
+    "greenshotRegion": "Bildschirmfoto (Greenshot)",
+    "importFilter": "Tastenkürzel (*.json;*.lua;*.conf)|*.json;*.lua;*.conf|Alle Dateien (*.*)|*.*",
+    "importTitle": "{count} Kürzel in {file}",
+    "importText": "Angehakt ist, was neu ist und keine belegte Taste nimmt. Linux-Befehle übersetzt WinMarchy, wo Windows dasselbe kann: Web-Apps, Spotify-Links, bekannte Programme.",
+    "importAll": "Alle",
+    "importNone": "Keine",
+    "importApply": "Ausgewählte übernehmen",
+    "importEmpty": "In der Datei steht kein Tastenkürzel, das WinMarchy lesen kann.",
+    "importExtras": "Auch Favoriten und abgeschaltete Kürzel aus der Datei übernehmen ({count})",
+    "importNoCounterpart": "Unter Windows gibt es dafür kein Gegenstück.",
+    "importBadKeys": "„{keys}“ ist keine Tastenkombination, die Windows kennt.",
+    "importReplaces": "Ersetzt „{label}“ · {action}",
+    "importSame": "Ist schon so eingestellt.",
+    "imported": "{count} Tastenkürzel importiert."
   },
 
   "apps": {
@@ -349,7 +363,7 @@
     "subtitle": "Wie GlazeWM deine Fenster anordnet. Wie in Omarchy hat jeder Workspace sein eigenes Layout.",
     "defaultLayout": "Standard-Layout",
     "defaultLayoutText": "Gilt für neue Workspaces. Win+Alt+L schaltet den Workspace, auf dem du gerade bist, weiter: Dwindle, Spalten, Scrolling.",
-    "scrollingNote": "Scrolling stellt die Fenster als Spalten in eine Reihe, die breiter sein darf als der Bildschirm. Win+Pfeil links und rechts scrollt, Win+Umschalt+Pfeil verschiebt die Spalte. GlazeWM kann das nicht selbst, darum setzt WinMarchy diese Fenster (sie schweben dafür).",
+    "scrollingNote": "Scrolling stellt die Fenster als Spalten in eine Reihe, die breiter sein darf als der Bildschirm. Win+Pfeil links und rechts scrollt, Win+Umschalt+Pfeil verschiebt die Spalte. Spalten außerhalb des Bildschirms warten unsichtbar, bis die Reihe zu ihnen rollt. GlazeWM kann das nicht selbst, darum setzt WinMarchy diese Fenster (sie schweben dafür).",
     "workspaces": "Workspaces",
     "refresh": "Aktualisieren",
     "workspaceRow": "Workspace {name} · {count} Fenster",
@@ -394,7 +408,10 @@
     "monitorAppNone": "Win+Strg+D startet nichts",
     "monitorAppPrefix": "Win+Strg+D startet",
     "monitorAppHint": "Startet bei Win+Strg+D auf dem neuen Workspace dieses Bildschirms.",
-    "desktopAppLate": "{action} hat nach 12 Sekunden noch kein Fenster gezeigt; vorgesehen war Workspace {workspace}."
+    "desktopAppLate": "{action} hat nach 12 Sekunden noch kein Fenster gezeigt; vorgesehen war Workspace {workspace}.",
+    "monitorsFailed": "Workspaces ließen sich nicht auf ihre Bildschirme verschieben: {detail}",
+    "trayPinned": "Im Infobereich immer sichtbar",
+    "trayPinnedHint": "Teil des Namens, mit Komma getrennt, etwa Teams, OneDrive. Der Rest wartet hinter dem kleinen Pfeil; Mittelklick auf ein Symbol heftet es dort an."
   },
 
   "layouts": {
@@ -480,16 +497,8 @@
     "autoUpdateHint": "WinMarchy lädt neue Versionen von GitHub, prüft sie und tauscht sich aus, wenn das Fenster zu ist.",
     "paths": "Pfade",
     "choose": "Auswählen …",
-    "personalScript": "Persönliches Skript",
-    "personalScriptHint": "Läuft mit Win+Strg+Umschalt+T, wenn das Profil Persönlich an ist. PowerShell-Skripte laufen unter der Ausführungsrichtlinie des Rechners.",
-    "scriptFilter": "Skripte (*.ps1;*.cmd;*.bat;*.exe)|*.ps1;*.cmd;*.bat;*.exe|Alle Dateien|*.*",
     "filesPath": "Einstellungsdatei von Files",
     "filesPathHint": "Nur nötig, wenn WinMarchy die Datei nicht selbst findet.",
-    "herdr": "Herdr ohne Internet",
-    "herdrInstall": "Aus ZIP installieren …",
-    "herdrFound": "Gefunden: {path}",
-    "herdrMissing": "Nicht installiert. Unter Einrichtung → Optionale Extras lädt WinMarchy Herdr selbst. Ohne Internet geht es hier mit der ZIP von herdr.dev.",
-    "herdrDone": "Herdr ist installiert.",
     "folders": "Ordner",
     "folder": {
       "root": "WinMarchy",
@@ -543,7 +552,15 @@
     "policies": "Richtlinien prüfen",
     "policiesHint": "Sucht Gruppenrichtlinien und Intune-Vorgaben, die WinMarchy überstimmen.",
     "policiesTitle": "Richtlinien auf diesem PC",
-    "policiesReport": "Bericht öffnen"
+    "policiesReport": "Bericht öffnen",
+    "diagnose": "Diagnosebericht",
+    "diagnoseHint": "Schreibt in eine Datei, was WinMarchy gerade sieht: GlazeWM, Bildschirme, Flow, Taskleiste, Leiste, Tastenkürzel. Ohne Fenstertitel.",
+    "diagnoseFile": "diagnose",
+    "diagnoseWritten": "Diagnosebericht geschrieben: {path}",
+    "verbose": "Ausführlich protokollieren",
+    "verboseHint": "Für die Fehlersuche: jedes Tastenkürzel, jeder GlazeWM-Befehl und was Flow, Taskleiste, Scratchpad, Scrolling und Win+Strg+D tun. Zu sehen unter „Alles“. Danach wieder ausschalten, es wird viel.",
+    "verboseOn": "Ausführliches Protokoll ist an.",
+    "verboseOff": "Ausführliches Protokoll ist aus."
   },
 
   "jobs": {
@@ -697,7 +714,9 @@
       "cpu": "CPU",
       "memory": "Arbeitsspeicher",
       "battery": "Akku"
-    }
+    },
+    "trayOpen": "Alle Symbole im Infobereich zeigen. Mittelklick auf ein Symbol heftet es an.",
+    "trayClose": "Infobereich einklappen"
   },
 
   "actions": {
@@ -707,7 +726,7 @@
     "flowMissing": "Flow Launcher fehlt. Unter Einrichtung lässt er sich nachinstallieren.",
     "glazeMissing": "GlazeWM fehlt. Unter Einrichtung lässt es sich nachinstallieren.",
     "glazeNotRunning": "Dafür muss GlazeWM laufen.",
-    "scriptMissing": "Kein persönliches Skript eingetragen, oder die Datei fehlt. Siehe Einstellungen.",
+    "scriptMissing": "Die Datei hinter diesem Kürzel fehlt.",
     "scale": "Anzeige: {percent} %",
     "scaleFailed": "Die Skalierung ließ sich nicht ändern.",
     "noBattery": "Kein Akku gefunden.",
@@ -863,7 +882,9 @@
       "addOwn": "Eigenes Bild hinzufügen …"
     },
     "keybindingsOptional": "Optional",
-    "sectionApps": "Programme"
+    "sectionApps": "Programme",
+    "keybindingsFavorites": "Favoriten",
+    "keybindingsOthers": "Alle anderen"
   },
 
   "install": {
@@ -909,7 +930,6 @@
     "glazeCommandFailed": "GlazeWM hat den Befehl abgelehnt: {detail}",
     "glazeMissing": "GlazeWM ist nicht installiert.",
     "glazeNotConnected": "Keine Verbindung zu GlazeWM.",
-    "herdrZipInvalid": "In der ZIP muss genau eine herdr.exe liegen.",
     "hotkeysInvalid": "Einige Kürzel sind ungültig: {detail}",
     "installerFailed": "Der Installer von {tool} endete mit Code {code}.",
     "jobRunning": "„{title}“ läuft schon.",
@@ -959,7 +979,7 @@
       "appLocker": "AppLocker ist eingerichtet. Programme unter C:\\WinMarchy\\Tools brauchen eventuell eine Freigabe.",
       "srp": "Richtlinien für Softwareeinschränkung sind aktiv. Programme unter C:\\WinMarchy\\Tools können blockiert sein.",
       "runIgnored": "Autostart-Einträge des Benutzers werden ignoriert.",
-      "scriptHost": "Windows Script Host ist aus. Startmenü- und Autostart-Verknüpfungen lassen sich nicht anlegen.",
+      "scriptHost": "Windows Script Host ist aus. WinMarchy braucht ihn nicht; Verknüpfungen legt es ohne ihn an.",
       "powershell": "PowerShell-Skripte laufen nur nach der Richtlinie „{value}“.",
       "cmd": "Die Eingabeaufforderung ist gesperrt.",
       "lockWorkstation": "Sperren ist abgeschaltet. Win+Strg+L tut nichts.",

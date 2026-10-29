@@ -4,8 +4,9 @@ namespace WinMarchy.Core.Hotkeys;
 
 /// <summary>What the generated AutoHotkey script needs to know about this machine.</summary>
 /// <param name="LeaveAlone">Keys another program owns (Greenshot's Print keys), normalized: no hotkey for them.</param>
+/// <param name="Extra">Shortcuts a setting adds when their keys are free (Greenshot takes Win+Shift+S).</param>
 public sealed record AhkContext(string WinMarchyExe, string GlazeCli, bool WinKeyOpensLauncher, string LauncherKeys = "!{F24}",
-    IReadOnlyCollection<string>? LeaveAlone = null);
+    IReadOnlyCollection<string>? LeaveAlone = null, IReadOnlyList<HotkeyBinding>? Extra = null);
 
 /// <summary>
 /// Generates the AutoHotkey v2 script from the active shortcuts. Only fixed function calls with quoted
@@ -36,7 +37,8 @@ public static class AhkScript
             sb.AppendLine("Hotkey(\"~LWin Up\", WinUp)");
         }
 
-        foreach (var b in set.Active)
+        var taken = set.Active.Select(b => b.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var b in set.Active.Concat(ctx.Extra?.Where(x => !taken.Contains(x.Keys)) ?? Enumerable.Empty<HotkeyBinding>()))
         {
             if (b.Combo is not { } combo || b.Action is not { } action) continue;
             if (ctx.LeaveAlone?.Contains(combo.ToString()) == true) continue;

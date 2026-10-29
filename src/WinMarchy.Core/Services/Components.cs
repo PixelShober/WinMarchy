@@ -53,7 +53,13 @@ public sealed class Components
     /// <summary>Starts Flow Launcher if it is installed and not running. True if it was started.</summary>
     public bool StartFlow()
     {
-        if (IsRunning("Flow.Launcher") || Status(ToolCatalog.Flow).Path is not { } flow) return false;
+        if (IsRunning("Flow.Launcher")) return false;
+        if (Status(ToolCatalog.Flow).Path is not { } flow)
+        {
+            Log.Trace("flow: not installed", "flow");
+            return false;
+        }
+        Log.Trace("flow: starting " + flow, "flow");
         return Platform.AppLauncher.Start(flow);
     }
 

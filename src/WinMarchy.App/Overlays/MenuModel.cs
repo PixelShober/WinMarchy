@@ -17,6 +17,8 @@ sealed record MenuEntry(string Icon, string Label)
     public bool Current { get; init; }
     /// <summary>A section title between rows; never selected.</summary>
     public bool Header { get; init; }
+    /// <summary>Opens WinMarchy's own window: run before the menu closes, not after.</summary>
+    public bool OwnWindow { get; init; }
 
     public static MenuEntry Section(string title) => new("", title) { Header = true };
 }
@@ -35,6 +37,9 @@ static class MenuModel
     static MenuEntry Item(string icon, string key, string action) => new(icon, L.T("menu." + key)) { Action = action };
     static MenuEntry Sub(string icon, string key, string menu) => new(icon, L.T("menu." + key)) { Menu = menu };
     static MenuEntry Do(string icon, string key, Action run) => new(icon, L.T("menu." + key)) { Run = run };
+
+    /// <summary>A page of WinMarchy's window. It opens while the menu still has the focus, so Windows lets it come to the front.</summary>
+    static MenuEntry Page(string icon, string key, string page) => new(icon, L.T("menu." + key)) { Run = () => OpenPage(page), OwnWindow = true };
 
     static void OpenPage(string page) => App.ShowMain(page);
 
@@ -89,13 +94,13 @@ static class MenuModel
             Do("image", "style.background", MenuWindow.ShowWallpapers),
             Item("refresh", "style.nextBackground", "do:wallpaper-next"),
             Item("bar", "style.bar", "do:bar-toggle"),
-            Do("tiling", "style.windows", () => OpenPage("tiling")),
-            Do("themes", "style.winmarchy", () => OpenPage("themes")),
+            Page("tiling", "style.windows", "tiling"),
+            Page("themes", "style.winmarchy", "themes"),
         },
         "setup" => new[]
         {
-            Do("settings", "setup.winmarchy", () => OpenPage("start")),
-            Do("keyboard", "setup.keybindings", () => OpenPage("hotkeys")),
+            Page("settings", "setup.winmarchy", "start"),
+            Page("keyboard", "setup.keybindings", "hotkeys"),
             Item("monitor", "setup.displays", "open:ms-settings:display"),
             Item("keyboard", "setup.input", "open:ms-settings:keyboard"),
             Item("wifi", "setup.network", "open:ms-settings:network"),
@@ -125,9 +130,9 @@ static class MenuModel
             Sub("play", "root.trigger", "trigger"),
             Sub("themes", "root.style", "style"),
             Sub("settings", "root.setup", "setup"),
-            Do("undo", "root.restore", () => OpenPage("restore")),
+            Page("undo", "root.restore", "restore"),
             Sub("download", "root.update", "update"),
-            Do("info", "root.about", () => OpenPage("start")),
+            Page("info", "root.about", "start"),
             Sub("power", "root.system", "system"),
         },
     };

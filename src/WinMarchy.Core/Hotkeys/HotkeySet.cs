@@ -93,7 +93,8 @@ public sealed class HotkeySet
                     continue;
                 }
                 b.Keys = combo.ToString();
-                b.Favorite = starred.TryGetValue(b.Keys, out var star) ? star : !b.Optional;
+                // Only what the user starred; out of the box there are no favourites.
+                b.Favorite = starred.TryGetValue(b.Keys, out var star) && star;
                 if (combo.ReservedReason() is { } reserved)
                 {
                     problems.Add(new HotkeyProblem(b.Keys, reserved, true));

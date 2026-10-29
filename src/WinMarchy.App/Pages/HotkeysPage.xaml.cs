@@ -157,7 +157,8 @@ public partial class HotkeysPage : UserControl, IPage
         System.Windows.Automation.AutomationProperties.SetName(star, (string)star.ToolTip);
         star.Click += (_, _) =>
         {
-            _custom.Favorites[b.Keys] = !b.Favorite;
+            foreach (var k in _custom.Favorites.Keys.Where(k => Normalize(k) == b.Keys).ToList()) _custom.Favorites.Remove(k);
+            if (!b.Favorite) _custom.Favorites[b.Keys] = true;
             _custom.Save(Paths.HotkeysFile);
             Reload();
         };
@@ -227,17 +228,105 @@ public partial class HotkeysPage : UserControl, IPage
         }
     }
 
-    /// <summary>Replaces the own shortcuts with an exported file; the old file goes into a restore point first.</summary>
+    // ------------------------------------------------------------------ import
+
+    readonly List<(CheckBox Box, ImportCandidate Candidate)> _importRows = new();
+    CustomHotkeys? _importExport;
+
+    /// <summary>
+    /// A WinMarchy export, Omarchy's bindings.lua or Hyprland's bindings.conf: the shortcuts in it are
+    /// listed with a tick box each, and only the ticked ones are taken over.
+    /// </summary>
     void OnImport(object sender, RoutedEventArgs e)
     {
-        var d = new Microsoft.Win32.OpenFileDialog { Title = L.T("hotkeys.import"), Filter = "JSON (*.json)|*.json" };
-        if (d.ShowDialog(Window.GetWindow(this)) != true) return;
+        var d = new Microsoft.Win32.OpenFileDialog { Title = L.T("hotkeys.import"), Filter = L.T("hotkeys.importFilter") };
+        if (d.ShowDialog(Window.GetWindow(this)) != true || _set == null) return;
         try
         {
-            var imported = CustomHotkeys.Import(d.FileName);
+            var result = HotkeyImport.Read(d.FileName, _set);
+            ShowImport(Path.GetFileName(d.FileName), result);
+        }
+        catch (Exception ex)
+        {
+            Toasts.Show(ToastKind.Error, L.T("hotkeys.importFailed", ("detail", Net.Describe(ex))));
+        }
+    }
+
+    void ShowImport(string fileName, ImportResult result)
+    {
+        _importRows.Clear();
+        ImportList.Children.Clear();
+        _importExport = result.Export;
+        ImportTitle.Text = L.T("hotkeys.importTitle", ("file", fileName), ("count", result.Candidates.Count));
+        var layout = KeyboardLayouts.Current;
+        foreach (var c in result.Candidates.OrderBy(c => c.Problem != null).ThenBy(c => c.Same))
+        {
+            var grid = new Grid { Margin = new Thickness(0, 4, 0, 4) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var keys = KeyCombo.TryParse(c.Keys, out var combo, out _) ? UiKit.Keycaps(combo.Display(layout)) : (FrameworkElement)UiKit.Text(c.Keys, "Small");
+            grid.Children.Add(keys);
+            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            text.Children.Add(UiKit.Text(c.Label));
+            var note = c.Problem ?? (c.Same ? L.T("hotkeys.importSame") : c.Replaces != null ? L.T("hotkeys.importReplaces", ("label", c.Replaces), ("action", c.Do)) : c.Do);
+            var small = UiKit.Text(note, "Small");
+            small.TextWrapping = TextWrapping.Wrap;
+            if (c.Problem != null) small.SetResourceReference(TextBlock.ForegroundProperty, "Warn");
+            text.Children.Add(small);
+            Grid.SetColumn(text, 1);
+            grid.Children.Add(text);
+            var box = new CheckBox { Content = grid, IsChecked = c.Suggested, IsEnabled = c.Problem == null && !c.Same, Margin = new Thickness(0, 2, 0, 2) };
+            _importRows.Add((box, c));
+            ImportList.Children.Add(box);
+        }
+        if (result.Candidates.Count == 0) ImportList.Children.Add(UiKit.Text(L.T("hotkeys.importEmpty"), "Muted"));
+        var extras = (result.Export?.Favorites.Count ?? 0) + (result.Export?.Disabled.Count ?? 0);
+        ImportExtras.Visibility = extras > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ImportExtras.Content = L.T("hotkeys.importExtras", ("count", extras));
+        ImportExtras.IsChecked = true;
+        ImportCard.Visibility = Visibility.Visible;
+        Motion.FadeIn(ImportCard, 6);
+    }
+
+    void OnImportAll(object sender, RoutedEventArgs e)
+    {
+        foreach (var (box, _) in _importRows) if (box.IsEnabled) box.IsChecked = true;
+    }
+
+    void OnImportNone(object sender, RoutedEventArgs e)
+    {
+        foreach (var (box, _) in _importRows) box.IsChecked = false;
+    }
+
+    void OnImportCancel(object sender, RoutedEventArgs e) => ImportCard.Visibility = Visibility.Collapsed;
+
+    /// <summary>The ticked shortcuts become own shortcuts (same keys: the new one wins); the old file goes into a restore point first.</summary>
+    void OnImportApply(object sender, RoutedEventArgs e)
+    {
+        var chosen = _importRows.Where(r => r.Box.IsChecked == true).Select(r => r.Candidate).ToList();
+        bool extras = ImportExtras.Visibility == Visibility.Visible && ImportExtras.IsChecked == true && _importExport != null;
+        if (chosen.Count == 0 && !extras)
+        {
+            ImportCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+        try
+        {
             var point = AppModel.Engine.Backups.Begin("hotkeys", L.T("jobs.hotkeysImport"));
             AppModel.Engine.Backups.CaptureFile(point, Paths.HotkeysFile);
-            _custom = imported;
+            foreach (var c in chosen)
+            {
+                _custom.Bindings.RemoveAll(b => Normalize(b.Keys) == c.Keys);
+                _custom.Disabled.RemoveAll(k => Normalize(k) == c.Keys);
+                _custom.Bindings.Add(c.ToBinding());
+            }
+            if (extras)
+            {
+                foreach (var (keys, on) in _importExport!.Favorites) _custom.Favorites[keys] = on;
+                foreach (var keys in _importExport.Disabled.Where(k => !_custom.Disabled.Contains(k))) _custom.Disabled.Add(keys);
+            }
+            ImportCard.Visibility = Visibility.Collapsed;
+            Log.Info(L.T("hotkeys.imported", ("count", chosen.Count)));
             SaveCustom();
         }
         catch (Exception ex)

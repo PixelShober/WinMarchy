@@ -46,7 +46,8 @@ public sealed class ActionRunner
             Log.Warn(L.T("actions.rejected", ("action", text), ("detail", error)));
             return;
         }
-        Log.Debug("action " + action);
+        var clock = Stopwatch.StartNew();
+        Log.Trace("action " + action, "action");
         try
         {
             switch (action.Kind)
@@ -63,6 +64,10 @@ public sealed class ActionRunner
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Warn(L.T("actions.failed", ("action", text), ("detail", Net.Describe(ex))));
+        }
+        finally
+        {
+            Log.Trace($"action {action} done in {clock.ElapsedMilliseconds} ms", "action");
         }
     }
 
@@ -124,7 +129,7 @@ public sealed class ActionRunner
 
     void Run(string value)
     {
-        var path = value.Replace("%personal-script%", _host.Settings.PersonalScriptPath ?? "", StringComparison.OrdinalIgnoreCase).Trim();
+        var path = value.Trim();
         if (path.Length == 0 || !File.Exists(Environment.ExpandEnvironmentVariables(path)))
         {
             _host.Notify(L.T("actions.scriptMissing"));
@@ -179,6 +184,7 @@ public sealed class ActionRunner
     {
         if (_host.Glaze is not { Connected: true } || _host.Layouts is not { } layouts || _host.Windows is not { } windows)
         {
+            Log.Trace($"{command}: no GlazeWM connection", "action");
             _host.Notify(L.T("actions.glazeNotRunning"));
             return;
         }
@@ -226,10 +232,13 @@ public sealed class ActionRunner
     {
         var s = _host.Settings;
         var opened = await windows.NewDesktopAsync(GlazeConfig.WorkspaceCount, s.WorkspaceMonitors, ct);
+        Log.Trace("desktop-new: opened " + string.Join(", ", opened.Select(o => $"monitor {o.Monitor} → {o.Workspace}")) +
+                  "; apps " + string.Join(", ", s.DesktopApps.Select(p => $"{p.Key}={p.Value}")), "desktop");
         foreach (var (monitor, workspace) in opened)
         {
             if (!s.DesktopApps.TryGetValue(monitor.ToString(), out var action) || !HotkeyAction.TryParse(action, out var a, out _) ||
                 a.Kind is not (ActionKind.App or ActionKind.Web)) continue;
+            Log.Trace($"desktop-new: starting {action} for workspace {workspace}", "desktop");
             if (!await windows.CatchNextWindowAsync(workspace, () => _ = RunAsync(action, ct), TimeSpan.FromSeconds(12), ct))
                 Log.Info(L.T("tiling.desktopAppLate", ("action", action), ("workspace", workspace)));
         }

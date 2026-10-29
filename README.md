@@ -56,7 +56,7 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 | Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
 | Greenshot | Bildschirmfotos mit Editor, statt Snipping Tool (umschaltbar unter **Einstellungen**) | GPL-3.0 |
 
-Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Files lässt sich unter **Einstellungen** als Standard-Dateimanager festlegen: Ordner, Laufwerke und Win+E öffnen dann Files, Dieser PC und Papierkorb bleiben beim Explorer. Ohne Internet nimmt **Einstellungen** Herdr auch aus der ZIP von herdr.dev.
+Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Files lässt sich unter **Einstellungen** als Standard-Dateimanager festlegen: Ordner, Laufwerke und Win+E öffnen dann Files, Dieser PC und Papierkorb bleiben beim Explorer.
 
 Alle Programme dürfen kostenlos in Firmen eingesetzt werden. Komorebi war deshalb keine Option: Für den geschäftlichen Einsatz braucht es eine kostenpflichtige Lizenz.
 
@@ -97,7 +97,7 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+Strg+Alt+Space` | Hintergrund wählen, auch eigene Bilder |
 | `Druck` | Bildschirmfoto mit Snipping Tool oder Greenshot |
 
-Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Wie die Layouts Dwindle, Scrolling und Floating auf GlazeWM abgebildet sind, erklärt [docs/tiling.md](docs/tiling.md).
+Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Eine `bindings.lua`, Hyprland-`bindings.conf` oder einen WinMarchy-Export liest **Tastenkürzel → Importieren**; du wählst dann aus, was du übernimmst. Wie die Layouts Dwindle, Scrolling und Floating auf GlazeWM abgebildet sind, erklärt [docs/tiling.md](docs/tiling.md).
 
 ## Rückgängig machen
 
@@ -106,6 +106,17 @@ Vor jedem Vorgang (Einrichtung, Theme, Tastenkürzel, Tiling, Files als Standard
 Greift eine Gruppenrichtlinie oder Intune ein (Hintergrund, Sperrbildschirm, Farben, AppLocker, Skripte), zeigt das **Protokoll → Richtlinien prüfen**. Die Liste landet auch als Bericht in `C:\WinMarchy\Logs`.
 
 **Alles zurücksetzen** stellt diesen Originalzustand her, beendet Leiste und Tastenkürzel-Skript, holt die Taskleiste zurück und entfernt auf Wunsch die Programme unter `C:\WinMarchy\Tools`.
+
+## Fehler suchen
+
+Tut ein Kürzel nichts oder startet etwas nicht, hilft die Seite **Protokoll**:
+
+1. **Ausführlich protokollieren** einschalten. Ab dann steht unter „Alles“ jedes Tastenkürzel, das ankommt, jeder Befehl an GlazeWM mit Dauer und Antwort, und was Flow, Taskleiste, Scratchpad, Scrolling, Bildschirm-Zuordnung und `Win+Strg+D` gerade tun.
+2. Den Fehler nachstellen.
+3. **Diagnosebericht** drücken. Er landet als Textdatei in `C:\WinMarchy\Logs` und zeigt, was WinMarchy sieht: laufende Programme, Bildschirme, GlazeWMs Monitore, Workspaces und Fenster (ohne Titel), die erzeugten Tastenkürzel, Flows Einstellungen und letzte Protokollzeilen, Taskleiste und Leiste.
+4. Danach den Schalter wieder ausschalten, das Protokoll wird sonst schnell lang.
+
+Fenstertitel, Passwörter und Inhalte schreibt WinMarchy in beides nicht.
 
 ## Für Entwickler
 

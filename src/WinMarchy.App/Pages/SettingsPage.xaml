@@ -102,23 +102,12 @@
     <Border Style="{StaticResource Card}" Margin="0,20,0,0">
       <StackPanel>
         <TextBlock Text="{ui:T settings.paths}" Style="{StaticResource H2}" Margin="0,0,0,14" />
-        <TextBlock Text="{ui:T settings.personalScript}" Style="{StaticResource H3}" Margin="0,0,0,4" />
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Content="{ui:T settings.choose}" Click="OnChooseScript" Margin="8,0,0,0" />
-          <TextBox x:Name="ScriptPath" Style="{StaticResource MonoBox}" LostFocus="OnPathsChanged" />
-        </DockPanel>
-        <TextBlock Text="{ui:T settings.personalScriptHint}" Style="{StaticResource Small}" Margin="0,4,0,16" />
         <TextBlock Text="{ui:T settings.filesPath}" Style="{StaticResource H3}" Margin="0,0,0,4" />
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="{ui:T settings.choose}" Click="OnChooseFiles" Margin="8,0,0,0" />
           <TextBox x:Name="FilesPath" Style="{StaticResource MonoBox}" LostFocus="OnPathsChanged" />
         </DockPanel>
-        <TextBlock Text="{ui:T settings.filesPathHint}" Style="{StaticResource Small}" Margin="0,4,0,16" />
-        <TextBlock Text="{ui:T settings.herdr}" Style="{StaticResource H3}" Margin="0,0,0,4" />
-        <StackPanel Orientation="Horizontal">
-          <Button Content="{ui:T settings.herdrInstall}" Click="OnHerdr" />
-          <TextBlock x:Name="HerdrState" Style="{StaticResource Small}" VerticalAlignment="Center" Margin="12,0,0,0" />
-        </StackPanel>
+        <TextBlock Text="{ui:T settings.filesPathHint}" Style="{StaticResource Small}" Margin="0,4,0,0" />
       </StackPanel>
     </Border>
 

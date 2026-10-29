@@ -14,7 +14,7 @@ Hyprlands Dwindle teilt jedes neue Fenster entlang der längeren Seite des fokus
 
 Unterschied zu Hyprland: Die Teilung folgt dem Fokus, nicht der Mausposition.
 
-`Win+J` dreht die Teilung wie in Omarchy sofort: Zwei Fenster nebeneinander stehen danach übereinander und umgekehrt. GlazeWMs eigener Befehl `toggle-tiling-direction` legt nur fest, wohin das nächste Fenster kommt, und man sieht nichts. WinMarchy packt deshalb das Nachbarfenster in einen eigenen Container mit der anderen Richtung und schiebt das fokussierte dazu. Bei tief verschachtelten Teilungen geht das nicht; dann gilt die Drehung fürs nächste Fenster, und eine Meldung sagt das. GlazeWMs Verhalten liegt weiter auf `Win+Alt+J`.
+`Win+J` dreht die Teilung wie in Omarchy sofort: Zwei Fenster nebeneinander stehen danach übereinander und umgekehrt. GlazeWMs eigener Befehl `toggle-tiling-direction` legt nur fest, wohin das nächste Fenster kommt, und man sieht nichts. WinMarchy packt deshalb das Nachbarfenster in einen eigenen Container mit der anderen Richtung, schiebt das fokussierte dazu und lässt GlazeWM danach neu zeichnen. Das ist nötig, weil GlazeWM nach einem Richtungswechsel von sich aus nichts neu anordnet. Bei tief verschachtelten Teilungen geht das nicht; dann gilt die Drehung fürs nächste Fenster, und eine Meldung sagt das. GlazeWMs Verhalten liegt weiter auf `Win+Alt+J`.
 
 ## Spalten
 
@@ -28,7 +28,7 @@ Bei Omarchys Scrolling (Hyprlands `scrolling`-Layout, Niri-Stil) stehen die Fens
 - `Win+Links` und `Win+Rechts` gehen eine Spalte weiter. Liegt sie außerhalb, rollt die Reihe um genau so viel, dass sie ganz zu sehen ist.
 - `Win+Umschalt+Links` und `Win+Umschalt+Rechts` tauschen die Spalte mit ihrer Nachbarin.
 - Ein neues Fenster kommt rechts neben das fokussierte. Ein geschlossenes hinterlässt keine Lücke.
-- Spalten außerhalb des Bildschirms warten hinter der äußersten sichtbaren; ein schmaler Streifen am Rand zeigt, dass dort noch etwas ist. Sie ragen nicht auf den Nachbarmonitor.
+- Spalten außerhalb des Bildschirms warten unsichtbar im versteckten Workspace `winmarchy-stage`, bis die Reihe zu ihnen rollt. Nichts liegt hinter einer sichtbaren Spalte und schimmert durch, nichts ragt auf den Nachbarmonitor. Welche Fenster zur Reihe gehören, merkt sich WinMarchy nach Fenster-Handle, damit wartende Spalten beim Verbinden nicht als verirrt gelten.
 
 Wechselst du auf ein anderes Layout, kommen die Fenster zurück in GlazeWMs Kacheln.
 
@@ -64,11 +64,11 @@ GlazeWM ohne Eingriff. Gut für Leute, die GlazeWM schon kennen.
 In Omarchy ist das Scratchpad ein eigener Workspace, der über dem aktuellen eingeblendet wird. WinMarchy bildet das so nach:
 
 - `Win+Alt+S` legt das fokussierte Fenster ins Scratchpad. Es verschwindet sofort und bleibt dort, auch wenn du den Workspace wechselst.
-- `Win+S` blendet alle Scratchpad-Fenster über dem aktuellen Workspace ein: in der Mitte, zusammen 80 % des Bildschirms, nebeneinander, immer oben. Die anderen Fenster bleiben, wo sie sind.
+- `Win+S` blendet alle Scratchpad-Fenster über dem aktuellen Workspace ein: in der Mitte, zusammen 80 % des Bildschirms, nebeneinander, immer oben. Sie gleiten wie in Omarchy kurz von unten herein und beim Ausblenden wieder hinaus; ist unter Windows „Animationseffekte“ aus, erscheinen sie ohne. Die anderen Fenster bleiben, wo sie sind.
 - Noch einmal `Win+S` blendet sie wieder aus. Auf einem anderen Workspace holt `Win+S` sie dorthin.
 - `Win+Pfeil` geht von einem Scratchpad-Fenster zum nächsten. Gibt es in der Richtung keines mehr, blendet sich das Scratchpad aus, und du bist wieder im Workspace.
 
-Herauslösen, so dass es wieder ein normales Fenster ist:
+Herauslösen, so dass es wieder ein normales Fenster ist (die übrigen Scratchpad-Fenster rücken danach zusammen und füllen die Fläche wieder):
 
 - `Win+Alt+S` auf einem eingeblendeten Scratchpad-Fenster setzt es zurück in die Kacheln des aktuellen Workspace.
 - `Win+Umschalt+1` … `0` schiebt es auf diesen Workspace, gekachelt.
@@ -83,6 +83,8 @@ Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces, etwa de
 - `Win+3` öffnet Workspace 3 immer auf seinem Bildschirm, egal wo du gerade bist.
 - `Win+Strg+D` nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Neue darüber hinaus gibt es nicht.
 - Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um und kommen zurück, wenn er wieder da ist.
+
+GlazeWM beachtet `bind_to_monitor` nur, wenn ein Workspace neu angelegt wird. Steht einer schon auf dem falschen Bildschirm, bleibt er dort. WinMarchy schiebt deshalb beim Verbinden und nach jedem **Übernehmen** unter Tiling jeden zugeordneten Workspace selbst auf seinen Bildschirm. Klappt das nicht, steht eine Warnung im Protokoll; mit dem ausführlichen Protokoll steht dort jeder Schritt.
 
 Ohne Eintrag nimmt ein Bildschirm, was frei ist, wie bisher.
 

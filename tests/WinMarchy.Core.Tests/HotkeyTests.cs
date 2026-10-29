@@ -101,7 +101,7 @@ public class HotkeyActionTests
     [InlineData("open:ms-settings:display")]
     [InlineData("send:Win+Period")]
     [InlineData("do:menu system")]
-    [InlineData("run:%personal-script%")]
+    [InlineData("run:C:\\Tools\\login.ps1")]
     public void Accepts_the_allowed_actions(string text) =>
         Assert.True(HotkeyAction.TryParse(text, out _, out var error), error);
 

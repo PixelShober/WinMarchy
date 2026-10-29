@@ -60,6 +60,8 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 
 .tray { display: flex; align-items: center; gap: 6px; }
 .tray img { width: 15px; height: 15px; cursor: pointer; display: block; }
+.tray-toggle { color: var(--muted); padding: 0 2px; font-size: 14px; }
+.tray-toggle:hover { color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

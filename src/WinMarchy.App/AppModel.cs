@@ -27,6 +27,7 @@ public static class AppModel
     public static void Initialize(IImageConverter images)
     {
         _settings = UserSettings.Load();
+        Log.Verbose = _settings.VerboseLog;
         var wallpaper = OperatingSystem.IsWindows() ? new WindowsWallpaper() : null;
         var backups = new BackupStore(Paths.BackupDir, UserRegistry.Current, wallpaper)
         {
@@ -42,6 +43,7 @@ public static class AppModel
     public static void Save(UserSettings s)
     {
         _settings = s;
+        Log.Verbose = s.VerboseLog;
         s.Save();
         Application.Current?.Dispatcher.InvokeAsync(() =>
         {

@@ -25,6 +25,18 @@ public static class Log
     public static string CurrentFile => Path.Combine(Paths.LogDir, $"winmarchy-{DateTime.Now:yyyy-MM-dd}.log");
 
     public static void Debug(string message, string source = "winmarchy") => Write(LogLevel.Debug, message, source);
+
+    /// <summary>
+    /// "Ausführlich protokollieren" on the Log page: every shortcut, every GlazeWM command and what
+    /// Flow, the taskbar and the window functions decided. Off by default, it is a lot.
+    /// </summary>
+    public static bool Verbose { get; set; }
+
+    /// <summary>A line for the search for a fault; written only while <see cref="Verbose"/> is on.</summary>
+    public static void Trace(string message, string source = "trace")
+    {
+        if (Verbose) Write(LogLevel.Debug, message, source);
+    }
     public static void Info(string message, string source = "winmarchy") => Write(LogLevel.Info, message, source);
     public static void Warn(string message, string source = "winmarchy") => Write(LogLevel.Warning, message, source);
     public static void Error(string message, string source = "winmarchy") => Write(LogLevel.Error, message, source);

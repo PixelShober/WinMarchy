@@ -77,7 +77,8 @@ function renderWorkspaces(glaze) {
   box.replaceChildren();
   if (!glaze) return;
   for (const ws of glaze.currentWorkspaces) {
-    if (ws.name === 'scratchpad') continue;
+    // The scratchpad and WinMarchy's staging area are hidden workspaces.
+    if (ws.name === 'scratchpad' || ws.name === 'winmarchy-stage') continue;
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'workspace' + (ws.hasFocus ? ' focused' : '') + (ws.isDisplayed ? ' displayed' : '');
@@ -90,18 +91,72 @@ function renderWorkspaces(glaze) {
   dir.title = glaze.isPaused ? config.text.paused : config.text.direction;
 }
 
+// The tray as in Omarchy's Waybar: folded away behind a small arrow. Only the icons you pinned
+// stay in sight; the arrow shows all of them. Middle click on an icon pins or unpins it (kept in
+// the bar's own storage), WinMarchy's settings can name more. The same program is listed once, and
+// network, sound and battery are left out when the bar shows them itself.
+const trayState = { open: false };
+const pinKey = 'winmarchy.tray.pinned';
+const savedPins = () => { try { return JSON.parse(localStorage.getItem(pinKey) ?? '[]'); } catch { return []; } };
+const iconName = (icon) => (icon.tooltip ?? '').split('\n')[0].trim().toLowerCase() || icon.iconHash;
+const systemIcon = {
+  network: /netzwerk|internetzugriff|network|wi-?fi|wlan|ethernet/i,
+  audio: /lautsprecher|kopfhörer|lautstärke|speakers|headphones|volume/i,
+  battery: /akku|batterie|battery/i,
+};
+
+function isPinned(icon) {
+  const name = iconName(icon);
+  return savedPins().includes(name) || (config.trayPinned ?? []).some((p) => p && name.includes(p.toLowerCase()));
+}
+
+function togglePin(icon) {
+  const name = iconName(icon);
+  const pins = savedPins();
+  const next = pins.includes(name) ? pins.filter((p) => p !== name) : [...pins, name];
+  try { localStorage.setItem(pinKey, JSON.stringify(next)); } catch { /* storage full or off */ }
+  render();
+}
+
+function trayIcons(tray) {
+  const seen = new Set();
+  return tray.icons.filter((icon) => {
+    const key = `${iconName(icon)}|${icon.iconHash}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return !Object.entries(systemIcon).some(([module, pattern]) => on(module) && pattern.test(icon.tooltip ?? ''));
+  });
+}
+
 function renderTray(tray) {
   const box = $('tray');
   box.replaceChildren();
   if (!tray) return;
-  for (const icon of tray.icons) {
+  const all = trayIcons(tray);
+  const shown = trayState.open ? all : all.filter(isPinned);
+  for (const icon of shown) {
     const img = document.createElement('img');
     img.src = icon.iconUrl;
     img.title = icon.tooltip ?? '';
     img.alt = '';
-    img.addEventListener('click', (e) => { e.preventDefault(); tray.onLeftClick(icon.id); });
+    img.className = isPinned(icon) ? 'pinned' : '';
+    // Some programs only react to a click after the mouse came over their icon.
+    img.addEventListener('mouseenter', () => tray.onHoverEnter(icon.id).catch(() => {}));
+    img.addEventListener('mouseleave', () => tray.onHoverLeave(icon.id).catch(() => {}));
+    img.addEventListener('click', (e) => { e.preventDefault(); tray.onHoverMove(icon.id).catch(() => {}); tray.onLeftClick(icon.id); });
+    img.addEventListener('dblclick', (e) => { e.preventDefault(); tray.onLeftDoubleClick(icon.id); });
     img.addEventListener('contextmenu', (e) => { e.preventDefault(); tray.onRightClick(icon.id); });
+    img.addEventListener('auxclick', (e) => { if (e.button === 1) { e.preventDefault(); togglePin(icon); } });
     box.append(img);
+  }
+  if (all.length > shown.length || trayState.open) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'tray-toggle';
+    more.textContent = trayState.open ? '›' : '‹';
+    more.title = trayState.open ? config.text.trayClose : config.text.trayOpen;
+    more.addEventListener('click', () => { trayState.open = !trayState.open; render(); });
+    box.prepend(more);
   }
 }
 

@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
@@ -45,10 +44,7 @@ public partial class SettingsPage : UserControl, IPage
         LanguageBox.SelectedItem = LanguageBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => string.Equals((string)i.Tag, s.Language, StringComparison.OrdinalIgnoreCase))
                                    ?? LanguageBox.Items[0];
         AutoUpdate.IsChecked = s.AutoUpdate;
-        ScriptPath.Text = s.PersonalScriptPath ?? "";
         FilesPath.Text = s.FilesSettingsPath ?? "";
-        var herdr = AppModel.Engine.Components.Status(ToolCatalog.Herdr);
-        HerdrState.Text = herdr.Installed ? L.T("settings.herdrFound", ("path", herdr.Path)) : L.T("settings.herdrMissing");
         ShowFilesDefault();
         FillBrowsers(Browser1, s.Browser);
         FillBrowsers(Browser2, s.Browser2);
@@ -212,17 +208,8 @@ public partial class SettingsPage : UserControl, IPage
         if (_loading) return;
         AppModel.Update(s =>
         {
-            s.PersonalScriptPath = ScriptPath.Text.Trim().Length > 0 ? ScriptPath.Text.Trim() : null;
             s.FilesSettingsPath = FilesPath.Text.Trim().Length > 0 ? FilesPath.Text.Trim() : null;
         });
-    }
-
-    void OnChooseScript(object sender, RoutedEventArgs e)
-    {
-        var d = new OpenFileDialog { Title = L.T("settings.personalScript"), Filter = L.T("settings.scriptFilter") };
-        if (d.ShowDialog(Window.GetWindow(this)) != true) return;
-        ScriptPath.Text = d.FileName;
-        OnPathsChanged(sender, e);
     }
 
     void OnChooseFiles(object sender, RoutedEventArgs e)
@@ -231,30 +218,5 @@ public partial class SettingsPage : UserControl, IPage
         if (d.ShowDialog(Window.GetWindow(this)) != true) return;
         FilesPath.Text = d.FileName;
         OnPathsChanged(sender, e);
-    }
-
-    /// <summary>Herdr from a zip the user downloaded (as Winarchy Lite did): checked entries, exactly one herdr.exe.</summary>
-    void OnHerdr(object sender, RoutedEventArgs e)
-    {
-        var d = new OpenFileDialog { Title = L.T("settings.herdrInstall"), Filter = "ZIP (*.zip)|*.zip" };
-        if (d.ShowDialog(Window.GetWindow(this)) != true) return;
-        try
-        {
-            using (var zip = ZipFile.OpenRead(d.FileName))
-            {
-                if (zip.Entries.Count(x => x.Name.Equals("herdr.exe", StringComparison.OrdinalIgnoreCase)) != 1)
-                    throw new WinMarchyException("herdrZipInvalid");
-            }
-            var target = ToolCatalog.Herdr.ToolDir;
-            if (Directory.Exists(target)) Directory.Delete(target, true);
-            FileSafety.ExtractZip(d.FileName, target, CancellationToken.None);
-            AppState.Update(s => { if (!s.InstalledTools.Contains("herdr")) s.InstalledTools.Add("herdr"); });
-            Toasts.Show(ToastKind.Ok, L.T("settings.herdrDone"));
-            OnShown();
-        }
-        catch (Exception ex)
-        {
-            Toasts.Show(ToastKind.Error, Net.Describe(ex));
-        }
     }
 }

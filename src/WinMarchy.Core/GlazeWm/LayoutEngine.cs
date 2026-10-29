@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace WinMarchy.Core.GlazeWm;
@@ -21,6 +20,9 @@ public enum LayoutMode { Dwindle, Columns, Floating, Manual, Scrolling }
 public sealed class LayoutStore
 {
     public Dictionary<string, LayoutMode> Workspaces { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Scrolling workspaces: their columns left to right, by window handle (survives a restart of WinMarchy).</summary>
+    public Dictionary<string, List<long>> Columns { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public static LayoutStore Load()
     {
@@ -58,23 +60,22 @@ public sealed class ScrollStrip
     }
 
     /// <summary>
-    /// Where each column goes inside the workspace area. Columns left or right of the screen wait
-    /// behind the outermost visible one, a narrow strip of them showing at the edge.
+    /// Where each column goes inside the workspace area. Columns left or right of the screen are not
+    /// placed (Visible false): they wait in a hidden workspace until the row scrolls to them, so
+    /// nothing shows through a see-through window and nothing reaches the neighbouring monitor.
     /// </summary>
-    public List<(string Id, int X, int Width, bool Visible)> Place(int x, int width, int visible, int gap, int peek)
+    public List<(string Id, int X, int Width, bool Visible)> Place(int x, int width, int visible, int gap)
     {
         var result = new List<(string, int, int, bool)>();
         int n = Ids.Count;
         if (n == 0) return result;
         visible = Math.Clamp(visible, 1, n);
         Reveal(visible);
-        int peekLeft = Start > 0 ? peek : 0, peekRight = Start + visible < n ? peek : 0;
-        int column = Math.Max(200, (width - peekLeft - peekRight - gap * (visible - 1)) / visible);
+        int column = Math.Max(200, (width - gap * (visible - 1)) / visible);
         for (int i = 0; i < n; i++)
         {
-            if (i < Start) result.Add((Ids[i], x, column, false));
-            else if (i >= Start + visible) result.Add((Ids[i], x + width - column, column, false));
-            else result.Add((Ids[i], x + peekLeft + (i - Start) * (column + gap), column, true));
+            bool on = i >= Start && i < Start + visible;
+            result.Add((Ids[i], on ? x + (i - Start) * (column + gap) : 0, column, on));
         }
         return result;
     }
@@ -167,7 +168,11 @@ public sealed class LayoutEngine
                 case LayoutMode.Columns:
                     var wsId = GlazeTree.Str(ws!.Value, "id");
                     if (wsId != null && GlazeTree.Str(ws.Value, "tilingDirection") == "vertical")
+                    {
                         await _ipc.CommandAsync("set-tiling-direction horizontal", ct, wsId);
+                        // GlazeWM changes the direction but does not draw it until something else moves.
+                        await _ipc.CommandAsync("wm-redraw", ct);
+                    }
                     break;
 
                 case LayoutMode.Scrolling when !GlazeTree.ShownOnTop(window):
@@ -236,12 +241,22 @@ public sealed class LayoutEngine
                     _floatedBy.TryRemove(id, out _);
                 }
             }
-            if (before == LayoutMode.Scrolling && mode != LayoutMode.Scrolling && _strips.Remove(workspace, out var old))
+            if (before == LayoutMode.Scrolling && mode != LayoutMode.Scrolling)
             {
-                foreach (var id in old.Ids)
+                // Columns waiting off the screen come back first, then all of them into the tiles.
+                var staged = GlazeTree.WindowInfos(workspaces).Where(x => x.Workspace == GlazeConfig.StageWorkspace).Select(x => x.Id).ToHashSet();
+                var ids = _strips.Remove(workspace, out var old) ? old.Ids : new List<string>();
+                foreach (var id in ids)
                 {
-                    try { await _ipc.CommandAsync("set-tiling", ct, id); } catch { /* window closed */ }
+                    try
+                    {
+                        if (staged.Contains(id)) await _ipc.CommandAsync($"move --workspace {workspace}", ct, id);
+                        await _ipc.CommandAsync("set-tiling", ct, id);
+                    }
+                    catch { /* window closed */ }
                 }
+                _store.Columns.Remove(workspace);
+                _store.Save();
             }
             if (mode == LayoutMode.Floating)
             {
@@ -318,68 +333,67 @@ public sealed class LayoutEngine
 
     /// <summary>
     /// Brings a scrolling workspace in line with GlazeWM and places its columns (and focuses the
-    /// focused column, unless <paramref name="focus"/> is false): tiling windows that
-    /// arrived join (after the focused column), closed ones leave. After a restart of WinMarchy the
-    /// floating windows are taken over in their order on the screen. Caller holds the gate.
+    /// focused column, unless <paramref name="focus"/> is false): tiling windows that arrived join
+    /// after the focused column, closed ones leave. Columns off the screen go into the hidden staging
+    /// workspace, the ones coming into view come back from there. After a restart of WinMarchy the
+    /// order comes from layouts.json. Caller holds the gate.
     /// </summary>
     internal async Task ArrangeLockedAsync(string workspace, string? focusId, CancellationToken ct, bool focus = true)
     {
         var monitors = await _ipc.QueryAsync("monitors", ct);
         var area = WorkspaceArea.All(monitors).FirstOrDefault(a => a.Name == workspace);
         if (area == null) return;
-        var windows = GlazeTree.WindowInfos(monitors).Where(w => w.Workspace == workspace).ToList();
+        var all = GlazeTree.WindowInfos(monitors);
         var strip = Strip(workspace);
+        var known = _store.Columns.TryGetValue(workspace, out var saved) ? saved : new List<long>();
+        // This workspace's windows, and its columns that wait in the staging workspace.
+        var windows = all.Where(w => w.Workspace == workspace ||
+                                     (w.Workspace == GlazeConfig.StageWorkspace && (strip.Ids.Contains(w.Id) || known.Contains(w.Handle)))).ToList();
 
         // Full screen (Win+F) keeps its column; it is just not placed until it comes back.
-        var present = windows.Where(w => !w.OnTop && w.State is "tiling" or "floating" or "fullscreen").ToDictionary(w => w.Id, w => w.State);
+        var present = windows.Where(w => !w.OnTop && w.State is "tiling" or "floating" or "fullscreen").ToDictionary(w => w.Id);
         strip.Ids.RemoveAll(id => !present.ContainsKey(id));
         if (strip.Ids.Count == 0)
-            strip.Ids.AddRange(windows.Where(w => w.Floating && !w.OnTop).OrderBy(w => w.X).ThenBy(w => w.Y).Select(w => w.Id));
-        var arriving = windows.Where(w => w.State == "tiling" && !strip.Ids.Contains(w.Id)).OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
+        {
+            // Freshly started: the saved order, then floating windows as they stand on the screen.
+            strip.Ids.AddRange(known.Select(h => present.Values.FirstOrDefault(w => w.Handle == h && w.State != "tiling")).OfType<WindowInfo>().Select(w => w.Id));
+            strip.Ids.AddRange(present.Values.Where(w => w.Floating && w.Workspace == workspace && !strip.Ids.Contains(w.Id))
+                .OrderBy(w => w.X).ThenBy(w => w.Y).Select(w => w.Id));
+        }
+        var arriving = present.Values.Where(w => w.State == "tiling" && !strip.Ids.Contains(w.Id)).OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
         int insertAt = strip.Ids.Count == 0 ? 0 : Math.Clamp(strip.Focus + 1, 0, strip.Ids.Count);
         foreach (var w in arriving) strip.Ids.Insert(insertAt++, w.Id);
         // Tiling windows of the strip float: new ones, and any that Win+T put back into the tiles.
-        foreach (var id in strip.Ids.Where(id => present[id] == "tiling"))
+        foreach (var id in strip.Ids.Where(id => present[id].State == "tiling").ToList())
             await _ipc.CommandAsync("set-floating --centered=false --shown-on-top=false", ct, id);
         if (focusId != null && strip.Ids.IndexOf(focusId) is var fi and >= 0) strip.Focus = fi;
         else if (arriving.Count > 0) strip.Focus = insertAt - 1;
         else if (windows.FirstOrDefault(w => w.Focused) is { } focused && strip.Ids.IndexOf(focused.Id) is var ff and >= 0) strip.Focus = ff;
+        _store.Columns[workspace] = strip.Ids.Select(id => present[id].Handle).ToList();
+        _store.Save();
         if (strip.Ids.Count == 0 || !area.Displayed) return;
 
         int gap = (int)Math.Round(_settings().InnerGap * area.Scale);
-        int peek = (int)Math.Round(14 * area.Scale);
-        var placed = strip.Place(area.X, area.Width, Visible, gap, peek);
-        foreach (var (id, x, width, _) in placed)
+        var placed = strip.Place(area.X, area.Width, Visible, gap);
+        // First out of sight, then into place: never two columns on the same spot.
+        foreach (var (id, _, _, visible) in placed)
+            if (!visible && present[id].Workspace != GlazeConfig.StageWorkspace)
+                await _ipc.CommandAsync($"move --workspace {GlazeConfig.StageWorkspace}", ct, id);
+        foreach (var (id, x, width, visible) in placed)
         {
-            if (present[id] == "fullscreen") continue;
+            if (!visible || present[id].State == "fullscreen") continue;
+            if (present[id].Workspace != workspace) await _ipc.CommandAsync($"move --workspace {workspace}", ct, id);
             await _ipc.CommandAsync($"size --width {width}px --height {area.Height}px", ct, id);
             await _ipc.CommandAsync($"position --x-pos {x} --y-pos {area.Y}", ct, id);
         }
+        Log.Trace($"scrolling {workspace}: {strip.Ids.Count} columns, focus {strip.Focus}, from {strip.Start}, {Visible} on screen", "layout");
         // Only when the user is on this workspace: focusing a window switches GlazeWM to it.
         if (focus && area.Focused) await _ipc.CommandAsync($"focus --container-id {strip.Ids[strip.Focus]}", ct);
-
-        // Columns off the screen go behind the visible column at their edge, so only their strip shows.
-        var handles = windows.ToDictionary(w => w.Id, w => w.Handle);
-        var shown = placed.Where(p => p.Visible).ToList();
-        if (shown.Count == 0) return;
-        await Task.Delay(60, ct);
-        foreach (var (id, x, _, visible) in placed.Where(p => !p.Visible))
-        {
-            var edge = x == area.X ? shown[0].Id : shown[^1].Id;
-            if (handles.TryGetValue(id, out var h) && handles.TryGetValue(edge, out var above)) PlaceBelow(h, above);
-        }
     }
 
-    static void PlaceBelow(long window, long above)
-    {
-        if (!OperatingSystem.IsWindows() || window == 0 || above == 0) return;
-        SetWindowPos(new IntPtr(window), new IntPtr(above), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
-    }
-
-    const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
-
-    [DllImport("user32.dll")]
-    static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
+    internal bool IsWaitingColumn(long handle) =>
+        _store.Columns.Any(c => ModeOf(c.Key) == LayoutMode.Scrolling && c.Value.Contains(handle));
 
     // ------------------------------------------------------------------ dwindle and columns
 
@@ -447,6 +461,7 @@ public sealed class LayoutEngine
             {
                 try { await _ipc.CommandAsync($"focus --container-id {focused}", CancellationToken.None); } catch { }
             }
+            try { await _ipc.CommandAsync("wm-redraw", CancellationToken.None); } catch { }
         }
     }
 

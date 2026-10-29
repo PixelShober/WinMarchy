@@ -95,6 +95,28 @@
       </StackPanel>
     </Border>
 
+    <!-- Import: what the file holds, each with a tick box. -->
+    <Border x:Name="ImportCard" Style="{StaticResource Card}" Margin="0,20,0,0" Visibility="Collapsed" BorderBrush="{DynamicResource Accent}">
+      <StackPanel>
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+            <Button Style="{StaticResource SmallButton}" Content="{ui:T hotkeys.importAll}" Click="OnImportAll" Margin="0,0,6,0" />
+            <Button Style="{StaticResource SmallButton}" Content="{ui:T hotkeys.importNone}" Click="OnImportNone" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock x:Name="ImportTitle" Style="{StaticResource H2}" />
+            <TextBlock Text="{ui:T hotkeys.importText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,12,12" />
+          </StackPanel>
+        </DockPanel>
+        <StackPanel x:Name="ImportList" />
+        <CheckBox x:Name="ImportExtras" Visibility="Collapsed" Margin="0,12,0,0" />
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+          <Button x:Name="ImportApply" Style="{StaticResource Primary}" Content="{ui:T hotkeys.importApply}" Click="OnImportApply" />
+          <Button Content="{ui:T common.cancel}" Margin="8,0,0,0" Click="OnImportCancel" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     <DockPanel Margin="0,26,0,12">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
         <Button Content="{ui:T hotkeys.export}" Click="OnExport" Margin="0,0,8,0" ToolTip="{ui:T hotkeys.exportTip}" />

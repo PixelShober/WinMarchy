@@ -5,6 +5,7 @@
   <StackPanel>
     <DockPanel Margin="0,0,0,22">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+        <Button x:Name="DiagnoseButton" Content="{ui:T log.diagnose}" Click="OnDiagnose" ToolTip="{ui:T log.diagnoseHint}" Margin="0,0,8,0" />
         <Button x:Name="PoliciesButton" Content="{ui:T log.policies}" Click="OnPolicies" ToolTip="{ui:T log.policiesHint}" Margin="0,0,8,0" />
         <Button Content="{ui:T log.copy}" Click="OnCopy" />
         <Button Content="{ui:T log.openFolder}" Click="OnOpenFolder" Margin="8,0,0,0" />
@@ -14,6 +15,15 @@
         <TextBlock x:Name="Subtitle" Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap" />
       </StackPanel>
     </DockPanel>
+
+    <Border Style="{StaticResource Card}" Margin="0,0,0,24">
+      <CheckBox x:Name="Verbose" Style="{StaticResource Switch}" Click="OnVerbose">
+        <StackPanel>
+          <TextBlock Text="{ui:T log.verbose}" Style="{StaticResource Body}" />
+          <TextBlock Text="{ui:T log.verboseHint}" Style="{StaticResource Small}" TextWrapping="Wrap" />
+        </StackPanel>
+      </CheckBox>
+    </Border>
 
     <StackPanel x:Name="PoliciesBlock" Visibility="Collapsed" Margin="0,0,0,24">
       <DockPanel Margin="0,0,0,10">

@@ -93,6 +93,7 @@ public partial class App : Application
     /// <summary>Opens (or brings up) the main window, optionally on a page.</summary>
     public static void ShowMain(string? route)
     {
+        Log.Trace("show window " + (route ?? ""), "app");
         if (ExitRequested) return;
         if (_main == null)
         {

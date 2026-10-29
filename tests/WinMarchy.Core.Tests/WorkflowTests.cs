@@ -9,16 +9,27 @@ namespace WinMarchy.Core.Tests;
 public class FavoriteTests
 {
     [Fact]
-    public void Optional_bindings_are_no_favourites_unless_starred()
+    public void There_are_no_favourites_until_the_user_stars_some()
     {
         var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
-        Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+W").Favorite);
-        Assert.False(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Favorite);
+        Assert.DoesNotContain(set.Active, b => b.Favorite);
+        Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Optional);
 
         var custom = new CustomHotkeys { Favorites = { ["win+shift+backspace"] = true, ["Win+W"] = false } };
         set = HotkeySet.Build(personal: false, custom, "autohotkey");
         Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Favorite);
         Assert.False(Assert.Single(set.Active, b => b.Keys == "Win+W").Favorite);
+    }
+
+    [Fact]
+    public void Favourites_are_saved_with_the_own_shortcuts()
+    {
+        using var temp = new TempDir();
+        var file = temp.File("hotkeys.json");
+        new CustomHotkeys { Favorites = { ["Win+J"] = true } }.Save(file);
+        var back = CustomHotkeys.Load(file);
+        Assert.True(back.Favorites["Win+J"]);
+        Assert.True(Assert.Single(HotkeySet.Build(false, back, "autohotkey").Active, b => b.Keys == "Win+J").Favorite);
     }
 
     [Fact]
@@ -73,7 +84,7 @@ public class ScrollingTests
     [Fact]
     public void One_window_takes_the_whole_width()
     {
-        var placed = Strip(1, 0).Place(x: 0, width: 1000, visible: 2, gap: 10, peek: 14);
+        var placed = Strip(1, 0).Place(x: 0, width: 1000, visible: 2, gap: 10);
         var (id, x, width, visible) = Assert.Single(placed);
         Assert.Equal(("w0", 0, 1000, true), (id, x, width, visible));
     }
@@ -82,18 +93,17 @@ public class ScrollingTests
     public void The_focused_column_is_always_on_the_screen()
     {
         var strip = Strip(4, 3);
-        var placed = strip.Place(0, 1000, 2, 10, 14);
+        var placed = strip.Place(0, 1000, 2, 10);
         Assert.Equal(2, strip.Start);
         Assert.Equal(new[] { false, false, true, true }, placed.Select(p => p.Visible));
-        // Columns to the left wait behind the first visible one, its edge showing.
-        Assert.Equal(0, placed[0].X);
-        Assert.Equal(14, placed[2].X);
+        // The two on the screen share it; nobody sits behind them.
+        Assert.Equal((0, 495), (placed[2].X, placed[2].Width));
+        Assert.Equal(505, placed[3].X);
 
         strip.Focus = 0;
-        placed = strip.Place(0, 1000, 2, 10, 14);
+        placed = strip.Place(0, 1000, 2, 10);
         Assert.Equal(0, strip.Start);
         Assert.Equal(new[] { true, true, false, false }, placed.Select(p => p.Visible));
-        Assert.Equal(1000 - placed[3].Width, placed[3].X);
     }
 
     [Fact]

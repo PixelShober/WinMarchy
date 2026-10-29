@@ -41,12 +41,12 @@ public sealed class HotkeyBinding
     /// <summary>Expands "{n}" (1 … 9, 0) and "{ws}" (1 … 10) to all ten workspaces.</summary>
     public string? Repeat { get; set; }
 
-    /// <summary>The profile files it under "Optional": Win+K lists it after the favourites.</summary>
+    /// <summary>The profile files it under "Optional": Win+K lists it at the end, in its own section.</summary>
     public bool Optional { get; set; }
 
-    /// <summary>Shown at the top of Win+K: the profile's choice unless the user starred or unstarred it.</summary>
+    /// <summary>Starred by the user: shown at the top of Win+K.</summary>
     [JsonIgnore]
-    public bool Favorite { get; set; } = true;
+    public bool Favorite { get; set; }
 
     /// <summary>For the ten bindings "Win+{n}" expands to: the keys as the profile writes them, so lists can show one row.</summary>
     [JsonIgnore]

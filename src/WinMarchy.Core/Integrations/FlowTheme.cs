@@ -89,18 +89,38 @@ public static class FlowTheme
     }
 
     /// <summary>
-    /// Starts Flow and makes sure it stays up. Right after a restart Flow sometimes quits again (the
-    /// old instance was still letting go); then it gets a second start.
+    /// Starts Flow and makes sure it stays up. Right after a restart Flow sometimes quits again: the
+    /// old instance was still letting go, or Squirrel's first run was still busy. Flow then gets up to
+    /// two more starts; every step goes into the verbose log.
     /// </summary>
     public static async Task StartAndCheckAsync(string exe, CancellationToken ct)
     {
-        for (int attempt = 0; attempt < 2; attempt++)
+        foreach (var old in Process.GetProcessesByName("Flow.Launcher"))
         {
+            try
+            {
+                if (!old.HasExited && !old.WaitForExit(5000)) Log.Trace($"flow: pid {old.Id} still running before the start", "flow");
+            }
+            catch { }
+        }
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            Log.Trace($"flow: start {attempt} of 3: {exe}", "flow");
             Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true })?.Dispose();
-            for (int i = 0; i < 8; i++)
+            // Flow.Launcher.exe in the install folder only starts the real one and exits; give it
+            // time, then it has to be there twice in a row.
+            int seen = 0;
+            for (int i = 0; i < 20 && seen < 2; i++)
             {
                 await Task.Delay(500, ct);
-                if (i >= 5 && Process.GetProcessesByName("Flow.Launcher").Length > 0) return;
+                var running = Process.GetProcessesByName("Flow.Launcher");
+                seen = i >= 9 && running.Length > 0 ? seen + 1 : 0;
+                if (i is 3 or 9 or 15) Log.Trace($"flow: after {(i + 1) * 0.5:0.0} s: {string.Join(", ", running.Select(p => p.Id))}", "flow");
+            }
+            if (seen >= 2)
+            {
+                Log.Trace("flow: running", "flow");
+                return;
             }
             Log.Warn(L.T("integrations.flow.restartAgain"));
         }
