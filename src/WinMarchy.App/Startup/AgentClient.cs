@@ -33,6 +33,27 @@ static class AgentClient
         return false;
     }
 
+    /// <summary>The process that owns the agent window, if a WinMarchy runs.</summary>
+    public static int? AgentProcessId()
+    {
+        var hwnd = FindWindow(null, AhkScript.AgentTitle);
+        if (hwnd == IntPtr.Zero) return null;
+        GetWindowThreadProcessId(hwnd, out var pid);
+        return pid == 0 ? null : (int)pid;
+    }
+
+    /// <summary>
+    /// Asks the WinMarchy with this process id to shut down. False if it has no agent window or does
+    /// not know the message (versions before it).
+    /// </summary>
+    public static bool AskToQuit(int pid)
+    {
+        var hwnd = FindWindow(null, AhkScript.AgentTitle);
+        if (hwnd == IntPtr.Zero) return false;
+        GetWindowThreadProcessId(hwnd, out var owner);
+        return owner == pid && Send(hwnd, AgentHost.QuitMessage, "");
+    }
+
     static bool Send(IntPtr hwnd, long kind, string text)
     {
         var data = Marshal.StringToHGlobalUni(text);

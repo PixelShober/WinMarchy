@@ -4,7 +4,7 @@ Omarchy kennt pro Workspace mehrere Layouts, `Super+L` schaltet durch, darunter 
 
 WinMarchy hält dafür eine Verbindung zu GlazeWM offen (WebSocket auf `127.0.0.1:6123`), hört auf `focus_changed`, `window_managed` und `window_unmanaged` und gibt GlazeWM die passenden Befehle. Welcher Workspace welches Layout hat, steht in `C:\WinMarchy\Config\layouts.json`. Workspaces ohne Eintrag folgen dem Standard-Layout aus **Tiling**.
 
-`Win+Alt+L` schaltet weiter: Dwindle → Spalten → Scrolling → Dwindle. Ein Zurück braucht es bei drei Layouts nicht. Auf `Win+L` liegt unter Windows immer das Sperren. Oben rechts erscheint sofort, auf welches Layout der Workspace wechselt; das Umräumen läuft danach.
+`Win+Strg+J` schaltet weiter: Dwindle → Spalten → Scrolling → Dwindle. Ein Zurück braucht es bei drei Layouts nicht. Auf `Win+L` liegt unter Windows immer das Sperren. Oben rechts erscheint sofort, auf welches Layout der Workspace wechselt; das Umräumen läuft danach.
 
 GlazeWM ordnet nur neue Fenster nach einem Layout an. Damit ein Wechsel auf Dwindle oder Spalten sofort sichtbar ist, nimmt WinMarchy die Fenster des Workspace kurz heraus und setzt sie in der neuen Anordnung wieder ein: bei Spalten nebeneinander in der alten Reihenfolge, bei Dwindle jedes in die Hälfte des vorigen. Die Fenster warten dabei in einem eigenen versteckten Workspace (`winmarchy-stage`), nie im Scratchpad. Bleibt nach einem Absturz doch eines dort hängen, holt WinMarchy es beim nächsten Verbinden zurück.
 
@@ -81,7 +81,7 @@ Welche Fenster zum Scratchpad gehören, merkt sich WinMarchy in `C:\WinMarchy\Co
 Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces, etwa der linke 1 bis 5 und der rechte 6 bis 10. „Gleichmäßig aufteilen“ macht genau das. WinMarchy schreibt die Zuordnung als `bind_to_monitor` in GlazeWMs Konfiguration:
 
 - `Win+3` öffnet Workspace 3 immer auf seinem Bildschirm, egal wo du gerade bist.
-- `Win+Strg+D` nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Neue darüber hinaus gibt es nicht.
+- `Win+Strg+D` nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Sind die alle belegt, nimmt er einen freien, der keinem Bildschirm zugeordnet ist.
 - Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um und kommen zurück, wenn er wieder da ist.
 
 GlazeWM beachtet `bind_to_monitor` nur, wenn ein Workspace neu angelegt wird. Steht einer schon auf dem falschen Bildschirm, bleibt er dort. WinMarchy schiebt deshalb beim Verbinden und nach jedem **Übernehmen** unter Tiling jeden zugeordneten Workspace selbst auf seinen Bildschirm. Klappt das nicht, steht eine Warnung im Protokoll; mit dem ausführlichen Protokoll steht dort jeder Schritt.
@@ -92,7 +92,7 @@ Ohne Eintrag nimmt ein Bildschirm, was frei ist, wie bisher.
 
 Windows wechselt virtuelle Desktops auf allen Bildschirmen zugleich, GlazeWM hat pro Monitor eigene Workspaces. Zwei Kürzel bringen das zusammen:
 
-- `Win+Strg+D` gibt jedem Bildschirm einen leeren Workspace, wie ein neuer Desktop. Zeigt ein Bildschirm schon einen leeren, bleibt er. Pro Bildschirm lässt sich unter **Tiling** ein Programm wählen, das dort gleich startet, zum Beispiel Outlook links und der Browser rechts. WinMarchy startet sie nacheinander und setzt jedes Fenster auf den Workspace seines Bildschirms.
+- `Win+Strg+D` gibt jedem Bildschirm einen leeren Workspace, wie ein neuer Desktop. Zeigt ein Bildschirm schon einen leeren, bleibt er. Pro Bildschirm lässt sich unter **Tiling** ein Programm wählen, das dort gleich startet, zum Beispiel Outlook links und der Browser rechts. WinMarchy startet sie nacheinander und setzt jedes Fenster auf den Workspace seines Bildschirms. Programme mit nur einem Fenster (Stackfield, Teams, Outlook) öffnen kein neues, wenn sie schon laufen, sondern holen ihr Fenster nach vorn; WinMarchy holt dieses Fenster dann auf den neuen Workspace.
 - `Win+Strg+Rechts` und `Win+Strg+Links` schalten auf jedem Bildschirm zum nächsten oder vorigen Workspace, alle zusammen.
 
 Das Drei-Finger-Wischen auf dem Touchpad legst du unter **Einstellungen → Bluetooth und Geräte → Touchpad → Erweiterte Gesten** auf diese Kürzel (Tiling hat dafür einen Knopf). „Desktops wechseln“ lieber nicht wählen: Windows' eigene virtuelle Desktops vertragen sich nicht mit GlazeWM.

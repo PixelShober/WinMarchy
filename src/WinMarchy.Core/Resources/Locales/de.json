@@ -57,7 +57,7 @@
     "theme": "Theme",
     "changeTheme": "Ändern",
     "workspace": "Workspace",
-    "workspaceHint": "Win+Alt+L wechselt das Layout dieses Workspace, Win+K zeigt alle Kürzel.",
+    "workspaceHint": "Win+Strg+J wechselt das Layout dieses Workspace, Win+K zeigt alle Kürzel.",
     "glazeHint": "Ohne GlazeWM gibt es kein Tiling und keine Workspaces. Win+Shift+Alt+R startet es."
   },
 
@@ -362,7 +362,7 @@
     "title": "Tiling",
     "subtitle": "Wie GlazeWM deine Fenster anordnet. Wie in Omarchy hat jeder Workspace sein eigenes Layout.",
     "defaultLayout": "Standard-Layout",
-    "defaultLayoutText": "Gilt für neue Workspaces. Win+Alt+L schaltet den Workspace, auf dem du gerade bist, weiter: Dwindle, Spalten, Scrolling.",
+    "defaultLayoutText": "Gilt für neue Workspaces. Win+Strg+J schaltet den Workspace, auf dem du gerade bist, weiter: Dwindle, Spalten, Scrolling.",
     "scrollingNote": "Scrolling stellt die Fenster als Spalten in eine Reihe, die breiter sein darf als der Bildschirm. Win+Pfeil links und rechts scrollt, Win+Umschalt+Pfeil verschiebt die Spalte. Spalten außerhalb des Bildschirms warten unsichtbar, bis die Reihe zu ihnen rollt. GlazeWM kann das nicht selbst, darum setzt WinMarchy diese Fenster (sie schweben dafür).",
     "workspaces": "Workspaces",
     "refresh": "Aktualisieren",
@@ -758,7 +758,13 @@
     "restored": "Alles zurückgesetzt. WinMarchy bleibt im Infobereich, bis du es beendest.",
     "glazeConnectFailed": "GlazeWM läuft, aber WinMarchy erreicht es nicht: {detail}",
     "flowStarted": "Flow Launcher gestartet.",
-    "flowRestarted": "Flow Launcher lief nicht mehr und ist neu gestartet."
+    "flowRestarted": "Flow Launcher lief nicht mehr und ist neu gestartet.",
+    "glazeReconnecting": "Die Verbindung zu GlazeWM hing, GlazeWM selbst antwortet. WinMarchy verbindet sich neu.",
+    "glazeHung": "GlazeWM reagiert seit über zehn Sekunden auf keinen Befehl mehr. WinMarchy startet es neu.",
+    "glazeRestarting": "GlazeWM hing und startet neu. Deine Fenster bleiben offen.",
+    "glazeHungAgain": "GlazeWM hängt schon wieder. „GlazeWM neu laden“ im Tray-Menü startet es neu; was davor geschah, steht im Protokoll.",
+    "glazeEnded": "GlazeWM beendet (PID {pid}).",
+    "glazeEndFailed": "GlazeWM ließ sich nicht beenden: {detail}"
   },
 
   "tray": {
@@ -891,13 +897,16 @@
     "copied": "WinMarchy {version} nach {path} kopiert",
     "newerInstalled": "Unter C:\\WinMarchy\\App liegt schon Version {version}, die startet stattdessen.",
     "noRights": "Kein Schreibrecht für {path}, WinMarchy läuft portabel: {detail}",
-    "locked": "{path} ist gerade in Benutzung, WinMarchy läuft von hier: {detail}",
+    "locked": "{path} ist noch in Benutzung, WinMarchy läuft vorerst von hier: {detail}",
     "failed": "Kopieren nach C:\\WinMarchy\\App fehlgeschlagen: {detail}",
     "notSingleFile": "Entwickler-Build, WinMarchy läuft von hier.",
     "portable": "Portabel gestartet, keine Kopie nach {path}.",
-    "prerelease": "Testversion {version}, läuft von hier und aktualisiert sich nicht.",
+    "prerelease": "Testversion {version}: aktualisiert sich nicht von selbst.",
     "shortcut": "Startmenü-Eintrag angelegt: {path}",
-    "shortcutFailed": "Kein Startmenü-Eintrag möglich: {detail}"
+    "shortcutFailed": "Kein Startmenü-Eintrag möglich: {detail}",
+    "stoppedOther": "Laufendes WinMarchy {version} beendet ({path}).",
+    "stopFailed": "Das laufende WinMarchy {version} ließ sich nicht beenden: {detail}",
+    "handover": "Eine andere Version von WinMarchy übernimmt, diese hier beendet sich."
   },
 
   "update": {
@@ -950,7 +959,8 @@
     "toolNotInstallable": "{tool} installiert WinMarchy nicht selbst. Der Link zum Hersteller steht unter Start.",
     "zipInvalidPath": "Die ZIP enthält einen ungültigen Pfad: {entry}",
     "filesMissing": "Files ist nicht installiert.",
-    "hotkeysImportInvalid": "Die Datei enthält keine WinMarchy-Tastenkürzel."
+    "hotkeysImportInvalid": "Die Datei enthält keine WinMarchy-Tastenkürzel.",
+    "glazeNoAnswer": "GlazeWM hat auf „{command}“ nicht geantwortet."
   },
 
   "policies": {

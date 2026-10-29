@@ -57,7 +57,7 @@
     "theme": "Theme",
     "changeTheme": "Change",
     "workspace": "Workspace",
-    "workspaceHint": "Win+Alt+L switches this workspace's layout, Win+K shows every shortcut.",
+    "workspaceHint": "Win+Ctrl+J switches this workspace's layout, Win+K shows every shortcut.",
     "glazeHint": "Without GlazeWM there is no tiling and no workspaces. Win+Shift+Alt+R starts it."
   },
 
@@ -362,7 +362,7 @@
     "title": "Tiling",
     "subtitle": "How GlazeWM arranges your windows. As in Omarchy, each workspace has its own layout.",
     "defaultLayout": "Default layout",
-    "defaultLayoutText": "Used for new workspaces. Win+Alt+L moves the workspace you are on to the next layout: dwindle, columns, scrolling.",
+    "defaultLayoutText": "Used for new workspaces. Win+Ctrl+J moves the workspace you are on to the next layout: dwindle, columns, scrolling.",
     "scrollingNote": "Scrolling puts the windows into a row of columns that may be wider than the screen. Win+Left and Right scroll, Win+Shift+Arrow moves the column. Columns off the screen wait out of sight until the row scrolls to them. GlazeWM cannot do this itself, so WinMarchy places these windows (they float for it).",
     "workspaces": "Workspaces",
     "refresh": "Refresh",
@@ -758,7 +758,13 @@
     "restored": "Everything reset. WinMarchy stays in the notification area until you quit it.",
     "glazeConnectFailed": "GlazeWM is running, but WinMarchy cannot reach it: {detail}",
     "flowStarted": "Flow Launcher started.",
-    "flowRestarted": "Flow Launcher had stopped and was started again."
+    "flowRestarted": "Flow Launcher had stopped and was started again.",
+    "glazeReconnecting": "The connection to GlazeWM was stuck, GlazeWM itself answers. WinMarchy connects again.",
+    "glazeHung": "GlazeWM has not answered any command for more than ten seconds. WinMarchy restarts it.",
+    "glazeRestarting": "GlazeWM hung and restarts. Your windows stay open.",
+    "glazeHungAgain": "GlazeWM hangs again. “Reload GlazeWM” in the tray menu restarts it; the log shows what happened before.",
+    "glazeEnded": "Ended GlazeWM (PID {pid}).",
+    "glazeEndFailed": "Could not end GlazeWM: {detail}"
   },
 
   "tray": {
@@ -891,13 +897,16 @@
     "copied": "WinMarchy {version} copied to {path}",
     "newerInstalled": "C:\\WinMarchy\\App already has version {version}, starting that one instead.",
     "noRights": "No write access to {path}, WinMarchy runs portable: {detail}",
-    "locked": "{path} is in use right now, WinMarchy runs from here: {detail}",
+    "locked": "{path} is still in use, WinMarchy runs from here for now: {detail}",
     "failed": "Copying to C:\\WinMarchy\\App failed: {detail}",
     "notSingleFile": "Developer build, WinMarchy runs from here.",
     "portable": "Started portable, no copy to {path}.",
-    "prerelease": "Test build {version}, runs from here and does not update itself.",
+    "prerelease": "Test build {version}: does not update itself.",
     "shortcut": "Start menu entry created: {path}",
-    "shortcutFailed": "Could not create a Start menu entry: {detail}"
+    "shortcutFailed": "Could not create a Start menu entry: {detail}",
+    "stoppedOther": "Stopped the running WinMarchy {version} ({path}).",
+    "stopFailed": "Could not stop the running WinMarchy {version}: {detail}",
+    "handover": "Another version of WinMarchy takes over, this one quits."
   },
 
   "update": {
@@ -950,7 +959,8 @@
     "toolNotInstallable": "WinMarchy does not install {tool} itself. The link to the vendor is on Start.",
     "zipInvalidPath": "The ZIP contains an invalid path: {entry}",
     "filesMissing": "Files is not installed.",
-    "hotkeysImportInvalid": "The file holds no WinMarchy shortcuts."
+    "hotkeysImportInvalid": "The file holds no WinMarchy shortcuts.",
+    "glazeNoAnswer": "GlazeWM did not answer “{command}”."
   },
 
   "policies": {

@@ -57,6 +57,8 @@ public static class Diagnostics
 
         Head("GlazeWM");
         Line(ipc is { Connected: true } ? "connected" : "not connected" + (glazeProblem != null ? ": " + glazeProblem : ""));
+        if (ipc != null) Line($"unanswered requests in a row: {ipc.Unanswered}");
+        Line("answers on a fresh connection: " + (await GlazeIpc.ProbeAsync(ct) ? "yes" : "no"));
         if (ipc is { Connected: true })
         {
             try

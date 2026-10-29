@@ -9,7 +9,7 @@
     { "keys": "Win+O", "do": "wm:toggle-floating --centered --shown-on-top", "group": "tiling", "label": { "de": "Herauslösen und oben halten", "en": "Pop out and keep on top" }, "note": { "de": "Schwebt und bleibt über allen anderen Fenstern.", "en": "Floats and stays above every other window." } },
     { "keys": "Win+F", "do": "wm:toggle-fullscreen", "group": "tiling", "label": { "de": "Vollbild", "en": "Full screen" } },
     { "keys": "Win+Alt+F", "do": "wm:toggle-fullscreen --maximized", "group": "tiling", "label": { "de": "Volle Breite", "en": "Full width" } },
-    { "keys": "Win+Alt+L", "do": "do:layout-next", "group": "tiling", "omarchy": "SUPER + L", "label": { "de": "Layout wechseln: Dwindle, Spalten, Scrolling", "en": "Cycle layout: dwindle, columns, scrolling" }, "note": { "de": "Win+L sperrt unter Windows immer den Rechner.", "en": "Win+L always locks the PC on Windows." } },
+    { "keys": "Win+Ctrl+J", "do": "do:layout-next", "group": "tiling", "omarchy": "SUPER + L", "label": { "de": "Layout wechseln: Dwindle, Spalten, Scrolling", "en": "Cycle layout: dwindle, columns, scrolling" }, "note": { "de": "Win+L gehört unter Windows dem Sperren, und auch Win+Alt+L kommt nicht immer an.", "en": "Win+L belongs to locking on Windows, and Win+Alt+L does not always come through either." } },
 
     { "keys": "Win+Left", "do": "do:focus left", "group": "tiling", "label": { "de": "Fokus nach links", "en": "Focus left" } },
     { "keys": "Win+Right", "do": "do:focus right", "group": "tiling", "label": { "de": "Fokus nach rechts", "en": "Focus right" } },

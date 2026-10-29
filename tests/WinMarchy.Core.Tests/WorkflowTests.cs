@@ -42,6 +42,9 @@ public class FavoriteTests
         Assert.DoesNotContain(set.Active, b => b.Do.StartsWith("do:move-window-monitor") || b.Do.StartsWith("wm:move-workspace"));
         Assert.DoesNotContain(set.Active, b => b.Keys == "Win+Shift+A" || (b.Keys.StartsWith("Win+Alt+Shift+") && char.IsDigit(b.Keys[^1])));
         Assert.Equal("do:restore-minimized", Assert.Single(set.Active, b => b.Keys == "Win+M").Do);
+        // Win+Alt+L never reached WinMarchy on the test PC; the layout sits next to Win+J.
+        Assert.Equal("do:layout-next", Assert.Single(set.Active, b => b.Keys == "Win+Ctrl+J").Do);
+        Assert.DoesNotContain(set.Active, b => b.Keys == "Win+Alt+L");
         Assert.Equal("do:menu", Assert.Single(set.Active, b => b.Keys == "Win+Space").Do);
         Assert.DoesNotContain(set.Active, b => b.Keys == "Win+Alt+Space");
         Assert.Single(set.Active, b => b.Do == "do:theme-menu");

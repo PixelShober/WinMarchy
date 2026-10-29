@@ -40,6 +40,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
     string _status = "";
     int _glazeFailures;
     string? _lastGlazeError;
+    DateTime _lastGlazeRestart = DateTime.MinValue;
+    bool _hangReported;
 
     public AgentHost()
     {
@@ -169,6 +171,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
     public const long ActionMessage = 0x4D4E4957;   // "WINM"
     public const long OpenMessage = 0x4D4E4950;     // "PINM": bring the window up, optional page
+    public const long QuitMessage = 0x4D4E4951;     // "QINM": a newer WinMarchy takes over
 
     void CreateMessageWindow()
     {
@@ -185,15 +188,20 @@ public sealed class AgentHost : IAgentHost, IDisposable
         if (msg != WM_COPYDATA) return IntPtr.Zero;
         var cds = Marshal.PtrToStructure<COPYDATASTRUCT>(lParam);
         var kind = cds.dwData.ToInt64();
-        if (kind != ActionMessage && kind != OpenMessage) return IntPtr.Zero;
+        if (kind != ActionMessage && kind != OpenMessage && kind != QuitMessage) return IntPtr.Zero;
         var chars = Math.Min(cds.cbData / 2, 4096);
         var text = chars > 0 && cds.lpData != IntPtr.Zero ? Marshal.PtrToStringUni(cds.lpData, chars).TrimEnd('\0').Trim() : "";
         handled = true;
-        Log.Trace((kind == ActionMessage ? "received " : "open window ") + text, "agent");
+        Log.Trace((kind == ActionMessage ? "received " : kind == QuitMessage ? "asked to quit" : "open window ") + text, "agent");
         // Answer at once (AutoHotkey waits for the reply); the work happens right after.
         Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            if (kind == ActionMessage) RunAction(text);
+            if (kind == QuitMessage)
+            {
+                Log.Info(L.T("install.handover"));
+                App.Quit();
+            }
+            else if (kind == ActionMessage) RunAction(text);
             else App.ShowMain(text.Length > 0 ? text : null);
         });
         return new IntPtr(1);
@@ -246,7 +254,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
         {
             try
             {
-                if (Glaze is not { Connected: true })
+                var glaze = Glaze;
+                if (glaze is not { Connected: true })
                 {
                     if (Core.Services.Components.IsRunning("glazewm")) await ConnectAsync(ct);
                     else
@@ -255,6 +264,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
                         GlazeProblem = null;
                     }
                 }
+                else if (glaze.Unanswered >= 2) await HandleStallAsync(glaze, ct);
                 else await RefreshStatusAsync(ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -315,6 +325,40 @@ public sealed class AgentHost : IAgentHost, IDisposable
         await RefreshStatusAsync(ct);
     }
 
+    /// <summary>
+    /// GlazeWM has left two requests in a row unanswered. If it answers on a new connection, only ours
+    /// was stuck: connect again. If not, GlazeWM hangs and every shortcut would wait for nothing, so it
+    /// is restarted – at most once in five minutes; a second hang soon after is only reported.
+    /// </summary>
+    async Task HandleStallAsync(GlazeIpc ipc, CancellationToken ct)
+    {
+        if (await GlazeIpc.ProbeAsync(ct))
+        {
+            Log.Warn(L.T("agent.glazeReconnecting"));
+            await ipc.DisposeAsync();
+            return;
+        }
+        if (DateTime.Now - _lastGlazeRestart < TimeSpan.FromMinutes(5))
+        {
+            if (_hangReported) return;
+            _hangReported = true;
+            Log.Warn(L.T("agent.glazeHungAgain"));
+            Notify(L.T("agent.glazeHungAgain"));
+            return;
+        }
+        await RestartHungGlazeAsync(ipc, ct);
+    }
+
+    async Task RestartHungGlazeAsync(GlazeIpc ipc, CancellationToken ct)
+    {
+        _lastGlazeRestart = DateTime.Now;
+        _hangReported = false;
+        Log.Warn(L.T("agent.glazeHung"));
+        Notify(L.T("agent.glazeRestarting"));
+        await ipc.DisposeAsync();
+        if (!await AppModel.Engine.Components.RestartGlazeAsync(ct)) Notify(L.T("actions.glazeMissing"));
+    }
+
     /// <summary>Each new reason goes to the log once; the window shows it from the second failure on.</summary>
     void GlazeFailed(string detail)
     {
@@ -345,8 +389,16 @@ public sealed class AgentHost : IAgentHost, IDisposable
             if (!AppModel.Engine.Components.StartGlaze()) Notify(L.T("actions.glazeMissing"));
             return;
         }
-        await AppModel.Engine.Components.ReloadGlazeAsync(Glaze, ct);
-        Notify(L.T("agent.reloaded"));
+        try
+        {
+            await AppModel.Engine.Components.ReloadGlazeAsync(Glaze, ct);
+            Notify(L.T("agent.reloaded"));
+        }
+        catch (WinMarchyException ex) when (ex.Code == "glazeNoAnswer" && Glaze is { } hung)
+        {
+            // Reloading is what one tries when nothing moves any more: if GlazeWM hangs, restart it.
+            await RestartHungGlazeAsync(hung, ct);
+        }
     }
 
     public async Task ToggleGapsAsync(CancellationToken ct)

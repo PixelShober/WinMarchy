@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace WinMarchy.Core.GlazeWm;
 
 /// <summary>
-/// Omarchy's workspace layouts as far as GlazeWM can follow. Win+Alt+L cycles Dwindle → Columns →
+/// Omarchy's workspace layouts as far as GlazeWM can follow. Win+Ctrl+J cycles Dwindle → Columns →
 /// Scrolling; Floating and Manual are set on the Tiling page.
 /// <list type="bullet">
 /// <item>Dwindle: every focused window splits along its longer side, so the next window takes half of it.</item>
@@ -207,7 +207,7 @@ public sealed class LayoutEngine
         }
     }
 
-    /// <summary>Win+Alt+L on the focused workspace: Dwindle → Columns → Scrolling → Dwindle.</summary>
+    /// <summary>Win+Ctrl+J on the focused workspace: Dwindle → Columns → Scrolling → Dwindle.</summary>
     public async Task CycleAsync(CancellationToken ct)
     {
         var workspaces = await _ipc.QueryAsync("workspaces", ct);
@@ -308,26 +308,36 @@ public sealed class LayoutEngine
         return _strips.TryGetValue(workspace, out var s) ? s : null;
     }
 
-    /// <summary>Win+Left/Right on a scrolling workspace. Caller holds the gate.</summary>
-    internal async Task<bool> ScrollFocusLockedAsync(string workspace, string direction, CancellationToken ct)
+    /// <summary>
+    /// Win+Left/Right on a scrolling workspace. It starts from the window that has the focus in
+    /// GlazeWM (<paramref name="focusedId"/>), not from the remembered column: a click or a skipped
+    /// event may have moved it. Caller holds the gate.
+    /// </summary>
+    internal async Task<bool> ScrollFocusLockedAsync(string workspace, string direction, string? focusedId, CancellationToken ct)
     {
         if (direction is not ("left" or "right") || await EnsureStripAsync(workspace, ct) is not { } strip) return false;
+        if (focusedId != null && strip.Ids.IndexOf(focusedId) is var at and >= 0) strip.Focus = at;
         var next = strip.Focus + (direction == "left" ? -1 : 1);
-        if (next < 0 || next >= strip.Ids.Count) return true;
-        strip.Focus = next;
-        await ArrangeLockedAsync(workspace, null, ct);
+        if (next < 0 || next >= strip.Ids.Count)
+        {
+            Log.Trace($"scrolling {workspace}: column {strip.Focus + 1} of {strip.Ids.Count} is the last one {direction}", "layout");
+            return true;
+        }
+        // Named, or the arrangement would take the focus back to the window GlazeWM still focuses.
+        await ArrangeLockedAsync(workspace, strip.Ids[next], ct);
         return true;
     }
 
     /// <summary>Win+Shift+Left/Right on a scrolling workspace: the column changes places. Caller holds the gate.</summary>
-    internal async Task<bool> ScrollSwapLockedAsync(string workspace, string direction, CancellationToken ct)
+    internal async Task<bool> ScrollSwapLockedAsync(string workspace, string direction, string? focusedId, CancellationToken ct)
     {
         if (direction is not ("left" or "right") || await EnsureStripAsync(workspace, ct) is not { } strip) return false;
+        if (focusedId != null && strip.Ids.IndexOf(focusedId) is var at and >= 0) strip.Focus = at;
         var other = strip.Focus + (direction == "left" ? -1 : 1);
         if (other < 0 || other >= strip.Ids.Count) return true;
-        (strip.Ids[strip.Focus], strip.Ids[other]) = (strip.Ids[other], strip.Ids[strip.Focus]);
-        strip.Focus = other;
-        await ArrangeLockedAsync(workspace, null, ct);
+        var moving = strip.Ids[strip.Focus];
+        (strip.Ids[strip.Focus], strip.Ids[other]) = (strip.Ids[other], moving);
+        await ArrangeLockedAsync(workspace, moving, ct);
         return true;
     }
 

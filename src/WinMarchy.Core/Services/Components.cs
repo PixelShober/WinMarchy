@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
 using WinMarchy.Core.Backup;
 using WinMarchy.Core.GlazeWm;
 using WinMarchy.Core.Integrations;
@@ -35,6 +37,38 @@ public sealed class Components
         var exe = GlazeExe;
         if (exe == null) return false;
         return Platform.AppLauncher.Start(exe, "start");
+    }
+
+    /// <summary>
+    /// Ends a GlazeWM that no longer answers and starts it again. Only the window manager itself is
+    /// ended: its watcher (glazewm-watcher.exe) stays and shows the windows GlazeWM had hidden on
+    /// other workspaces, as it does after a crash. GlazeWM then takes them on again.
+    /// </summary>
+    public async Task<bool> RestartGlazeAsync(CancellationToken ct)
+    {
+        var exe = GlazeExe;
+        foreach (var p in Process.GetProcessesByName("glazewm"))
+        {
+            using (p)
+            {
+                string? path = null;
+                try { path = p.MainModule?.FileName; } catch { }
+                // Not the command line (cli\glazewm.exe), if it happens to run.
+                if (path != null && exe != null && !path.Equals(exe, StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    p.Kill();
+                    p.WaitForExit(3000);
+                    Log.Info(L.T("agent.glazeEnded", ("pid", p.Id)));
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn(L.T("agent.glazeEndFailed", ("detail", Net.Describe(ex))));
+                }
+            }
+        }
+        await Task.Delay(1500, ct);
+        return StartGlaze();
     }
 
     /// <summary>Reload through the open connection, else through GlazeWM's command line.</summary>
@@ -102,16 +136,52 @@ public sealed class Components
     /// <summary>Our own script, the Winarchy Lite one and the old "FlowLauncher Windows Key" script all hook LWin.</summary>
     public static IEnumerable<Process> OurAhkProcesses()
     {
+        var titles = AhkWindowTitles();
         foreach (var p in Process.GetProcesses())
         {
             if (!p.ProcessName.StartsWith("AutoHotkey", StringComparison.OrdinalIgnoreCase)) continue;
-            string? cmd = CommandLine(p);
-            if (cmd != null && (cmd.Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase) ||
-                                cmd.Contains("omarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase) ||
-                                cmd.Contains("FlowLauncher Windows Key.ahk", StringComparison.OrdinalIgnoreCase)))
+            var script = ScriptOf(p, titles);
+            if (script != null && (script.Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase) ||
+                                   script.Contains("omarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase) ||
+                                   script.Contains("FlowLauncher Windows Key.ahk", StringComparison.OrdinalIgnoreCase)))
                 yield return p;
         }
     }
+
+    /// <summary>
+    /// Which script an AutoHotkey process runs. Its hidden main window is titled
+    /// "C:\…\script.ahk - AutoHotkey v2.0.x", which needs no WMI (often blocked in companies); the
+    /// command line is the fallback.
+    /// </summary>
+    static string? ScriptOf(Process p, IReadOnlyDictionary<int, string>? titles = null) =>
+        (titles ?? AhkWindowTitles()).TryGetValue(p.Id, out var title) ? title : CommandLine(p);
+
+    /// <summary>Titles of AutoHotkey's main windows by process id.</summary>
+    static Dictionary<int, string> AhkWindowTitles()
+    {
+        var found = new Dictionary<int, string>();
+        if (!OperatingSystem.IsWindows()) return found;
+        EnumWindows((hwnd, _) =>
+        {
+            var cls = new StringBuilder(64);
+            if (GetClassName(hwnd, cls, cls.Capacity) > 0 && cls.ToString() == "AutoHotkey")
+            {
+                var title = new StringBuilder(1024);
+                GetWindowText(hwnd, title, title.Capacity);
+                GetWindowThreadProcessId(hwnd, out var pid);
+                if (title.Length > 0) found.TryAdd((int)pid, title.ToString());
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int max);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
 
     public void StopAhk()
     {
@@ -163,7 +233,7 @@ public sealed class Components
     public IReadOnlyList<string> RetireLegacy(BackupStore backups, RestorePoint point)
     {
         var done = new List<string>();
-        foreach (var p in OurAhkProcesses().Where(p => !(CommandLine(p) ?? "").Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase)))
+        foreach (var p in OurAhkProcesses().Where(p => !(ScriptOf(p) ?? "").Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase)))
         {
             try { p.Kill(); done.Add(L.T("legacy.stoppedScript", ("pid", p.Id))); } catch { }
         }

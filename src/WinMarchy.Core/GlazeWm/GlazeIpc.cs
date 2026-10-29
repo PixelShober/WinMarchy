@@ -21,6 +21,7 @@ public sealed class GlazeIpc : IAsyncDisposable
     Task? _reader;
     TaskCompletionSource<JsonElement>? _pending;
     string? _pendingMessage;
+    int _unanswered;
 
     public event Action<GlazeEvent>? Event;
     public event Action? Disconnected;
@@ -29,6 +30,9 @@ public sealed class GlazeIpc : IAsyncDisposable
 
     /// <summary>Why the last <see cref="ConnectAsync"/> failed, for the log.</summary>
     public string? LastError { get; private set; }
+
+    /// <summary>Requests in a row that GlazeWM left without an answer (5 seconds each). 0 after any answer.</summary>
+    public int Unanswered => Volatile.Read(ref _unanswered);
 
     public async Task<bool> ConnectAsync(CancellationToken ct)
     {
@@ -76,14 +80,21 @@ public sealed class GlazeIpc : IAsyncDisposable
             await using (timeout.Token.Register(() => tcs.TrySetCanceled()))
             {
                 var result = await tcs.Task;
+                Volatile.Write(ref _unanswered, 0);
                 // Queries are many and say little; commands are what a fault report needs.
                 if (!queries) Log.Trace($"{message} → ok ({clock.ElapsedMilliseconds} ms)", "glazewm");
                 return result;
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            Log.Trace($"{message} → {(ex is OperationCanceledException ? "timeout" : Net.Describe(ex))} ({clock.ElapsedMilliseconds} ms)", "glazewm");
+            Interlocked.Increment(ref _unanswered);
+            Log.Trace($"{message} → timeout ({clock.ElapsedMilliseconds} ms)", "glazewm");
+            throw new WinMarchyException("glazeNoAnswer", ("command", message));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Trace($"{message} → {Net.Describe(ex)} ({clock.ElapsedMilliseconds} ms)", "glazewm");
             throw;
         }
         finally
@@ -98,6 +109,25 @@ public sealed class GlazeIpc : IAsyncDisposable
     }
 
     public Task<JsonElement> QueryAsync(string what, CancellationToken ct) => SendAsync("query " + what, ct);
+
+    /// <summary>
+    /// Whether GlazeWM answers on a fresh connection. Tells a stuck connection (connect again) from a
+    /// GlazeWM that hangs (only a restart helps).
+    /// </summary>
+    public static async Task<bool> ProbeAsync(CancellationToken ct)
+    {
+        await using var probe = new GlazeIpc();
+        if (!await probe.ConnectAsync(ct)) return false;
+        try
+        {
+            await probe.QueryAsync("focused", ct);
+            return true;
+        }
+        catch (WinMarchyException)
+        {
+            return false;
+        }
+    }
 
     public Task<JsonElement> CommandAsync(string command, CancellationToken ct, string? containerId = null) =>
         SendAsync(containerId == null ? "command " + command : $"command --id {containerId} {command}", ct);
@@ -166,7 +196,9 @@ public sealed class GlazeIpc : IAsyncDisposable
         try { _readCts?.Cancel(); } catch { }
         if (_ws is { State: WebSocketState.Open } ws)
         {
-            try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); } catch { }
+            // A GlazeWM that hangs never answers the close either.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", timeout.Token); } catch { }
         }
         _ws?.Dispose();
         if (_reader != null) { try { await _reader; } catch { } }

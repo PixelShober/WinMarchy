@@ -32,7 +32,7 @@ The predecessor (Winarchy Lite) was a set of PowerShell scripts; WinMarchy is on
 
 - Installs missing programs directly from the vendors' GitHub releases with SHA-256 check (user's choice: like Ember, no winget).
 - Hotkey profiles: "Business" (Omarchy defaults mapped to Windows and company apps) and "Persönlich" (the user's bindings.lua and Omarchy's consumer apps), plus own shortcuts.
-- Win+L cannot be rebound (Windows lock); Omarchy's SUPER+L moves to Win+Alt+L.
+- Win+L cannot be rebound (Windows lock), and Win+Alt+L never reached WinMarchy on a test PC; Omarchy's SUPER+L moves to Win+Ctrl+J, next to Win+J.
 - GlazeWM has no scrolling layout; WinMarchy emulates Dwindle, offers Columns and Floating per workspace.
 - Texts in German (real umlauts, "du") and English, following the Windows language.
 

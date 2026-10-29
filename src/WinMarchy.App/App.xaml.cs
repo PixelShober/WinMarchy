@@ -8,8 +8,9 @@ using WinMarchy.Core;
 namespace WinMarchy.App;
 
 /// <summary>
-/// Start: hand over to a running WinMarchy, copy to C:\WinMarchy\App, take a pending update, then the
-/// agent (tray, shortcuts, GlazeWM) and – unless started in the background – the window.
+/// Start: copy to C:\WinMarchy\App (ending another version that runs), hand over to a running WinMarchy,
+/// take a pending update, then the agent (tray, shortcuts, GlazeWM) and – unless started in the
+/// background – the window.
 /// </summary>
 public partial class App : Application
 {
@@ -39,13 +40,15 @@ public partial class App : Application
 
         L.Configure(UserSettings.Load().Language);
 
-        // Another WinMarchy runs: AutoHotkey's fallback, GlazeWM, the bar or a second double click.
-        if (!cmd.AfterUpdate && AgentClient.Forward(cmd))
+        // Started by hand (or by an old autostart entry) from somewhere else: this exe goes to
+        // C:\WinMarchy\App and runs from there. Actions from AutoHotkey, GlazeWM and the bar skip this.
+        if (SelfInstaller.EnsureInstalled(e.Args, copy: cmd.Action == null && !cmd.AfterUpdate) == SelfInstaller.Result.Relaunched)
         {
             Shutdown();
             return;
         }
-        if (SelfInstaller.EnsureInstalled(e.Args) == SelfInstaller.Result.Relaunched)
+        // Another WinMarchy runs: AutoHotkey's fallback, GlazeWM, the bar or a second double click.
+        if (!cmd.AfterUpdate && AgentClient.Forward(cmd))
         {
             Shutdown();
             return;
@@ -78,6 +81,7 @@ public partial class App : Application
 
         Log.Cleanup();
         Log.Info(L.T("app.started", ("version", AppInfo.Version), ("mode", L.T("app.modes." + AppInfo.Mode))));
+        if (AppInfo.IsPrerelease) Log.Info(L.T("install.prerelease", ("version", AppInfo.Version)));
         AppModel.Initialize(new WicImageConverter());
         ThemeManager.Initialize(AppModel.Settings.ColorScheme, AppModel.CurrentTheme.Palette.Accent);
 

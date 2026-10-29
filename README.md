@@ -26,11 +26,11 @@ Hervorgegangen ist WinMarchy aus dem Winarchy Lite WPF Manager 2.1. Die Logik st
 
 Die Exe ist eigenständig: .NET muss nicht installiert sein. Läuft auf Windows 10 (ab 1809) und Windows 11, x64.
 
-Wer nicht kopieren will, startet mit `WinMarchy.exe --portable`.
+Wer nicht kopieren will, startet mit `WinMarchy.exe --portable`. Läuft schon eine andere Version, beendet WinMarchy sie und startet sich danach aus `C:\WinMarchy\App`. Eine ältere `WinMarchy.exe` aus dem Download-Ordner überschreibt keine neuere, die sich inzwischen selbst aktualisiert hat; dann startet die neuere.
 
 ### Testversionen aus Pull Requests
 
-Jeder Pull Request baut eine `WinMarchy.exe`, zu finden als Artefakt „WinMarchy-PR-…“ auf der Seite des CI-Laufs (Actions → Lauf öffnen → unten bei Artifacts). Daneben liegt „Screenshots-PR-…“ mit jeder Seite in Hell und Dunkel. Diese Testversionen erkennt WinMarchy an der Versionsnummer (`0.0.0-ci.…`). Sie laufen immer portabel, überschreiben keine installierte Version und laden keine Updates. So siehst du wirklich den Stand des Pull Requests.
+Jeder Pull Request baut eine `WinMarchy.exe`, zu finden als Artefakt „WinMarchy-PR-…“ auf der Seite des CI-Laufs (Actions → Lauf öffnen → unten bei Artifacts). Daneben liegt „Screenshots-PR-…“ mit jeder Seite in Hell und Dunkel. Eine Testversion installiert sich wie ein Release nach `C:\WinMarchy\App` und ersetzt, was dort liegt. Läuft gerade eine andere Version, beendet WinMarchy sie vorher. Neuere Versionen fahren dabei sauber herunter wie über das Tray-Menü, ältere kennen das Signal noch nicht und werden einfach beendet. Danach startet die neue Version aus `C:\WinMarchy\App`, damit Autostart, AutoHotkey, GlazeWM und die Leiste genau diese Version aufrufen. Testversionen erkennt WinMarchy an der Versionsnummer (`0.0.0-ci.…`); sie laden keine Updates, bis du ein Release startest.
 
 ### Updates
 
@@ -88,7 +88,7 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+J` | Teilung drehen, sofort sichtbar |
 | `Win+1` … `Win+0` | Workspace 1 bis 10 |
 | `Win+Strg+D` | Neuer Workspace auf jedem Bildschirm, `Win+Strg+Pfeil` schaltet alle weiter |
-| `Win+Alt+L` | Layout des Workspace wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
+| `Win+Strg+J` | Layout des Workspace wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
 | `Win+S` | Scratchpad ein- und ausblenden, `Win+Alt+S` legt ein Fenster hinein oder holt es heraus |
 | `Win+M` | Minimierte Fenster zurückholen |
 | `Win+N` | Editor |
@@ -117,6 +117,8 @@ Tut ein Kürzel nichts oder startet etwas nicht, hilft die Seite **Protokoll**:
 4. Danach den Schalter wieder ausschalten, das Protokoll wird sonst schnell lang.
 
 Fenstertitel, Passwörter und Inhalte schreibt WinMarchy in beides nicht.
+
+Beantwortet GlazeWM zwei Befehle hintereinander nicht, prüft WinMarchy über eine frische Verbindung, ob GlazeWM noch lebt. Antwortet es dort, hing nur die Verbindung, und WinMarchy verbindet sich neu. Antwortet es auch dort nicht, beendet WinMarchy GlazeWM und startet es neu, höchstens einmal in fünf Minuten. Der Wächter-Prozess von GlazeWM bleibt dabei stehen und holt Fenster von versteckten Workspaces zurück, so wie nach einem Absturz. „GlazeWM neu laden“ im Tray-Menü startet ein hängendes GlazeWM ebenfalls neu.
 
 ## Für Entwickler
 

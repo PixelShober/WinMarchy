@@ -283,7 +283,7 @@ public sealed class WindowCommands
             await HideLockedAsync(Members(all).Where(w => GlazeConfig.IsRegular(w.Workspace)), ct);
             return;
         }
-        if (here != null && _layouts != null && focused is not { OnTop: true } && await _layouts.ScrollFocusLockedAsync(here, direction, ct)) return;
+        if (here != null && _layouts != null && focused is not { OnTop: true } && await _layouts.ScrollFocusLockedAsync(here, direction, focused?.Id, ct)) return;
         if (focused is { Floating: true })
         {
             var candidates = all.Where(w => w.Workspace == focused.Workspace && w.State is "tiling" or "floating");
@@ -315,7 +315,7 @@ public sealed class WindowCommands
             }
             return;
         }
-        if (here != null && _layouts != null && await _layouts.ScrollSwapLockedAsync(here, direction, ct)) return;
+        if (here != null && _layouts != null && await _layouts.ScrollSwapLockedAsync(here, direction, focused?.Id, ct)) return;
         await Cmd($"move --direction {direction}", ct);
     }, ct);
 
@@ -464,7 +464,8 @@ public sealed class WindowCommands
     /// <summary>
     /// Win+Ctrl+D, like a new virtual desktop in Windows: every monitor gets an empty workspace.
     /// Monitors that already show an empty one keep it. Workspaces pinned to a screen are only used
-    /// there. Returns which workspace each monitor (by index) now shows.
+    /// there; when a screen's own are all in use, it gets one pinned to no screen. Returns which
+    /// workspace each monitor (by index) now shows.
     /// </summary>
     public async Task<IReadOnlyList<(int Monitor, string Workspace)>> NewDesktopAsync(int workspaceCount, IReadOnlyDictionary<string, int> pinned, CancellationToken ct)
     {
@@ -477,6 +478,7 @@ public sealed class WindowCommands
             int focusedMonitor = Math.Max(0, monitors.FindIndex(m => GlazeTree.Bool(m, "hasFocus")));
             var active = monitors.SelectMany(GlazeTree.Children).Select(w => GlazeTree.Str(w, "name")).OfType<string>().ToHashSet();
             var names = Enumerable.Range(1, workspaceCount).Select(n => n.ToString()).ToList();
+            bool full = false;
             Log.Trace($"desktop-new: {monitors.Count} monitors, focus on {focusedMonitor}, open {string.Join(", ", active)}, " +
                       $"pinned {string.Join(", ", pinned.Select(p => $"{p.Key}→{p.Value}"))}", "desktop");
 
@@ -488,14 +490,14 @@ public sealed class WindowCommands
                     opened.Add((i, GlazeTree.Str(shown, "name")!));
                     continue;
                 }
-                // This monitor's own workspaces if it has any, else the ones pinned to no monitor.
-                bool hasOwn = pinned.Values.Contains(i);
-                var name = names.FirstOrDefault(n => !active.Contains(n) &&
-                    (hasOwn ? pinned.TryGetValue(n, out var m) && m == i : !pinned.ContainsKey(n)));
+                // This monitor's own workspaces first; when they are all in use, one pinned to no monitor.
+                var name = names.FirstOrDefault(n => !active.Contains(n) && pinned.TryGetValue(n, out var m) && m == i)
+                           ?? names.FirstOrDefault(n => !active.Contains(n) && !pinned.ContainsKey(n));
                 if (name == null)
                 {
                     Log.Trace($"desktop-new: monitor {i} has no free workspace", "desktop");
-                    _notify(L.T("tiling.allTaken", ("count", workspaceCount)));
+                    if (!full) _notify(L.T("tiling.allTaken", ("count", workspaceCount)));
+                    full = true;
                     continue;
                 }
                 Log.Trace($"desktop-new: monitor {i} → workspace {name}", "desktop");
@@ -554,25 +556,40 @@ public sealed class WindowCommands
 
     /// <summary>
     /// Waits for the next window GlazeWM takes on (an app that was just started) and moves it to the
-    /// given workspace if it opened elsewhere. False if none came in time.
+    /// given workspace if it opened elsewhere. Apps that allow only one window (Stackfield, Teams, …)
+    /// bring their open window to the front instead: when, shortly after the start, the focus jumps
+    /// to a window on another workspace, that one comes over. False if nothing came in time.
     /// </summary>
     public async Task<bool> CatchNextWindowAsync(string workspace, Action start, TimeSpan timeout, CancellationToken ct)
     {
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? before = null;
+        try { before = await FocusedWindowAsync(ct) is { } f ? GlazeTree.Str(f, "id") : null; } catch (WinMarchyException) { }
+        var started = DateTime.MinValue;
         void OnEvent(GlazeEvent e)
         {
             if (e.Type == "window_managed" && e.Data.TryGetProperty("managedWindow", out var w) && GlazeTree.Str(w, "id") is { } id)
                 tcs.TrySetResult(id);
+            // Focus events of our own focus commands come before the start or name the window that had it.
+            else if (e.Type == "focus_changed" && DateTime.Now - started < TimeSpan.FromSeconds(4) &&
+                     e.Data.TryGetProperty("focusedContainer", out var c) && GlazeTree.Type(c) == "window" &&
+                     GlazeTree.Str(c, "id") is { } focused && focused != before)
+                tcs.TrySetResult(focused);
         }
         _ipc.Event += OnEvent;
         try
         {
+            started = DateTime.Now;
             start();
             var done = await Task.WhenAny(tcs.Task, Task.Delay(timeout, ct));
             if (done != tcs.Task) return false;
             var data = await _ipc.QueryAsync("workspaces", ct);
-            if (GlazeTree.WorkspaceOf(data, tcs.Task.Result) is { } ws && GlazeTree.Str(ws, "name") != workspace)
+            if (GlazeTree.WorkspaceOf(data, tcs.Task.Result) is { } ws && GlazeTree.Str(ws, "name") is { } now && now != workspace)
+            {
+                Log.Trace($"desktop-new: window {tcs.Task.Result} came up on workspace {now}, moving it to {workspace}", "desktop");
                 await Cmd($"move --workspace {workspace}", ct, tcs.Task.Result);
+                await Cmd($"focus --workspace {workspace}", ct);
+            }
             return true;
         }
         finally

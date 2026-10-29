@@ -19,10 +19,10 @@ Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotk
 
 | Omarchy | Unter Windows | Warum |
 |-|-|-|
-| `Super+L` (Layout wechseln) | `Win+Alt+L` | `Win+L` sperrt den Rechner. Das lässt sich ohne Gruppenrichtlinie nicht abschalten, und die will in Firmen niemand anfassen. |
+| `Super+L` (Layout wechseln) | `Win+Strg+J` | `Win+L` sperrt den Rechner. Das lässt sich ohne Gruppenrichtlinie nicht abschalten, und die will in Firmen niemand anfassen. `Win+Alt+L` kam im Test nie bei WinMarchy an, Windows behält die Taste offenbar auch mit Alt. `Win+Strg+J` liegt neben `Win+J`, das die Teilung dreht. |
 | `Super+Alt+Space` (Omarchy-Menü) und `Super+Space` (Programme) | `Win+Space` | Ein Menü für beides: Tippen sucht in WinMarchys Einträgen und in den Programmen des Startmenüs. |
 | Super allein | `Win` allein | Öffnet Flow Launcher. Flow hört auf `Alt+F24`, eine Taste, die keine Tastatur hat; läuft Flow nicht, startet WinMarchy ihn. |
-| Scrolling-Layout | `Win+Alt+L` bis „Scrolling“ | GlazeWM kann das nicht selbst, WinMarchy setzt die Spalten. Siehe [tiling.md](tiling.md). |
+| Scrolling-Layout | `Win+Strg+J` bis „Scrolling“ | GlazeWM kann das nicht selbst, WinMarchy setzt die Spalten. Siehe [tiling.md](tiling.md). |
 | `Super+Shift+L` (Sperrbildschirm-Explorer) | nicht belegt | Windows hat kein Gegenstück. |
 | Spotify-Playlists mit Autoplay | Playlist öffnet sich | Unter Windows gibt es kein `playerctl`. Spotify zeigt die Playlist, starten musst du selbst. |
 | `Super+J` (Teilung drehen) | `Win+J` | Gleiche Taste. GlazeWMs eigener Befehl gilt erst fürs nächste Fenster, WinMarchy baut die Teilung deshalb selbst um, damit man sie sofort sieht. Das alte Verhalten liegt auf `Win+Alt+J`. |
@@ -77,7 +77,7 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+O` | Herauslösen und oben halten (Schwebt und bleibt über allen anderen Fenstern.) | gleich |
 | `Win+F` | Vollbild | gleich |
 | `Win+Alt+F` | Volle Breite | gleich |
-| `Win+Alt+L` | Layout wechseln: Dwindle, Spalten, Scrolling (Win+L sperrt unter Windows immer den Rechner.) | Super + L |
+| `Win+Strg+J` | Layout wechseln: Dwindle, Spalten, Scrolling (Win+L gehört unter Windows dem Sperren, und auch Win+Alt+L kommt nicht immer an.) | Super + L |
 | `Win+Left` | Fokus nach links | gleich |
 | `Win+Right` | Fokus nach rechts | gleich |
 | `Win+Up` | Fokus nach oben | gleich |
