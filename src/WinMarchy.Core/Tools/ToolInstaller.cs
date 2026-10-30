@@ -32,6 +32,10 @@ public static class ToolInstaller
         if (OperatingSystem.IsWindows() && Authenticode.Signer(file) is { } signer)
             Log.Info(L.T("tools.signedBy", ("file", asset), ("signer", signer)));
 
+        // A running GlazeWM keeps its folder locked, and a second one (e.g. the official one when
+        // switching builds) would fight the new one over the windows.
+        if (tool.Id == ToolCatalog.GlazeWm.Id) await StopGlazeAsync(step, ct);
+
         string exe;
         switch (tool.Kind)
         {
@@ -49,6 +53,43 @@ public static class ToolInstaller
         AppState.Update(s => { if (!s.InstalledTools.Contains(tool.Id)) s.InstalledTools.Add(tool.Id); });
         step.Report(L.T("tools.installed", ("tool", tool.Name), ("path", exe)));
         return exe;
+    }
+
+    /// <summary>
+    /// Ends GlazeWM the way its tray menu does (wm-exit), so every window it had hidden on other
+    /// workspaces shows again; whatever is still running after a few seconds is ended.
+    /// </summary>
+    static async Task StopGlazeAsync(SetupStep step, CancellationToken ct)
+    {
+        if (Process.GetProcessesByName("glazewm").Length == 0) return;
+        step.Report(L.T("tools.glazeStopping"));
+        try
+        {
+            await using var ipc = new GlazeWm.GlazeIpc();
+            if (await ipc.ConnectAsync(ct)) await ipc.CommandAsync("wm-exit", ct);
+        }
+        catch (WinMarchyException ex)
+        {
+            Log.Debug("wm-exit: " + ex.Message);
+        }
+        foreach (var name in new[] { "glazewm", "glazewm-watcher" })
+        {
+            foreach (var p in Process.GetProcessesByName(name))
+            {
+                using (p)
+                {
+                    try
+                    {
+                        if (!p.WaitForExit(5000)) p.Kill();
+                        p.WaitForExit(3000);
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+                    {
+                        Log.Debug($"{name}: {ex.Message}");
+                    }
+                }
+            }
+        }
     }
 
     static string ExtractZip(ToolDef tool, string zip, CancellationToken ct)

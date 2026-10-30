@@ -81,6 +81,9 @@ public sealed class UserSettings
     /// <summary>"windows" (Snipping Tool) or "greenshot".</summary>
     public string ScreenshotTool { get; set; } = "windows";
 
+    /// <summary>"winmarchy" (WinMarchy's build of GlazeWM) or "official" (the signed release from glzr-io).</summary>
+    public string GlazeBuild { get; set; } = "winmarchy";
+
     /// <summary>What the bar shows, by module id (see ZebarPack.Modules). Missing: the default.</summary>
     public Dictionary<string, bool> BarModules { get; set; } = new();
 

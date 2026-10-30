@@ -102,7 +102,7 @@ public class NetTests
     }
 
     [Theory]
-    [InlineData("glazewm", "standalone-glazewm-v3.10.0-x64.msi")]
+    [InlineData("glazewm", "glazewm-v3.10.1-winmarchy.1-x64.zip")]
     [InlineData("zebar", "zebar-v3.3.1-opt1-x64.msi")]
     [InlineData("autohotkey", "AutoHotkey_2.0.19.zip")]
     [InlineData("flow", "Flow-Launcher-Setup.exe")]
@@ -113,9 +113,33 @@ public class NetTests
         Assert.Matches(ToolCatalog.Get(tool).Asset!, asset);
 
     [Fact]
+    public void The_glazewm_build_is_told_apart_by_its_notes()
+    {
+        using var temp = new TempDir();
+        var exe = temp.File("glazewm.exe");
+        File.WriteAllText(exe, "");
+        var winmarchy = new UserSettings();
+        var official = new UserSettings { GlazeBuild = GlazeBuilds.Official };
+        Assert.False(ToolCatalog.IsWinMarchyBuild(exe));
+        Assert.True(ToolCatalog.IsWantedGlaze(exe, official));
+        Assert.False(ToolCatalog.IsWantedGlaze(exe, winmarchy));
+
+        File.WriteAllText(temp.File("WINMARCHY.md"), "");
+        Assert.True(ToolCatalog.IsWantedGlaze(exe, winmarchy));
+        Assert.False(ToolCatalog.IsWantedGlaze(exe, official));
+        Assert.False(ToolCatalog.IsWantedGlaze(null, winmarchy));
+
+        Assert.Same(ToolCatalog.GlazeWm, ToolCatalog.GlazeSource(winmarchy));
+        Assert.Equal(("glazewm", "glzr-io/glazewm"), (ToolCatalog.GlazeSource(official).Id, ToolCatalog.GlazeSource(official).Repo));
+    }
+
+    [Fact]
     public void Tool_patterns_skip_the_wrong_variants()
     {
-        Assert.DoesNotMatch(ToolCatalog.GlazeWm.Asset!, "standalone-glazewm-v3.10.0-arm64.msi");
+        Assert.DoesNotMatch(ToolCatalog.GlazeWm.Asset!, "glazewm-v3.10.1-winmarchy.1-x64.zip.sha256");
+        Assert.DoesNotMatch(ToolCatalog.GlazeWm.Asset!, "standalone-glazewm-v3.10.0-x64.msi");
+        Assert.Matches(ToolCatalog.GlazeWmOfficial.Asset!, "standalone-glazewm-v3.10.0-x64.msi");
+        Assert.DoesNotMatch(ToolCatalog.GlazeWmOfficial.Asset!, "standalone-glazewm-v3.10.0-arm64.msi");
         Assert.DoesNotMatch(ToolCatalog.PowerShell.Asset!, "PowerShell-7.5.4-win-arm64.zip");
         Assert.DoesNotMatch(ToolCatalog.AutoHotkey.Asset!, "AutoHotkey_1.1.37.02.zip");
         Assert.DoesNotMatch(ToolCatalog.Pi.Asset!, "pi-windows-arm64.zip");

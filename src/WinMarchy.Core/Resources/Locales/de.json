@@ -85,7 +85,9 @@
     "verified": "{file}: Prüfsumme stimmt",
     "signedBy": "{file} ist signiert von {signer}",
     "installed": "{tool} liegt jetzt unter {path}",
-    "removed": "{tool} entfernt"
+    "removed": "{tool} entfernt",
+    "glazeStopping": "GlazeWM wird für den Austausch beendet, die Fenster bleiben offen …",
+    "glazeFallback": "Der WinMarchy-Build von GlazeWM war nicht zu bekommen, WinMarchy installiert das offizielle Release: {detail}"
   },
 
   "setup": {
@@ -531,7 +533,16 @@
     "screenshotWindowsHint": "Druck und Win+Strg+Alt+C öffnen das Snipping Tool, Alt+Druck nimmt den Bildschirm als Video auf.",
     "screenshotGreenshotHint": "Druck nimmt einen Bereich auf, Alt+Druck ein Fenster, Strg+Druck den ganzen Bildschirm, so wie Greenshot es eingestellt hat. Win+Strg+Alt+C geht auch.",
     "screenshotGreenshotInstall": "Greenshot lädt WinMarchy beim Umschalten direkt vom Hersteller.",
-    "screenshotDone": "Bildschirmfotos jetzt mit {tool}."
+    "screenshotDone": "Bildschirmfotos jetzt mit {tool}.",
+    "glaze": "GlazeWM",
+    "glazeText": "Welcher GlazeWM die Fenster verwaltet. Der WinMarchy-Build ist GlazeWM von glzr-io mit den Korrekturen und Funktionen, die WinMarchy braucht (github.com/PixelShober/glazewm). Das offizielle Release ist signiert, kennt diese Änderungen aber nicht. Beim Wechsel beendet WinMarchy GlazeWM kurz; deine Fenster bleiben offen.",
+    "glazeWinMarchy": "WinMarchy-Build",
+    "glazeOfficial": "Offiziell (glzr-io)",
+    "glazeWinMarchyHint": "Nicht signiert, darum ohne UIAccess: Programme, die als Administrator laufen, kachelt GlazeWM nicht.",
+    "glazeOfficialHint": "Signiert von glzr-io. Was der WinMarchy-Build zusätzlich kann, übernimmt WinMarchy von außen, so gut es geht.",
+    "glazeInstalled": "Jetzt installiert: {build}, Version {version}.",
+    "glazeMissing": "Noch kein GlazeWM installiert.",
+    "glazeDone": "GlazeWM läuft jetzt als {build}."
   },
 
   "log": {
@@ -594,7 +605,8 @@
     "filesDefaultOff": "Explorer als Standard-Dateimanager",
     "extras": "Extras installieren: {tools}",
     "hotkeysImport": "Tastenkürzel importieren",
-    "screenshots": "Bildschirmfotos umstellen"
+    "screenshots": "Bildschirmfotos umstellen",
+    "glazeBuild": "GlazeWM wechseln"
   },
 
   "steps": {

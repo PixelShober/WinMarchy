@@ -38,14 +38,16 @@ Installierte Versionen schauen alle sechs Stunden in die GitHub-Releases. Eine n
 
 ## Was WinMarchy installiert
 
-Alles kommt direkt aus dem GitHub-Release des Herstellers, wird vor dem Entpacken geprüft (SHA-256) und landet unter `C:\WinMarchy\Tools`. Kein winget, kein Store, keine Administratorrechte.
+Alles kommt direkt aus einem GitHub-Release, wird vor dem Entpacken geprüft (SHA-256) und landet unter `C:\WinMarchy\Tools`. Kein winget, kein Store, keine Administratorrechte.
 
 | Programm | Wofür | Lizenz |
 |-|-|-|
-| GlazeWM | Fenster kacheln, Workspaces | GPL-3.0 |
+| GlazeWM | Fenster kacheln, Workspaces. Der WinMarchy-Build aus [PixelShober/glazewm](https://github.com/PixelShober/glazewm) | GPL-3.0 |
 | Zebar | Leiste oben | GPL-3.0 |
 | AutoHotkey v2 | Tastenkürzel, auch die Win-Taste allein | GPL-2.0 |
 | Flow Launcher | Programme suchen (Win allein) | MIT |
+
+**GlazeWM** kommt als WinMarchy-Build: GlazeWM von glzr-io plus die Korrekturen und Funktionen, die WinMarchy braucht. Jede Abweichung steht in [WINMARCHY.md](https://github.com/PixelShober/glazewm/blob/winmarchy/WINMARCHY.md) des Forks, Korrekturen gehen zusätzlich als Pull Request an glzr-io. Anders als das offizielle Release ist der Build nicht signiert und läuft deshalb ohne UIAccess: Programme, die als Administrator laufen, kachelt er nicht. Unter **Einstellungen → GlazeWM** lässt sich jederzeit auf das offizielle Release zurückwechseln. Gibt es den WinMarchy-Build gerade nicht, nimmt die Einrichtung das offizielle.
 
 Optionale Extras, in der Einrichtung einzeln anzuhaken:
 

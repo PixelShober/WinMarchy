@@ -50,6 +50,8 @@ public partial class SettingsPage : UserControl, IPage
         FillBrowsers(Browser2, s.Browser2);
         (s.ScreenshotTool == Core.Platform.Screenshots.Greenshot ? ShotGreenshot : ShotWindows).IsChecked = true;
         ShowScreenshotHint();
+        (s.GlazeBuild == GlazeBuilds.Official ? GlazeOfficial : GlazeWinMarchy).IsChecked = true;
+        ShowGlazeHint();
         _loading = false;
         ShowUpdate();
     }
@@ -127,6 +129,35 @@ public partial class SettingsPage : UserControl, IPage
             });
         });
         if (job != null) ShotJob.Follow(job.Id);
+        else OnShown();
+    }
+
+    // ------------------------------------------------------------------ GlazeWM build
+
+    void ShowGlazeHint()
+    {
+        var status = AppModel.Engine.Components.Status(ToolCatalog.GlazeWm);
+        var now = !status.Installed ? L.T("settings.glazeMissing")
+            : L.T("settings.glazeInstalled", ("build", L.T(ToolCatalog.IsWinMarchyBuild(status.Path) ? "settings.glazeWinMarchy" : "settings.glazeOfficial")),
+                ("version", status.Version ?? "?"));
+        var wanted = L.T(AppModel.Settings.GlazeBuild == GlazeBuilds.Official ? "settings.glazeOfficialHint" : "settings.glazeWinMarchyHint");
+        GlazeHint.Text = wanted + " " + now;
+    }
+
+    /// <summary>Installs the other GlazeWM in C:\WinMarchy\Tools and starts it with WinMarchy's configuration.</summary>
+    void OnGlazeBuild(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string build } || build == AppModel.Settings.GlazeBuild) return;
+        var job = AppModel.Run("glazewm", "setup", L.T("jobs.glazeBuild"), AppModel.Engine.GlazeBuildSteps(build), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
+                    j.State == JobState.Done ? L.T("settings.glazeDone", ("build", L.T(build == GlazeBuilds.Official ? "settings.glazeOfficial" : "settings.glazeWinMarchy"))) : j.Status);
+                OnShown();
+            });
+        });
+        if (job != null) GlazeJob.Follow(job.Id);
         else OnShown();
     }
 

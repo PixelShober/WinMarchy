@@ -47,7 +47,8 @@ public static class Diagnostics
             foreach (var tool in ToolCatalog.All)
             {
                 var st = ToolCatalog.Detect(tool, loc, s, AppState.Load());
-                Line($"{tool.Id}: {(st.Path ?? "not found")} {st.Version} {(st.Running ? "running" : "")}");
+                var build = tool == ToolCatalog.GlazeWm && st.Path != null ? (ToolCatalog.IsWinMarchyBuild(st.Path) ? " winmarchy build" : " official build") : "";
+                Line($"{tool.Id}: {(st.Path ?? "not found")} {st.Version}{build} {(st.Running ? "running" : "")}");
             }
         });
 

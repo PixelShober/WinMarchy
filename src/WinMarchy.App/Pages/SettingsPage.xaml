@@ -101,6 +101,21 @@
 
     <Border Style="{StaticResource Card}" Margin="0,20,0,0">
       <StackPanel>
+        <TextBlock Text="{ui:T settings.glaze}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T settings.glazeText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
+        <Border Style="{StaticResource SegmentGroup}" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal">
+            <RadioButton x:Name="GlazeWinMarchy" Style="{StaticResource Segment}" GroupName="glaze" Tag="winmarchy" Checked="OnGlazeBuild" Content="{ui:T settings.glazeWinMarchy}" />
+            <RadioButton x:Name="GlazeOfficial" Style="{StaticResource Segment}" GroupName="glaze" Tag="official" Checked="OnGlazeBuild" Content="{ui:T settings.glazeOfficial}" />
+          </StackPanel>
+        </Border>
+        <TextBlock x:Name="GlazeHint" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <ui:JobView x:Name="GlazeJob" Margin="0,10,0,0" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
         <TextBlock Text="{ui:T settings.paths}" Style="{StaticResource H2}" Margin="0,0,0,14" />
         <TextBlock Text="{ui:T settings.filesPath}" Style="{StaticResource H3}" Margin="0,0,0,4" />
         <DockPanel>

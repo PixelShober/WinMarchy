@@ -39,10 +39,42 @@ public sealed record ToolStatus(ToolDef Tool, string? Path, string? Version, boo
     public bool Installed => Path != null;
 }
 
+/// <summary>The two GlazeWM builds WinMarchy can install.</summary>
+public static class GlazeBuilds
+{
+    public const string WinMarchy = "winmarchy";
+    public const string Official = "official";
+}
+
 public static class ToolCatalog
 {
-    public static readonly ToolDef GlazeWm = new("glazewm", "GlazeWM", "GPL-3.0", "https://github.com/glzr-io/glazewm",
-        "glzr-io/glazewm", @"^standalone-glazewm-v[\d.]+-x64\.msi$", InstallKind.MsiExtract, "glazewm.exe", Required: true);
+    /// <summary>
+    /// GlazeWM as WinMarchy ships it: its own build from PixelShober/glazewm, upstream GlazeWM plus the
+    /// changes listed in WINMARCHY.md there. Not signed, so it runs without UIAccess.
+    /// </summary>
+    public static readonly ToolDef GlazeWm = new("glazewm", "GlazeWM", "GPL-3.0", "https://github.com/PixelShober/glazewm",
+        "PixelShober/glazewm", @"^glazewm-v[\d.]+-winmarchy\.\d+-x64\.zip$", InstallKind.Zip, "glazewm.exe", Required: true);
+
+    /// <summary>The signed release from glzr-io, without WinMarchy's changes. Same id and folder as <see cref="GlazeWm"/>.</summary>
+    public static readonly ToolDef GlazeWmOfficial = GlazeWm with
+    {
+        Homepage = "https://github.com/glzr-io/glazewm",
+        Repo = "glzr-io/glazewm",
+        AssetPattern = @"^standalone-glazewm-v[\d.]+-x64\.msi$",
+        Kind = InstallKind.MsiExtract,
+    };
+
+    /// <summary>Which GlazeWM the setup installs (Settings → GlazeWM).</summary>
+    public static ToolDef GlazeSource(UserSettings settings) =>
+        settings.GlazeBuild == GlazeBuilds.Official ? GlazeWmOfficial : GlazeWm;
+
+    /// <summary>WinMarchy's build ships WINMARCHY.md next to glazewm.exe; the official one does not.</summary>
+    public static bool IsWinMarchyBuild(string? glazeExe) =>
+        glazeExe != null && Path.GetDirectoryName(glazeExe) is { } dir && File.Exists(Path.Combine(dir, "WINMARCHY.md"));
+
+    /// <summary>Whether the GlazeWM found is the build the settings ask for.</summary>
+    public static bool IsWantedGlaze(string? glazeExe, UserSettings settings) =>
+        glazeExe != null && IsWinMarchyBuild(glazeExe) == (settings.GlazeBuild != GlazeBuilds.Official);
 
     public static readonly ToolDef Zebar = new("zebar", "Zebar", "GPL-3.0", "https://github.com/glzr-io/zebar",
         "glzr-io/zebar", @"^zebar-v[\d.]+-opt1-x64\.msi$", InstallKind.MsiExtract, "zebar.exe", Required: false);

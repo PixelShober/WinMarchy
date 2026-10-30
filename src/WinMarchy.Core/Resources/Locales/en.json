@@ -85,7 +85,9 @@
     "verified": "{file}: checksum matches",
     "signedBy": "{file} is signed by {signer}",
     "installed": "{tool} is now in {path}",
-    "removed": "{tool} removed"
+    "removed": "{tool} removed",
+    "glazeStopping": "Ending GlazeWM for the swap, the windows stay open …",
+    "glazeFallback": "WinMarchy's build of GlazeWM was not available, installing the official release: {detail}"
   },
 
   "setup": {
@@ -531,7 +533,16 @@
     "screenshotWindowsHint": "Print and Win+Ctrl+Alt+C open Snipping Tool, Alt+Print records the screen as a video.",
     "screenshotGreenshotHint": "Print captures a region, Alt+Print a window, Ctrl+Print the whole screen, as Greenshot has them set. Win+Ctrl+Alt+C works too.",
     "screenshotGreenshotInstall": "When you switch, WinMarchy downloads Greenshot straight from its maker.",
-    "screenshotDone": "Screenshots now with {tool}."
+    "screenshotDone": "Screenshots now with {tool}.",
+    "glaze": "GlazeWM",
+    "glazeText": "Which GlazeWM manages the windows. The WinMarchy build is GlazeWM from glzr-io with the fixes and features WinMarchy needs (github.com/PixelShober/glazewm). The official release is signed but lacks these changes. Switching ends GlazeWM for a moment; your windows stay open.",
+    "glazeWinMarchy": "WinMarchy build",
+    "glazeOfficial": "Official (glzr-io)",
+    "glazeWinMarchyHint": "Not signed, so without UIAccess: GlazeWM does not tile programs that run as administrator.",
+    "glazeOfficialHint": "Signed by glzr-io. What the WinMarchy build adds, WinMarchy does from the outside as far as it can.",
+    "glazeInstalled": "Installed now: {build}, version {version}.",
+    "glazeMissing": "No GlazeWM installed yet.",
+    "glazeDone": "GlazeWM now runs as {build}."
   },
 
   "log": {
@@ -594,7 +605,8 @@
     "filesDefaultOff": "Explorer as the default file manager",
     "extras": "Install extras: {tools}",
     "hotkeysImport": "Import shortcuts",
-    "screenshots": "Switch the screenshot tool"
+    "screenshots": "Switch the screenshot tool",
+    "glazeBuild": "Switch GlazeWM"
   },
 
   "steps": {

@@ -333,6 +333,53 @@ public sealed class Engine
         }
     }, () => Wallpapers.AllMissingBytes() == 0 ? L.T("themes.allThere") : null);
 
+    // ------------------------------------------------------------------ GlazeWM build
+
+    /// <summary>
+    /// Installs the GlazeWM the settings ask for. If WinMarchy's build cannot be had (no release yet,
+    /// GitHub unreachable for that repository), the official one keeps the desktop working.
+    /// </summary>
+    async Task InstallGlazeAsync(SetupStep step, CancellationToken ct)
+    {
+        var source = ToolCatalog.GlazeSource(S);
+        try
+        {
+            await ToolInstaller.InstallAsync(source, step, ct);
+        }
+        catch (Exception ex) when (source == ToolCatalog.GlazeWm &&
+                                   (ex is WinMarchyException { Code: "toolAssetMissing" or "releaseTagUnknown" or "toolNoChecksum" } ||
+                                    ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound }))
+        {
+            Log.Warn(L.T("tools.glazeFallback", ("detail", ex.Message)));
+            await ToolInstaller.InstallAsync(ToolCatalog.GlazeWmOfficial, step, ct);
+        }
+    }
+
+    /// <summary>Settings → GlazeWM: install the other build and start it with WinMarchy's configuration.</summary>
+    public List<SetupStep> GlazeBuildSteps(string build)
+    {
+        RestorePoint? point = null;
+        return new List<SetupStep>
+        {
+            BeginStep("glazewm", L.T("jobs.glazeBuild"), p => point = p),
+            new(L.T("steps.saveChoice"), (_, _) =>
+            {
+                var s = S.Clone();
+                s.GlazeBuild = build == GlazeBuilds.Official ? GlazeBuilds.Official : GlazeBuilds.WinMarchy;
+                _save(s);
+                return Task.CompletedTask;
+            }),
+            new(L.T("steps.install", ("tool", ToolCatalog.GlazeWm.Name)), (step, ct) => InstallGlazeAsync(step, ct),
+                () => ToolCatalog.IsWantedGlaze(Components.GlazeExe, S) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null),
+            new(L.T("steps.glazeStart"), async (step, ct) =>
+            {
+                WriteGlazeConfig(Context(point!, step), CurrentTheme.Palette);
+                if (!Components.StartGlaze()) throw new WinMarchyException("glazeMissing");
+                await Components.ReloadGlazeAsync(Glaze(), ct);
+            }),
+        };
+    }
+
     // ------------------------------------------------------------------ full setup
 
     /// <summary>Extras later on, without running the whole setup again. Only C:\WinMarchy\Tools changes.</summary>
@@ -351,7 +398,10 @@ public sealed class Engine
             () => !wanted ? L.T("steps.notChosen")
                 : Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null));
 
-        Install(ToolCatalog.GlazeWm, o.InstallGlazeWm);
+        steps.Add(new SetupStep(L.T("steps.install", ("tool", ToolCatalog.GlazeWm.Name)),
+            (step, ct) => InstallGlazeAsync(step, ct),
+            () => !o.InstallGlazeWm ? L.T("steps.notChosen")
+                : ToolCatalog.IsWantedGlaze(Components.GlazeExe, S) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null));
         Install(ToolCatalog.Zebar, o.InstallZebar);
         Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
         Install(ToolCatalog.Flow, o.InstallFlow);
