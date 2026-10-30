@@ -161,6 +161,27 @@ public static class ToolInstaller
         return Path.Combine(tool.ToolDir, relative);
     }
 
+    /// <summary>Deletes what <see cref="Remove"/> could not delete while it was in use.</summary>
+    public static void CleanupLeftovers()
+    {
+        var left = AppState.Load().LeftoverDirs;
+        if (left.Count == 0) return;
+        var gone = new List<string>();
+        foreach (var dir in left)
+        {
+            try
+            {
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                gone.Add(dir);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Debug($"{dir}: {ex.Message}");
+            }
+        }
+        AppState.Update(s => s.LeftoverDirs.RemoveAll(gone.Contains));
+    }
+
     /// <summary>Removes a program WinMarchy installed (only its own folder or Flow's per-user install).</summary>
     public static void Remove(ToolDef tool, Locations loc)
     {
@@ -168,7 +189,19 @@ public static class ToolInstaller
         {
             try { p.Kill(entireProcessTree: true); p.WaitForExit(3000); } catch { }
         }
-        if (Directory.Exists(tool.ToolDir)) Directory.Delete(tool.ToolDir, true);
+        if (Directory.Exists(tool.ToolDir))
+        {
+            try
+            {
+                Directory.Delete(tool.ToolDir, true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // ExplorerBlurMica's DLL stays loaded in Explorer until the next sign-in.
+                Log.Info(L.T("tools.removeLater", ("tool", tool.Name), ("path", tool.ToolDir)));
+                AppState.Update(s => { if (!s.LeftoverDirs.Contains(tool.ToolDir)) s.LeftoverDirs.Add(tool.ToolDir); });
+            }
+        }
         if (tool.Kind == InstallKind.Installer && tool.Id == "flow")
         {
             var update = Path.Combine(loc.LocalAppData, "FlowLauncher", "Update.exe");

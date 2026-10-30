@@ -100,7 +100,7 @@ public class IntegrationTests
     [Fact]
     public void GlazeWM_config_has_the_omarchy_look()
     {
-        var yaml = GlazeConfig.Generate(GlazeConfig.FromSettings(new UserSettings(), Tokyo, ZebarPack.BarHeight));
+        var yaml = GlazeConfig.Generate(GlazeConfig.FromSettings(new UserSettings(), Tokyo, Bars.Height));
         Assert.Contains("workspaces:", yaml);
         Assert.Contains("'" + GlazeConfig.ScratchpadWorkspace + "'", yaml);
         Assert.Contains(Tokyo.Accent, yaml, StringComparison.OrdinalIgnoreCase);
@@ -113,7 +113,7 @@ public class IntegrationTests
     public void GlazeWM_engine_routes_non_window_actions_through_WinMarchy()
     {
         var set = HotkeySet.Build(false, new CustomHotkeys(), "glazewm");
-        var o = GlazeConfig.FromSettings(new UserSettings { HotkeyEngine = "glazewm" }, Tokyo, ZebarPack.BarHeight);
+        var o = GlazeConfig.FromSettings(new UserSettings { HotkeyEngine = "glazewm" }, Tokyo, Bars.Height);
         o.Keybindings = GlazeConfig.Keybindings(set, new UsKeyboardLayout(), @"C:\WinMarchy\App\WinMarchy.exe");
         var yaml = GlazeConfig.Generate(o);
         Assert.Contains("lwin+enter", yaml);

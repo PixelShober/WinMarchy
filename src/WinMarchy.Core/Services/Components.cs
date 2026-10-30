@@ -8,7 +8,7 @@ using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Services;
 
-/// <summary>Starting, stopping and reloading GlazeWM, Zebar and the AutoHotkey script.</summary>
+/// <summary>Starting, stopping and reloading GlazeWM, the bar (YASB or Zebar) and the AutoHotkey script.</summary>
 public sealed class Components
 {
     readonly Locations _loc;
@@ -23,10 +23,18 @@ public sealed class Components
     public ToolStatus Status(ToolDef tool) => ToolCatalog.Detect(tool, _loc, _settings(), AppState.Load());
 
     public string? GlazeExe => Status(ToolCatalog.GlazeWm).Path;
-    public string? ZebarExe => Status(ToolCatalog.Zebar).Path;
+    public string? YasbExe => Status(ToolCatalog.Yasb).Path;
     public string? AhkExe => Status(ToolCatalog.AutoHotkey).Path;
 
-    /// <summary>The exe that GlazeWM, Zebar and AutoHotkey call back: the installed copy if there is one.</summary>
+    /// <summary>The bar that runs now (see <see cref="Bars.Chosen"/>).</summary>
+    public string Bar => Bars.Chosen(_settings(), _loc);
+
+    /// <summary>The chosen bar's program, if it is installed.</summary>
+    public string? BarExe => Status(Bars.Tool(Bar)).Path;
+
+    public bool BarRunning => IsRunning(Bars.Process(Bar));
+
+    /// <summary>The exe that GlazeWM, the bar and AutoHotkey call back: the installed copy if there is one.</summary>
     public static string SelfExe => File.Exists(Paths.InstalledExe) ? Paths.InstalledExe : Environment.ProcessPath ?? Paths.InstalledExe;
 
     public static bool IsRunning(string processName) => Process.GetProcessesByName(processName).Length > 0;
@@ -97,17 +105,40 @@ public sealed class Components
         return Platform.AppLauncher.Start(flow);
     }
 
-    public void StartBar()
+    /// <summary>Starts the chosen bar. False if it is not installed.</summary>
+    public bool StartBar()
     {
-        if (ZebarExe is not { } zebar) return;
-        Platform.AppLauncher.Start(zebar, $"start-widget-preset --pack {ZebarPack.PackName} --widget-name {ZebarPack.Widget} --preset default");
+        if (BarExe is not { } exe) return false;
+        if (Bar == Bars.Zebar)
+            return Platform.AppLauncher.Start(exe, $"start-widget-preset --pack {ZebarPack.PackName} --widget-name {ZebarPack.Widget} --preset default");
+        return Platform.AppLauncher.Start(exe);
     }
 
+    /// <summary>Ends both bars: the one not chosen must not stay either (after a switch).</summary>
     public void StopBar()
     {
-        foreach (var p in Process.GetProcessesByName("zebar"))
+        // YASB first through its own command line, so it can let go of the tray icons; whatever still runs is ended.
+        if (IsRunning("yasb") && YasbExe is { } yasb && Path.Combine(Path.GetDirectoryName(yasb)!, "yasbc.exe") is var cli && File.Exists(cli))
         {
-            try { p.Kill(entireProcessTree: true); } catch { }
+            try
+            {
+                using var p = Process.Start(new ProcessStartInfo(cli, "stop --silent") { UseShellExecute = false, CreateNoWindow = true });
+                p?.WaitForExit(5000);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                Log.Debug("yasbc stop: " + ex.Message);
+            }
+        }
+        foreach (var name in new[] { "yasb", "zebar" })
+        {
+            foreach (var p in Process.GetProcessesByName(name))
+            {
+                using (p)
+                {
+                    try { p.Kill(entireProcessTree: true); } catch { }
+                }
+            }
         }
     }
 
@@ -217,7 +248,7 @@ public sealed class Components
 
     // ------------------------------------------------------------------ autostart
 
-    /// <summary>One entry in the user's Startup folder: WinMarchy starts GlazeWM, Zebar and AutoHotkey itself.</summary>
+    /// <summary>One entry in the user's Startup folder: WinMarchy starts GlazeWM, the bar and AutoHotkey itself.</summary>
     public void SetAutostart(BackupStore backups, RestorePoint point, bool on)
     {
         var link = _loc.AutostartShortcut;

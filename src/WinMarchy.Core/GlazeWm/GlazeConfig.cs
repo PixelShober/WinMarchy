@@ -110,6 +110,8 @@ public static class GlazeConfig
         Line($"  - name: '{StageWorkspace}'");
         Line();
         Line("window_rules:");
+        // Both bars and their drop-down menus stay out of the tiling.
+        Rule(sb, "ignore", ("window_process", "equals", "yasb"));
         Rule(sb, "ignore", ("window_process", "equals", "zebar"));
         Rule(sb, "ignore", ("window_title", "equals", OverlayTitle));
         Rule(sb, "ignore", ("window_process", "equals", "Flow.Launcher"));

@@ -1,5 +1,5 @@
 // Dependency guard: WinMarchy ships without any NuGet package. The exe is the .NET runtime, WPF and
-// our own code; GlazeWM, Zebar and AutoHotkey are separate programs from their vendors.
+// our own code; GlazeWM, YASB and AutoHotkey are separate programs from their vendors.
 //   node scripts/check-deps.mjs            (needs the .NET SDK for "dotnet list package")
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';

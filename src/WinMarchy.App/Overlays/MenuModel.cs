@@ -132,10 +132,13 @@ static class MenuModel
             Sub("settings", "root.setup", "setup"),
             Page("undo", "root.restore", "restore"),
             Sub("download", "root.update", "update"),
-            Page("info", "root.about", "start"),
+            // As in Omarchy: with Fastfetch, "About" shows the system information in a terminal.
+            HasFastfetch() ? Item("info", "root.about", "do:about") : Page("info", "root.about", "start"),
             Sub("power", "root.system", "system"),
         },
     };
+
+    static bool HasFastfetch() => AppModel.Engine.Components.Status(Core.Tools.ToolCatalog.Fastfetch).Installed;
 
     static readonly string[] Submenus = { "learn", "trigger", "capture", "toggle", "hardware", "style", "setup", "update", "system" };
 

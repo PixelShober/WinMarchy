@@ -368,7 +368,7 @@ public partial class HotkeysPage : UserControl, IPage
         IEnumerable<string>? choices = kind switch
         {
             "app" => HotkeyAction.Apps,
-            "do" => HotkeyAction.Commands,
+            "do" => HotkeyAction.Commands.Where(c => !HotkeyAction.InternalCommands.Contains(c)),
             _ => null,
         };
         EditValueHint.Text = L.T("hotkeys.kindHints." + kind);

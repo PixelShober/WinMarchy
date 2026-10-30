@@ -36,7 +36,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
     {
         "terminal", "browser", "browser2", "browser-private", "files", "editor", "launcher", "calculator", "taskmanager",
         "settings", "explorer", "mail", "calendar", "teams", "notes", "word", "herdr", "winmarchy",
-        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi",
+        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi", "lunatask",
     };
 
     /// <summary>WinMarchy functions behind "do:…" (first word; some take an argument).</summary>
@@ -47,8 +47,11 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "gaps-toggle",
         "transparency-toggle", "move-window-monitor", "restore-minimized", "copy", "paste", "reload",
         "toggle-split", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
-        "focus", "swap", "to-workspace", "screenshot",
+        "focus", "swap", "to-workspace", "screenshot", "about", "bar-shortcut",
     };
+
+    /// <summary>Commands WinMarchy uses itself (the bar's own buttons) and the shortcut editor does not offer.</summary>
+    public static readonly IReadOnlySet<string> InternalCommands = new HashSet<string>(StringComparer.Ordinal) { "bar-shortcut" };
 
     /// <summary>Link schemes "open:" may use.</summary>
     public static readonly IReadOnlySet<string> OpenSchemes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

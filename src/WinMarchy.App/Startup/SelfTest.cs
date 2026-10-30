@@ -63,13 +63,21 @@ static class SelfTest
             var name = personal ? "winmarchy-hotkeys-personal.ahk" : "winmarchy-hotkeys.ahk";
             File.WriteAllText(Path.Combine(outDir, name), AhkScript.Generate(set, new AhkContext(exe, cli, WinKeyOpensLauncher: true)), bom);
         }
-        File.WriteAllText(Path.Combine(outDir, "glazewm-config.yaml"), GlazeConfig.Generate(GlazeConfig.FromSettings(settings, palette, ZebarPack.BarHeight)));
-        var glazeKeys = GlazeConfig.FromSettings(settings, palette, ZebarPack.BarHeight);
+        File.WriteAllText(Path.Combine(outDir, "glazewm-config.yaml"), GlazeConfig.Generate(GlazeConfig.FromSettings(settings, palette, Bars.Height)));
+        var glazeKeys = GlazeConfig.FromSettings(settings, palette, Bars.Height);
         glazeKeys.Keybindings = GlazeConfig.Keybindings(HotkeySet.Build(true, new CustomHotkeys(), "glazewm"), new UsKeyboardLayout(), exe);
         File.WriteAllText(Path.Combine(outDir, "glazewm-config-glazewm-engine.yaml"), GlazeConfig.Generate(glazeKeys));
         File.WriteAllText(Path.Combine(outDir, "zpack.json"), ZebarPack.Manifest(exe));
         File.WriteAllText(Path.Combine(outDir, "theme.css"), ZebarPack.ThemeCss(palette));
         File.WriteAllText(Path.Combine(outDir, "config.js"), ZebarPack.ConfigJs(exe, settings));
+        // YASB's bar with a shortcut of the user's own in the menu and as a button.
+        var yasb = settings.Clone();
+        yasb.BarShortcuts.Add(new BarShortcut { Title = "Ticket & Co. {neu}", Action = "web:https://example.com/?a=1&b=2", InBar = true });
+        File.WriteAllText(Path.Combine(outDir, "yasb-config.yaml"), YasbBar.Config(exe, yasb, fastfetch: true));
+        File.WriteAllText(Path.Combine(outDir, "yasb-styles.css"), YasbBar.Styles(palette));
+        File.WriteAllText(Path.Combine(outDir, "starship.toml"), ShellExtras.StarshipToml(palette));
+        File.WriteAllText(Path.Combine(outDir, "fastfetch.jsonc"), ShellExtras.FastfetchConfig(palette));
+        File.WriteAllText(Path.Combine(outDir, "starship-prompt.ps1"), ShellExtras.PromptScript(@"C:\WinMarchy\Tools\starship\starship.exe", @"C:\WinMarchy\Runtime\starship.toml"), bom);
         // Greenshot owns the Print keys when it is chosen; the script must still validate.
         var greenshot = AhkScript.Generate(HotkeySet.Build(false, new CustomHotkeys(), "autohotkey"),
             new AhkContext(exe, cli, WinKeyOpensLauncher: true, LeaveAlone: WinMarchy.Core.Platform.Screenshots.GreenshotKeys.ToHashSet()));

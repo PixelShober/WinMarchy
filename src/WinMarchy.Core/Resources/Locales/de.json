@@ -64,7 +64,7 @@
   "tools": {
     "roles": {
       "glazewm": "Fenster kacheln",
-      "zebar": "Leiste oben",
+      "zebar": "Leiste oben (früher)",
       "autohotkey": "Tastenkürzel",
       "flow": "Programme suchen",
       "pwsh": "Shell",
@@ -73,7 +73,12 @@
       "vscode": "Editor",
       "herdr": "Agent-Terminal",
       "pi": "Coding-Agent",
-      "greenshot": "Bildschirmfotos"
+      "greenshot": "Bildschirmfotos",
+      "yasb": "Leiste oben",
+      "starship": "Eingabezeile",
+      "fastfetch": "Systeminfo",
+      "explorerblurmica": "Explorer-Effekt",
+      "lunatask": "Aufgaben"
     },
     "running": "Läuft",
     "installedBadge": "Installiert",
@@ -87,7 +92,8 @@
     "installed": "{tool} liegt jetzt unter {path}",
     "removed": "{tool} entfernt",
     "glazeStopping": "GlazeWM wird für den Austausch beendet, die Fenster bleiben offen …",
-    "glazeFallback": "Der WinMarchy-Build von GlazeWM war nicht zu bekommen, WinMarchy installiert das offizielle Release: {detail}"
+    "glazeFallback": "Der WinMarchy-Build von GlazeWM war nicht zu bekommen, WinMarchy installiert das offizielle Release: {detail}",
+    "removeLater": "{tool} ist noch in Gebrauch und wird beim nächsten Start gelöscht: {path}"
   },
 
   "setup": {
@@ -97,13 +103,18 @@
     "programsText": "Jedes Programm kommt direkt aus dem GitHub-Release des Herstellers und wird vor dem Entpacken geprüft. Alles landet unter C:\\WinMarchy\\Tools, Administratorrechte braucht es nicht.",
     "why": {
       "glazewm": "Kachelt die Fenster und verwaltet die Workspaces. Ohne GlazeWM geht nichts.",
-      "zebar": "Die Leiste oben mit Workspaces, Uhr, Netz, Ton und Akku.",
+      "zebar": "Die frühere Leiste oben. Neue Einrichtungen nehmen YASB.",
       "autohotkey": "Fängt die Tastenkürzel ab, auch die Win-Taste allein.",
       "flow": "Der Starter hinter der Win-Taste, wie Walker in Omarchy.",
       "pwsh": "PowerShell 7 fürs Terminal. Windows bringt nur die alte 5.1 mit.",
       "herdr": "Terminal-Arbeitsplatz für Coding-Agents, Win+Strg+Eingabe. Unter Windows noch Beta.",
       "pi": "Der Coding-Agent Pi im Terminal, Win+Alt+Eingabe.",
-      "greenshot": "Bildschirmfotos mit Editor, falls dir das Snipping Tool nicht reicht. Umschalten unter Einstellungen."
+      "greenshot": "Bildschirmfotos mit Editor, falls dir das Snipping Tool nicht reicht. Umschalten unter Einstellungen.",
+      "yasb": "Die Leiste oben: Workspaces, Uhr mit Kalender, Ton, WLAN und Akku. Kleine Menüs klappen von oben auf; eigene Einträge legst du unter Tiling an.",
+      "starship": "Omarchys Eingabezeile für PowerShell 7: Ordner, Git-Zweig und Status, in den Farben des Themes.",
+      "fastfetch": "Zeigt im Terminal, was in deinem Rechner steckt, wie „Über“ in Omarchy. Im Logo-Menü der Leiste und als Aktion do:about.",
+      "explorerblurmica": "Unschärfe hinter Explorer in der Farbe des Themes. Nur für dein Konto eingetragen; ausschalten unter Einstellungen.",
+      "lunatask": "Aufgaben, Notizen und Gewohnheiten an einem Ort. Der Hersteller veröffentlicht keine Prüfsumme, darum lädt WinMarchy es nicht selbst: Installiere es von lunatask.app, danach startet die Aktion app:lunatask es. Es gelten die Nutzungsbedingungen des Herstellers."
     },
     "detected": "{tool} gefunden",
     "notDetected": "{tool} nicht gefunden",
@@ -123,7 +134,10 @@
     "extrasText": "Für den Omarchy-Desktop nicht nötig. Du kannst sie auch später einzeln installieren.",
     "installExtras": "Nur Extras installieren",
     "extrasDone": "Extras installiert.",
-    "piNeedsBash": "Braucht Git Bash, das hier noch fehlt."
+    "piNeedsBash": "Braucht Git Bash, das hier noch fehlt.",
+    "experimental": "Experimentell",
+    "fromVendor": "{tool} beim Hersteller laden",
+    "zebarStays": "Die Einrichtung nimmt jetzt YASB als Leiste. Das Zebar aus der früheren Einrichtung entfernst du unter Einstellungen → Leiste."
   },
 
   "themes": {
@@ -142,7 +156,6 @@
     "targets": "Was eingefärbt wird",
     "target": {
       "glazewm": "GlazeWM",
-      "zebar": "Leiste",
       "terminal": "Terminal",
       "powershell": "PowerShell",
       "vscode": "VS Code",
@@ -150,7 +163,10 @@
       "files": "Files",
       "windows": "Windows",
       "wallpaper": "Hintergrund",
-      "lockscreen": "Sperrbildschirm"
+      "lockscreen": "Sperrbildschirm",
+      "bar": "Leiste",
+      "shell": "Starship und Fastfetch",
+      "explorerBlur": "Explorer (ExplorerBlurMica)"
     },
     "wallpapers": "{total} Hintergrundbilder, {have} davon schon geladen ({size})",
     "noWallpapers": "Zu diesem Theme gibt es keine Hintergrundbilder.",
@@ -319,7 +335,8 @@
     "notepad": "Editor",
     "stackfield": "Stackfield",
     "pi": "Pi",
-    "browser2": "Zweiter Browser"
+    "browser2": "Zweiter Browser",
+    "lunatask": "Lunatask"
   },
 
   "commands": {
@@ -357,7 +374,9 @@
     "focus": "Fokus in eine Richtung (left, right, up, down)",
     "swap": "Fenster tauschen (left, right, up, down)",
     "to-workspace": "Fenster auf Workspace (1 bis 10)",
-    "screenshot": "Bildschirmfoto (region, window, screen)"
+    "screenshot": "Bildschirmfoto (region, window, screen)",
+    "about": "Über dieses System (Fastfetch)",
+    "bar-shortcut": "Eigener Eintrag der Leiste"
   },
 
   "tiling": {
@@ -413,7 +432,17 @@
     "desktopAppLate": "{action} hat nach 12 Sekunden noch kein Fenster gezeigt; vorgesehen war Workspace {workspace}.",
     "monitorsFailed": "Workspaces ließen sich nicht auf ihre Bildschirme verschieben: {detail}",
     "trayPinned": "Im Infobereich immer sichtbar",
-    "trayPinnedHint": "Teil des Namens, mit Komma getrennt, etwa Teams, OneDrive. Der Rest wartet hinter dem kleinen Pfeil; Mittelklick auf ein Symbol heftet es dort an."
+    "trayPinnedHint": "Teil des Namens, mit Komma getrennt, etwa Teams, OneDrive. Der Rest wartet hinter dem kleinen Pfeil; Mittelklick auf ein Symbol heftet es dort an.",
+    "shortcuts": "Eigene Einträge in der Leiste",
+    "shortcutsHint": "Sie stehen im Menü unter dem Logo, das von oben aufklappt, mit „Als Knopf“ auch direkt in der Leiste. Die Aktion schreibst du wie bei Tastenkürzeln: app:terminal, web:https://…, open:ms-settings:…, do:theme-menu oder run:C:\\Pfad\\skript.ps1. Nur mit YASB.",
+    "shortcutTitle": "Name",
+    "shortcutAction": "Aktion",
+    "shortcutTemplate": "Vorlage …",
+    "shortcutInBar": "Als Knopf",
+    "shortcutRemove": "Entfernen",
+    "shortcutAdd": "Eintrag hinzufügen",
+    "shortcutNoTitle": "Der Eintrag mit der Aktion {action} braucht einen Namen.",
+    "yasbOnly": "Nur mit YASB"
   },
 
   "layouts": {
@@ -508,7 +537,7 @@
       "backups": "Sicherungen",
       "tools": "Programme",
       "glazewm": "GlazeWM-Konfiguration",
-      "zebar": "Leiste"
+      "bar": "Leiste"
     },
     "unreadable": "Die Einstellungen ließen sich nicht lesen, WinMarchy startet mit den Standardwerten: {detail}",
     "fileManager": "Dateimanager",
@@ -542,7 +571,28 @@
     "glazeOfficialHint": "Signiert von glzr-io. Was der WinMarchy-Build zusätzlich kann, übernimmt WinMarchy von außen, so gut es geht.",
     "glazeInstalled": "Jetzt installiert: {build}, Version {version}.",
     "glazeMissing": "Noch kein GlazeWM installiert.",
-    "glazeDone": "GlazeWM läuft jetzt als {build}."
+    "glazeDone": "GlazeWM läuft jetzt als {build}.",
+    "bar": "Leiste",
+    "barText": "Welche Leiste oben läuft. YASB ist die neue Leiste von WinMarchy: Kalender, Ton, WLAN und das Menü unter dem Logo klappen von oben auf, und unter Tiling legst du eigene Einträge an. Zebar bleibt wählbar, bis YASB bei dir läuft.",
+    "barYasbHint": "Jetzt läuft YASB.",
+    "barZebarHint": "Jetzt läuft Zebar aus einer früheren Einrichtung. Ein Klick auf YASB lädt YASB beim Hersteller, richtet es in deinem Theme ein und startet es statt Zebar.",
+    "barInstalled": "{tool} {version} ist installiert.",
+    "barNotInstalled": "{tool} ist noch nicht installiert.",
+    "barDone": "Die Leiste ist jetzt {tool}.",
+    "zebarStillThere": "Zebar ist noch da und lässt sich entfernen, sobald YASB läuft.",
+    "zebarElsewhere": "Zebar ist außerhalb von WinMarchy installiert ({path}). WinMarchy nimmt nur seine eigene Leiste heraus; das Programm selbst entfernst du unter Windows-Einstellungen → Apps.",
+    "zebarRemove": "Zebar entfernen",
+    "zebarRemoveTitle": "Zebar entfernen?",
+    "zebarRemoveConfirm": "WinMarchy beendet Zebar, nimmt seine Leiste aus Zebars Autostart und löscht Zebar aus C:\\WinMarchy\\Tools. Die Dateien der Leiste liegen danach in einem Wiederherstellungspunkt. Stellst du die Leiste später wieder auf Zebar, lädt WinMarchy das Programm neu.",
+    "zebarRemoved": "Zebar ist entfernt.",
+    "explorerBlurText": "Unschärfe hinter Explorer, eingefärbt mit dem Theme. Explorer lädt dafür eine DLL; WinMarchy trägt sie nur für dein Konto ein, ohne Administratorrechte, und Ausschalten macht es rückgängig. Experimentell: Ein Windows-Update kann sie stören, und manche Firmen lassen Explorer-Erweiterungen nur zu, wenn sie für alle Benutzer eingetragen sind.",
+    "explorerBlurSwitch": "ExplorerBlurMica einschalten",
+    "explorerBlurTitle": "ExplorerBlurMica einschalten?",
+    "explorerBlurConfirm": "WinMarchy lädt ExplorerBlurMica von GitHub (Maplespe/ExplorerBlurMica), prüft die Prüfsumme und trägt die DLL für dein Konto ein. Neu geöffnete Explorer-Fenster zeigen dann den Effekt. Stürzt Explorer danach ab: Beim Öffnen von Explorer die Esc-Taste gedrückt halten, dann bleibt der Effekt aus, und hier wieder ausschalten.",
+    "explorerBlurOnHint": "Eingeschaltet. Der Farbton folgt dem Theme; neue Explorer-Fenster zeigen ihn.",
+    "explorerBlurOffHint": "Aus. Beim Einschalten lädt WinMarchy ExplorerBlurMica, falls es noch fehlt.",
+    "explorerBlurOn": "ExplorerBlurMica ist an. Öffne ein neues Explorer-Fenster.",
+    "explorerBlurOff": "ExplorerBlurMica ist aus. Ganz weg ist es nach der nächsten Anmeldung."
   },
 
   "log": {
@@ -606,7 +656,11 @@
     "extras": "Extras installieren: {tools}",
     "hotkeysImport": "Tastenkürzel importieren",
     "screenshots": "Bildschirmfotos umstellen",
-    "glazeBuild": "GlazeWM wechseln"
+    "glazeBuild": "GlazeWM wechseln",
+    "bar": "Leiste: {tool}",
+    "zebarRemove": "Zebar entfernen",
+    "explorerBlurOn": "ExplorerBlurMica einschalten",
+    "explorerBlurOff": "ExplorerBlurMica ausschalten"
   },
 
   "steps": {
@@ -616,8 +670,6 @@
     "notChosen": "nicht ausgewählt",
     "alreadyInstalled": "schon da: {path}",
     "legacy": "Winarchy Lite ablösen",
-    "zebarPack": "Leiste einrichten",
-    "zebarMissing": "Zebar ist nicht installiert",
     "glazeStart": "GlazeWM starten",
     "hotkeys": "Tastenkürzel aktivieren",
     "autostart": "Autostart",
@@ -625,7 +677,6 @@
     "autostartOff": "Kein Autostart.",
     "themeAssets": "Theme-Dateien laden",
     "glazewm": "GlazeWM einfärben",
-    "zebar": "Leiste einfärben",
     "terminal": "Windows Terminal einfärben",
     "powershell": "PowerShell einfärben",
     "vscode": "VS Code einfärben",
@@ -643,7 +694,18 @@
     "allWallpapers": "Hintergrundbilder aller Themes laden ({count})",
     "filesDefault": "Ordner-Zuordnung ändern",
     "printKey": "Druck-Taste für Greenshot",
-    "saveChoice": "Auswahl speichern"
+    "saveChoice": "Auswahl speichern",
+    "barMissing": "{tool} ist nicht installiert",
+    "barSetup": "Leiste einrichten",
+    "barTheme": "Leiste einfärben",
+    "explorerBlur": "ExplorerBlurMica eintragen",
+    "explorerBlurOff": "ExplorerBlurMica austragen",
+    "explorerBlurTheme": "Explorer einfärben",
+    "starship": "Starship einrichten",
+    "fastfetch": "Fastfetch einfärben",
+    "shellTheme": "Starship und Fastfetch einfärben",
+    "notSetUp": "nicht eingerichtet",
+    "zebarRemove": "Zebar entfernen"
   },
 
   "integrations": {
@@ -690,6 +752,19 @@
       "on": "Ordner, Laufwerke und Win+E öffnen jetzt Files.",
       "off": "Ordner öffnen wieder im Explorer.",
       "gone": "Files ist nicht mehr installiert. Ordner öffnen wieder im Explorer."
+    },
+    "yasb": {
+      "done": "Leiste eingerichtet: {path}"
+    },
+    "explorerBlur": {
+      "on": "ExplorerBlurMica ist für dein Konto eingetragen. Neu geöffnete Explorer-Fenster zeigen den Effekt; falls nicht, einmal ab- und wieder anmelden.",
+      "off": "ExplorerBlurMica ist ausgetragen. Nach der nächsten Anmeldung lädt Explorer es nicht mehr."
+    },
+    "starship": {
+      "done": "Starship ist in PowerShell 7 eingerichtet und zeigt sich im nächsten Terminal-Tab."
+    },
+    "fastfetch": {
+      "done": "Fastfetch hat die Farben des Themes."
     }
   },
 
@@ -725,10 +800,33 @@
       "audio": "Ton",
       "cpu": "CPU",
       "memory": "Arbeitsspeicher",
-      "battery": "Akku"
+      "battery": "Akku",
+      "media": "Medien"
     },
     "trayOpen": "Alle Symbole im Infobereich zeigen. Mittelklick auf ein Symbol heftet es an.",
-    "trayClose": "Infobereich einklappen"
+    "trayClose": "Infobereich einklappen",
+    "glazeOffline": "GlazeWM läuft nicht",
+    "muted": "stumm",
+    "menu": {
+      "winmarchy": "WinMarchy-Menü",
+      "keybindings": "Tastenkürzel",
+      "themes": "Theme wechseln",
+      "wallpapers": "Hintergrund wählen",
+      "about": "Über dieses System",
+      "settings": "WinMarchy öffnen"
+    },
+    "power": {
+      "shutdown": "Herunterfahren",
+      "restart": "Neu starten",
+      "hibernate": "Ruhezustand",
+      "logout": "Abmelden",
+      "lock": "Sperren",
+      "sleep": "Energie sparen",
+      "system": "Einstellungen",
+      "about": "Über diesen PC",
+      "taskManager": "Task-Manager"
+    },
+    "zebarElsewhere": "Zebar hat nicht WinMarchy installiert, es bleibt: {path}. Entfernen kannst du es unter Windows-Einstellungen → Apps."
   },
 
   "actions": {
@@ -746,7 +844,8 @@
     "batteryCharging": "Akku: {percent} %, lädt",
     "batteryLeft": "Akku: {percent} %, noch {hours} h {minutes} min",
     "noneMinimized": "Kein Fenster ist minimiert.",
-    "restoredMinimized": "{count} Fenster zurückgeholt."
+    "restoredMinimized": "{count} Fenster zurückgeholt.",
+    "fastfetchMissing": "Fastfetch ist nicht installiert. Du findest es unter Einrichtung → Extras."
   },
 
   "agent": {
@@ -762,7 +861,6 @@
     "taskbarSettingOff": "Die Taskleiste ist gar nicht ausgeblendet. Einschalten lässt sich das unter Tiling.",
     "taskbarShown": "Taskleiste eingeblendet.",
     "taskbarHidden": "Taskleiste ausgeblendet.",
-    "zebarMissing": "Zebar ist nicht installiert.",
     "awakeOn": "Bleibt wach. Bildschirm und Rechner gehen nicht in den Ruhezustand.",
     "awakeOff": "Ruhezustand wieder wie eingestellt.",
     "wallpaper": "Hintergrund: {name}",
@@ -776,7 +874,8 @@
     "glazeRestarting": "GlazeWM hing und startet neu. Deine Fenster bleiben offen.",
     "glazeHungAgain": "GlazeWM hängt schon wieder. „GlazeWM neu laden“ im Tray-Menü startet es neu; was davor geschah, steht im Protokoll.",
     "glazeEnded": "GlazeWM beendet (PID {pid}).",
-    "glazeEndFailed": "GlazeWM ließ sich nicht beenden: {detail}"
+    "glazeEndFailed": "GlazeWM ließ sich nicht beenden: {detail}",
+    "barMissing": "{tool} ist nicht installiert."
   },
 
   "tray": {
@@ -972,7 +1071,8 @@
     "zipInvalidPath": "Die ZIP enthält einen ungültigen Pfad: {entry}",
     "filesMissing": "Files ist nicht installiert.",
     "hotkeysImportInvalid": "Die Datei enthält keine WinMarchy-Tastenkürzel.",
-    "glazeNoAnswer": "GlazeWM hat auf „{command}“ nicht geantwortet."
+    "glazeNoAnswer": "GlazeWM hat auf „{command}“ nicht geantwortet.",
+    "barMissing": "{tool} ist nicht installiert."
   },
 
   "policies": {
@@ -996,7 +1096,7 @@
       "spotlight": "Windows-Blickpunkt ist per Richtlinie aus.",
       "taskbarLocked": "Die Taskleisten-Einstellungen sind gesperrt. Das Ausblenden kann scheitern.",
       "winKeys": "Die Win-Kürzel von Windows selbst sind aus. Die von WinMarchy gehen trotzdem.",
-      "allowList": "Nur freigegebene Programme dürfen starten. GlazeWM, AutoHotkey und Zebar müssen auf der Liste stehen.",
+      "allowList": "Nur freigegebene Programme dürfen starten. GlazeWM, AutoHotkey und YASB müssen auf der Liste stehen.",
       "blockList": "Bestimmte Programme sind gesperrt. Steht eins von WinMarchy darauf, startet es nicht.",
       "appLocker": "AppLocker ist eingerichtet. Programme unter C:\\WinMarchy\\Tools brauchen eventuell eine Freigabe.",
       "srp": "Richtlinien für Softwareeinschränkung sind aktiv. Programme unter C:\\WinMarchy\\Tools können blockiert sein.",
@@ -1008,7 +1108,7 @@
       "taskManager": "Der Task-Manager ist gesperrt. Win+Umschalt+T öffnet nichts.",
       "registryTools": "Der Registrierungs-Editor ist gesperrt. WinMarchy schreibt trotzdem in HKEY_CURRENT_USER.",
       "notifications": "Das Info-Center ist abgeschaltet.",
-      "webView2": "WebView2 hat Vorgaben der IT. Die Leiste (Zebar) läuft mit WebView2.",
+      "webView2": "WebView2 hat Vorgaben der IT. Die frühere Leiste (Zebar) läuft mit WebView2, YASB braucht es nicht.",
       "proxy": "Ein Proxy ist eingestellt ({value}). Downloads von GitHub gehen darüber.",
       "proxyScript": "Ein Proxy-Skript ist eingestellt ({value}). Downloads von GitHub gehen darüber.",
       "mdm": "Der PC wird über {value} verwaltet (Intune oder ein anderes MDM). Solche Vorgaben stehen nicht immer in der Registry."
@@ -1018,5 +1118,21 @@
   "screenshot": {
     "greenshotMissing": "Greenshot ist nicht installiert, das Snipping Tool springt ein. In den Einstellungen lässt sich Greenshot installieren.",
     "printKeyFreed": "Druck öffnet nicht mehr das Snipping Tool, Greenshot übernimmt die Taste."
+  },
+
+  "fastfetch": {
+    "os": "Betriebssystem",
+    "host": "Gerät",
+    "kernel": "Kernel",
+    "uptime": "Laufzeit",
+    "shell": "Shell",
+    "terminal": "Terminal",
+    "display": "Bildschirm",
+    "cpu": "Prozessor",
+    "gpu": "Grafik",
+    "memory": "Arbeitsspeicher",
+    "disk": "Datenträger",
+    "battery": "Akku",
+    "locale": "Sprache"
   }
 }

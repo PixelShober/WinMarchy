@@ -6,7 +6,7 @@ namespace WinMarchy.Core;
 /// <code>
 /// C:\WinMarchy\App        WinMarchy.exe          C:\WinMarchy\Logs      winmarchy-*.log
 /// C:\WinMarchy\Config     settings, hotkeys      C:\WinMarchy\Backups   restore points
-/// C:\WinMarchy\Themes     previews, wallpapers   C:\WinMarchy\Tools     GlazeWM, Zebar, AutoHotkey …
+/// C:\WinMarchy\Themes     previews, wallpapers   C:\WinMarchy\Tools     GlazeWM, YASB, AutoHotkey …
 /// C:\WinMarchy\Runtime    generated scripts      C:\WinMarchy\Downloads, Temp
 /// </code>
 /// If C:\ does not let a normal user create folders (hardened machines), WinMarchy falls back to
@@ -45,6 +45,11 @@ public static class Paths
     public static string ScratchpadFile => Path.Combine(ConfigDir, "scratchpad.json");
 
     public static string AhkScript => Path.Combine(RuntimeDir, "winmarchy-hotkeys.ahk");
+    /// <summary>Starship's settings for the prompt WinMarchy sets up (STARSHIP_CONFIG points here, the user's own file stays untouched).</summary>
+    public static string StarshipConfig => Path.Combine(RuntimeDir, "starship.toml");
+    /// <summary>Loads Starship in PowerShell 7; the profile hook runs it.</summary>
+    public static string PromptScript => Path.Combine(RuntimeDir, "starship-prompt.ps1");
+    public static string FastfetchConfig => Path.Combine(RuntimeDir, "fastfetch.jsonc");
 
     public static string Ensure(string dir)
     {

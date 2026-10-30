@@ -1,10 +1,14 @@
+using System.Text.Json.Serialization;
+
 namespace WinMarchy.Core;
 
 /// <summary>Which programs a theme change restyles.</summary>
 public sealed class ThemeTargets
 {
     public bool GlazeWm { get; set; } = true;
-    public bool Zebar { get; set; } = true;
+    /// <summary>The bar at the top, YASB or Zebar. Called "zebar" in settings.json from the time there was only Zebar.</summary>
+    [JsonPropertyName("zebar")]
+    public bool Bar { get; set; } = true;
     public bool Terminal { get; set; } = true;
     public bool PowerShell { get; set; } = true;
     public bool VsCode { get; set; } = true;
@@ -13,8 +17,24 @@ public sealed class ThemeTargets
     /// <summary>Dark or light mode and accent colour of Windows itself.</summary>
     public bool Windows { get; set; } = true;
     public bool Wallpaper { get; set; } = true;
+    /// <summary>Starship's prompt and Fastfetch, if they are installed.</summary>
+    public bool Shell { get; set; } = true;
+    /// <summary>ExplorerBlurMica's tint in Explorer, if it is switched on.</summary>
+    public bool ExplorerBlur { get; set; } = true;
     /// <summary>The wallpaper also on the lock screen. Off by default: in companies IT often sets it.</summary>
     public bool LockScreen { get; set; }
+}
+
+/// <summary>An entry of the user's own in the bar.</summary>
+public sealed class BarShortcut
+{
+    public string Title { get; set; } = "";
+
+    /// <summary>What it does, written like a shortcut's action: "app:terminal", "web:https://…", "do:theme-menu".</summary>
+    public string Action { get; set; } = "";
+
+    /// <summary>Also a button of its own in the bar, not only an entry in the menu under the logo.</summary>
+    public bool InBar { get; set; }
 }
 
 /// <summary>C:\WinMarchy\Config\settings.json – everything the user chooses in the app.</summary>
@@ -84,10 +104,19 @@ public sealed class UserSettings
     /// <summary>"winmarchy" (WinMarchy's build of GlazeWM) or "official" (the signed release from glzr-io).</summary>
     public string GlazeBuild { get; set; } = "winmarchy";
 
-    /// <summary>What the bar shows, by module id (see ZebarPack.Modules). Missing: the default.</summary>
+    /// <summary>
+    /// "yasb" or "zebar". Null: never chosen; then a Zebar that WinMarchy set up earlier keeps running
+    /// until the user switches (see <see cref="Integrations.Bars.Chosen"/>), and a new setup takes YASB.
+    /// </summary>
+    public string? Bar { get; set; }
+
+    /// <summary>The user's own entries in the bar: in the menu under the logo, some also as buttons.</summary>
+    public List<BarShortcut> BarShortcuts { get; set; } = new();
+
+    /// <summary>What the bar shows, by module id (see Bars.Modules). Missing: the default.</summary>
     public Dictionary<string, bool> BarModules { get; set; } = new();
 
-    /// <summary>Tray icons that stay in sight while the tray is folded away (part of their name).</summary>
+    /// <summary>Tray icons that stay in sight while the tray is folded away (part of their name). Zebar only; YASB pins with Alt+click.</summary>
     public List<string> BarTrayPinned { get; set; } = new();
 
     /// <summary>Settings file of the Files app, if it is not found automatically.</summary>

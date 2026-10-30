@@ -52,6 +52,11 @@ public sealed class Locations
     public string ZebarSettings => Path.Combine(ZebarDir, "settings.json");
     public string ZebarPackDir => Path.Combine(ZebarDir, "winmarchy");
 
+    // YASB, the bar. YASB_CONFIG_HOME moves its folder, as it does for YASB itself.
+    public string YasbDir => Environment.GetEnvironmentVariable("YASB_CONFIG_HOME") is { Length: > 0 } home ? home : Path.Combine(UserProfile, ".config", "yasb");
+    public string YasbConfig => Path.Combine(YasbDir, "config.yaml");
+    public string YasbStyles => Path.Combine(YasbDir, "styles.css");
+
     // Flow Launcher
     public string FlowSettings => Path.Combine(AppData, "FlowLauncher", "Settings", "Settings.json");
     public string FlowThemesDir => Path.Combine(AppData, "FlowLauncher", "Themes");

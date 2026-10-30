@@ -22,7 +22,7 @@ public partial class SettingsPage : UserControl, IPage
         {
             ("settings.folder.root", Paths.Root), ("settings.folder.logs", Paths.LogDir), ("settings.folder.backups", Paths.BackupDir),
             ("settings.folder.tools", Paths.ToolsDir), ("settings.folder.glazewm", Locations.Current.GlazeWmConfig),
-            ("settings.folder.zebar", Locations.Current.ZebarPackDir),
+            ("settings.folder.bar", Locations.Current.YasbDir),
         };
         foreach (var (key, path) in folders)
         {
@@ -52,6 +52,9 @@ public partial class SettingsPage : UserControl, IPage
         ShowScreenshotHint();
         (s.GlazeBuild == GlazeBuilds.Official ? GlazeOfficial : GlazeWinMarchy).IsChecked = true;
         ShowGlazeHint();
+        (AppModel.Engine.Components.Bar == Bars.Zebar ? BarZebar : BarYasb).IsChecked = true;
+        ShowBarHint();
+        ShowExplorerBlur();
         _loading = false;
         ShowUpdate();
     }
@@ -159,6 +162,90 @@ public partial class SettingsPage : UserControl, IPage
         });
         if (job != null) GlazeJob.Follow(job.Id);
         else OnShown();
+    }
+
+    // ------------------------------------------------------------------ bar
+
+    void ShowBarHint()
+    {
+        var c = AppModel.Engine.Components;
+        var zebar = c.Status(ToolCatalog.Zebar);
+        var yasb = c.Status(ToolCatalog.Yasb);
+        var parts = new List<string>
+        {
+            L.T(c.Bar == Bars.Zebar ? "settings.barZebarHint" : "settings.barYasbHint"),
+            yasb.Installed ? L.T("settings.barInstalled", ("tool", "YASB"), ("version", yasb.Version ?? "?")) : L.T("settings.barNotInstalled", ("tool", "YASB")),
+        };
+        var zebarThere = zebar.Installed || ZebarPack.IsInstalled(Locations.Current);
+        if (zebarThere) parts.Add(zebar.Installed && !zebar.InstalledByWinMarchy ? L.T("settings.zebarElsewhere", ("path", zebar.Path)) : L.T("settings.zebarStillThere"));
+        BarHint.Text = string.Join(" ", parts);
+        // Zebar goes only once YASB is the bar, so the desktop never ends up without one.
+        RemoveZebar.Visibility = zebarThere ? Visibility.Visible : Visibility.Collapsed;
+        RemoveZebar.IsEnabled = c.Bar == Bars.Yasb;
+    }
+
+    /// <summary>Installs the other bar if needed, sets it up in the theme's colours and starts it instead.</summary>
+    void OnBar(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string bar } || bar == AppModel.Engine.Components.Bar) return;
+        var name = Bars.Tool(bar).Name;
+        var job = AppModel.Run("bar", "setup", L.T("jobs.bar", ("tool", name)), AppModel.Engine.BarSteps(bar), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
+                    j.State == JobState.Done ? L.T("settings.barDone", ("tool", name)) : j.Status);
+                OnShown();
+            });
+        });
+        if (job != null) BarJob.Follow(job.Id);
+        else OnShown();
+    }
+
+    async void OnRemoveZebar(object sender, RoutedEventArgs e)
+    {
+        if (!await Dialogs.ConfirmAsync(L.T("settings.zebarRemoveTitle"), L.T("settings.zebarRemoveConfirm"), L.T("settings.zebarRemove"), danger: true)) return;
+        var job = AppModel.Run("zebar-remove", "setup", L.T("jobs.zebarRemove"), AppModel.Engine.RemoveZebarSteps(), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error, j.State == JobState.Done ? L.T("settings.zebarRemoved") : j.Status);
+                OnShown();
+            });
+        });
+        if (job != null) BarJob.Follow(job.Id);
+    }
+
+    // ------------------------------------------------------------------ ExplorerBlurMica
+
+    void ShowExplorerBlur()
+    {
+        var on = AppModel.Engine.ExplorerBlurIsOn;
+        BlurSwitch.IsChecked = on;
+        BlurBadge.Child = UiKit.Badge(L.T("setup.experimental"), "warn");
+        BlurHint.Text = on ? L.T("settings.explorerBlurOnHint") : L.T("settings.explorerBlurOffHint");
+    }
+
+    /// <summary>Downloaded if needed and registered for this user only, or registered no more. Each switch is a restore point.</summary>
+    async void OnExplorerBlur(object sender, RoutedEventArgs e)
+    {
+        bool on = BlurSwitch.IsChecked == true;
+        if (on && !await Dialogs.ConfirmAsync(L.T("settings.explorerBlurTitle"), L.T("settings.explorerBlurConfirm"), L.T("settings.explorerBlurSwitch")))
+        {
+            ShowExplorerBlur();
+            return;
+        }
+        var job = AppModel.Run("explorer-blur", "setup", L.T(on ? "jobs.explorerBlurOn" : "jobs.explorerBlurOff"), AppModel.Engine.ExplorerBlurSteps(on), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
+                    j.State == JobState.Done ? L.T(on ? "settings.explorerBlurOn" : "settings.explorerBlurOff") : j.Status);
+                ShowExplorerBlur();
+            });
+        });
+        if (job != null) BlurJob.Follow(job.Id);
+        else ShowExplorerBlur();
     }
 
     void ShowFilesDefault()

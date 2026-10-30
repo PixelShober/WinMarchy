@@ -80,6 +80,7 @@ public partial class App : Application
         }
 
         Log.Cleanup();
+        Core.Tools.ToolInstaller.CleanupLeftovers();
         Log.Info(L.T("app.started", ("version", AppInfo.Version), ("mode", L.T("app.modes." + AppInfo.Mode))));
         if (AppInfo.IsPrerelease) Log.Info(L.T("install.prerelease", ("version", AppInfo.Version)));
         AppModel.Initialize(new WicImageConverter());

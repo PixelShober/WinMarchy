@@ -6,6 +6,9 @@ public sealed class AppState
     /// <summary>Programs WinMarchy installed itself (they can be removed again from "Undo").</summary>
     public List<string> InstalledTools { get; set; } = new();
 
+    /// <summary>Folders of removed programs that were still in use (a DLL Explorer had loaded); deleted at the next start.</summary>
+    public List<string> LeftoverDirs { get; set; } = new();
+
     /// <summary>Was the Windows taskbar on auto-hide before WinMarchy hid it? null = never touched.</summary>
     public bool? TaskbarAutoHideBefore { get; set; }
 

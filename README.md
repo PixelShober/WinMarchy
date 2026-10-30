@@ -43,9 +43,13 @@ Alles kommt direkt aus einem GitHub-Release, wird vor dem Entpacken geprüft (SH
 | Programm | Wofür | Lizenz |
 |-|-|-|
 | GlazeWM | Fenster kacheln, Workspaces. Der WinMarchy-Build aus [PixelShober/glazewm](https://github.com/PixelShober/glazewm) | GPL-3.0 |
-| Zebar | Leiste oben | GPL-3.0 |
+| YASB | Leiste oben, mit Menüs, die von oben aufklappen | MIT |
 | AutoHotkey v2 | Tastenkürzel, auch die Win-Taste allein | GPL-2.0 |
 | Flow Launcher | Programme suchen (Win allein) | MIT |
+
+**YASB** ersetzt Zebar als Leiste. Workspaces links, die Uhr in der Mitte, Infobereich, Netz, Ton, CPU und Akku rechts, wie die Waybar in Omarchy. Ein Klick auf die Uhr klappt den Kalender mit Kalenderwochen und Feiertagen auf, auf den Ton die Lautstärke mit den Ausgabegeräten, auf das Netz die WLAN-Liste, auf die CPU den Verlauf. Das Logo öffnet ein Menü mit WinMarchy-Menü, Tastenkürzeln, Theme, Hintergrund, deinen eigenen Einträgen und den Punkten zum Sperren, Abmelden und Herunterfahren. Eigene Einträge legst du unter **Tiling → Eigene Einträge in der Leiste** an (Name und Aktion wie bei Tastenkürzeln), auf Wunsch auch als Knopf direkt in der Leiste. Farben und Schrift kommen aus dem Theme. Die Symbole stammen aus Segoe Fluent Icons, die Windows 11 mitbringt; unter Windows 10 muss die Schrift einmal von Microsoft installiert werden. YASBs MSI ist für alle Benutzer gebaut; WinMarchy packt es nur aus, Administratorrechte braucht es dafür nicht.
+
+Wer noch Zebar aus einer früheren Einrichtung hat, behält es, bis er unter **Einstellungen → Leiste** auf YASB umstellt. Dort entfernt **Zebar entfernen** Zebar wieder: WinMarchy beendet es, nimmt seine Leiste aus Zebars Autostart (beides in einem Wiederherstellungspunkt) und löscht es aus `C:\WinMarchy\Tools`. Ein Zebar, das jemand anders installiert hat, bleibt; WinMarchy sagt dann, wo es liegt. GlazeWM bringt Zebar nicht mehr mit: Der WinMarchy-Build startet in seiner Beispielkonfiguration keine Leiste, und die Konfiguration von WinMarchy hat ohnehin keinen Startbefehl.
 
 **GlazeWM** kommt als WinMarchy-Build: GlazeWM von glzr-io plus die Korrekturen und Funktionen, die WinMarchy braucht. Jede Abweichung steht in [WINMARCHY.md](https://github.com/PixelShober/glazewm/blob/winmarchy/WINMARCHY.md) des Forks, Korrekturen gehen zusätzlich als Pull Request an glzr-io. Anders als das offizielle Release ist der Build nicht signiert und läuft deshalb ohne UIAccess: Programme, die als Administrator laufen, kachelt er nicht. Unter **Einstellungen → GlazeWM** lässt sich jederzeit auf das offizielle Release zurückwechseln. Gibt es den WinMarchy-Build gerade nicht, nimmt die Einrichtung das offizielle.
 
@@ -54,13 +58,23 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 | Programm | Wofür | Lizenz |
 |-|-|-|
 | PowerShell 7 | Shell im Terminal | MIT |
+| Starship | Omarchys Eingabezeile in PowerShell 7, in den Farben des Themes | ISC |
+| Fastfetch | Systeminfo im Terminal, wie „Über“ in Omarchy (Logo-Menü der Leiste, WinMarchy-Menü → Info, Aktion `do:about`) | MIT |
 | Herdr | Terminal-Arbeitsplatz für Coding-Agents (Win+Strg+Eingabe), unter Windows noch Beta | Apache-2.0 |
 | Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
 | Greenshot | Bildschirmfotos mit Editor, statt Snipping Tool (umschaltbar unter **Einstellungen**) | GPL-3.0 |
+| ExplorerBlurMica (experimentell) | Unschärfe hinter Explorer, eingefärbt mit dem Theme (ein- und ausschalten unter **Einstellungen**) | LGPL-3.0 |
+| Lunatask | Aufgaben, Notizen, Gewohnheiten. Nur verlinkt, siehe unten | proprietär |
+
+**Starship** bekommt seine Einstellungen in `C:\WinMarchy\Runtime\starship.toml`, eine eigene `starship.toml` bleibt also unberührt. Ins PowerShell-7-Profil kommt nur der markierte WinMarchy-Block, der das Skript lädt, wenn es da ist. Läuft PowerShell unter AppLocker im eingeschränkten Sprachmodus, bleibt die normale Eingabezeile, denn Starships Skript läuft dort nicht.
+
+**ExplorerBlurMica** ist eine DLL, die Explorer lädt. Mit `regsvr32` als Administrator eingetragen, gilt sie für alle Benutzer. WinMarchy schreibt dieselben zwei Einträge nur für dein Konto unter `HKEY_CURRENT_USER`, ohne Administratorrechte und mit Wiederherstellungspunkt. Neu geöffnete Explorer-Fenster zeigen den Effekt. Ausschalten trägt die DLL aus, entladen wird sie mit der nächsten Anmeldung. Experimentell, weil ein Windows-Update sie stören kann und manche Firmen Explorer-Erweiterungen nur systemweit zulassen. Stürzt Explorer ab: beim Öffnen Esc gedrückt halten, dann bleibt der Effekt aus.
+
+**Lunatask** lädt WinMarchy nicht selbst herunter, weil der Hersteller keine Prüfsumme veröffentlicht. Die Einrichtung verlinkt [lunatask.app](https://lunatask.app/download). Ist es installiert (oder aus dem Microsoft Store), startet die Aktion `app:lunatask` es, etwa als Tastenkürzel oder als eigener Eintrag in der Leiste. Für Lunatask gelten die Bedingungen des Herstellers, auch für den Einsatz in der Firma.
 
 Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Files lässt sich unter **Einstellungen** als Standard-Dateimanager festlegen: Ordner, Laufwerke und Win+E öffnen dann Files, Dieser PC und Papierkorb bleiben beim Explorer.
 
-Alle Programme dürfen kostenlos in Firmen eingesetzt werden. Komorebi war deshalb keine Option: Für den geschäftlichen Einsatz braucht es eine kostenpflichtige Lizenz.
+Alle Programme, die WinMarchy selbst installiert, dürfen kostenlos in Firmen eingesetzt werden. Komorebi war deshalb keine Option: Für den geschäftlichen Einsatz braucht es eine kostenpflichtige Lizenz.
 
 ## Ordner
 
@@ -69,7 +83,7 @@ Alle Programme dürfen kostenlos in Firmen eingesetzt werden. Komorebi war desha
 | `C:\WinMarchy\App` | WinMarchy.exe |
 | `C:\WinMarchy\Config` | Einstellungen, eigene Tastenkürzel, Layouts pro Workspace, Scratchpad |
 | `C:\WinMarchy\Backups` | Sicherungspunkte |
-| `C:\WinMarchy\Tools` | GlazeWM, Zebar, AutoHotkey, PowerShell |
+| `C:\WinMarchy\Tools` | GlazeWM, YASB, AutoHotkey, PowerShell und die Extras |
 | `C:\WinMarchy\Themes` | Vorschaubilder und Hintergründe, unter `<theme>\own` deine eigenen |
 | `C:\WinMarchy\Logs` | Protokolle, 30 Tage |
 
@@ -148,6 +162,9 @@ Der Titel des Pull Requests bestimmt die Version (Conventional Commits): `feat:`
 
 - [Omarchy](https://github.com/basecamp/omarchy) von David Heinemeier Hansson, MIT. Die Themes stammen von dort.
 - [GlazeWM und Zebar](https://github.com/glzr-io) von glzr-io, GPL-3.0.
+- [YASB](https://github.com/amnweb/yasb) von AmN, MIT.
+- [Starship](https://starship.rs), ISC, und [Fastfetch](https://github.com/fastfetch-cli/fastfetch), MIT.
+- [ExplorerBlurMica](https://github.com/Maplespe/ExplorerBlurMica) von Maplespe, LGPL-3.0.
 - [AutoHotkey](https://www.autohotkey.com), GPL-2.0.
 - [Flow Launcher](https://www.flowlauncher.com), MIT.
 

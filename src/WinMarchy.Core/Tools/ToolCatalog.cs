@@ -15,7 +15,11 @@ public enum InstallKind
     None,
 }
 
-/// <summary>A program WinMarchy builds on. All of them may be used free of charge in companies.</summary>
+/// <summary>
+/// A program WinMarchy builds on. All the ones WinMarchy installs may be used free of charge in
+/// companies; Lunatask, which the user gets from its vendor, comes with the vendor's own terms.
+/// </summary>
+/// <param name="Experimental">Shown with a warning: it changes something deep in Windows and may break with an update.</param>
 public sealed record ToolDef(
     string Id,
     string Name,
@@ -27,7 +31,8 @@ public sealed record ToolDef(
     string Exe,
     bool Required,
     string? InstallerArgs = null,
-    bool Extra = false)
+    bool Extra = false,
+    bool Experimental = false)
 {
     public Regex? Asset => AssetPattern == null ? null : new Regex(AssetPattern, RegexOptions.IgnoreCase);
 
@@ -76,6 +81,15 @@ public static class ToolCatalog
     public static bool IsWantedGlaze(string? glazeExe, UserSettings settings) =>
         glazeExe != null && IsWinMarchyBuild(glazeExe) == (settings.GlazeBuild != GlazeBuilds.Official);
 
+    /// <summary>
+    /// The bar at the top since WinMarchy switched away from Zebar: GlazeWM workspaces, and small
+    /// menus that drop down from it (calendar, sound, Wi-Fi, the menu under the logo). The MSI is
+    /// for all users; WinMarchy only unpacks it, so no admin rights are needed.
+    /// </summary>
+    public static readonly ToolDef Yasb = new("yasb", "YASB", "MIT", "https://github.com/amnweb/yasb",
+        "amnweb/yasb", @"^yasb-[\d.]+-x64\.msi$", InstallKind.MsiExtract, "yasb.exe", Required: false);
+
+    /// <summary>The bar of older WinMarchy setups. Still there for those who keep it; Settings → Bar removes it.</summary>
     public static readonly ToolDef Zebar = new("zebar", "Zebar", "GPL-3.0", "https://github.com/glzr-io/zebar",
         "glzr-io/zebar", @"^zebar-v[\d.]+-opt1-x64\.msi$", InstallKind.MsiExtract, "zebar.exe", Required: false);
 
@@ -109,7 +123,33 @@ public static class ToolCatalog
     public static readonly ToolDef Greenshot = new("greenshot", "Greenshot", "GPL-3.0", "https://getgreenshot.org",
         "greenshot/greenshot", @"^Greenshot-PORTABLE-[\d.]+-RELEASE\.zip$", InstallKind.Zip, "Greenshot.exe", Required: false, Extra: true);
 
-    public static IReadOnlyList<ToolDef> All { get; } = new[] { GlazeWm, Zebar, AutoHotkey, Flow, PowerShell, Herdr, Pi, Greenshot, Terminal, Files, VsCode };
+    /// <summary>Omarchy's prompt, in PowerShell 7. WinMarchy colours it with the theme.</summary>
+    public static readonly ToolDef Starship = new("starship", "Starship", "ISC", "https://starship.rs",
+        "starship/starship", @"^starship-x86_64-pc-windows-msvc\.zip$", InstallKind.Zip, "starship.exe", Required: false, Extra: true);
+
+    /// <summary>System information in the terminal, as in Omarchy's "About" (WinMarchy menu → System).</summary>
+    public static readonly ToolDef Fastfetch = new("fastfetch", "Fastfetch", "MIT", "https://github.com/fastfetch-cli/fastfetch",
+        "fastfetch-cli/fastfetch", @"^fastfetch-windows-amd64\.zip$", InstallKind.Zip, "fastfetch.exe", Required: false, Extra: true);
+
+    /// <summary>
+    /// Blur or Mica behind Explorer, tinted with the theme. A DLL that Explorer loads; WinMarchy
+    /// registers it for the signed-in user only (no admin rights), and taking it out again is one switch.
+    /// </summary>
+    public static readonly ToolDef ExplorerBlurMica = new("explorerblurmica", "ExplorerBlurMica", "LGPL-3.0", "https://github.com/Maplespe/ExplorerBlurMica",
+        "Maplespe/ExplorerBlurMica", @"^Release_x64\.zip$", InstallKind.Zip, "ExplorerBlurMica.dll", Required: false, Extra: true, Experimental: true);
+
+    /// <summary>
+    /// To-do list, notes and habits. Its vendor publishes no checksum for the installer, so WinMarchy
+    /// does not download it: the user installs it from lunatask.app (or the Microsoft Store) and
+    /// WinMarchy finds it and starts it (app:lunatask).
+    /// </summary>
+    public static readonly ToolDef Lunatask = new("lunatask", "Lunatask", "Proprietär", "https://lunatask.app/download",
+        null, null, InstallKind.None, "Lunatask.exe", Required: false, Extra: true);
+
+    public static IReadOnlyList<ToolDef> All { get; } = new[]
+    {
+        GlazeWm, Yasb, Zebar, AutoHotkey, Flow, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Lunatask, Terminal, Files, VsCode,
+    };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
     public static IReadOnlyList<ToolDef> Extras { get; } = All.Where(t => t.Extra).ToList();
@@ -127,6 +167,7 @@ public static class ToolCatalog
     static IEnumerable<string> KnownPaths(ToolDef t, Locations loc) => t.Id switch
     {
         "glazewm" => new[] { Path.Combine(loc.ProgramFiles, "glzr.io", "GlazeWM", "glazewm.exe") },
+        "yasb" => new[] { Path.Combine(loc.ProgramFiles, "YASB", "yasb.exe") },
         "zebar" => new[]
         {
             Path.Combine(loc.ProgramFiles, "glzr.io", "Zebar", "zebar.exe"), Path.Combine(loc.ProgramFiles, "Zebar", "zebar.exe"),
@@ -142,6 +183,10 @@ public static class ToolCatalog
         "herdr" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Herdr", "herdr.exe"), Path.Combine(loc.LocalAppData, "Programs", "Herdr", "winarchy-lite", "herdr.exe") },
         "pi" => new[] { Path.Combine(loc.LocalAppData, "Programs", "pi", "pi.exe"), Path.Combine(loc.UserProfile, ".pi", "bin", "pi.exe") },
         "pwsh" => new[] { Path.Combine(loc.ProgramFiles, "PowerShell", "7", "pwsh.exe") },
+        "starship" => new[] { Path.Combine(loc.ProgramFiles, "starship", "bin", "starship.exe") },
+        "fastfetch" => new[] { Path.Combine(loc.ProgramFiles, "fastfetch", "fastfetch.exe") },
+        // Its installer (electron-builder) installs per user; the Store version has no exe to look for.
+        "lunatask" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Lunatask", "Lunatask.exe"), Path.Combine(loc.ProgramFiles, "Lunatask", "Lunatask.exe") },
         "greenshot" => new[] { Path.Combine(loc.ProgramFiles, "Greenshot", "Greenshot.exe"), Path.Combine(loc.LocalAppData, "Programs", "Greenshot", "Greenshot.exe") },
         "terminal" => new[] { Path.Combine(loc.LocalAppData, "Microsoft", "WindowsApps", "wt.exe") },
         "vscode" => new[]
@@ -160,6 +205,7 @@ public static class ToolCatalog
         path ??= KnownPaths(t, loc).FirstOrDefault(File.Exists);
         path ??= OnPath(t.Exe);
         if (path == null && t.Id == "files") path = FilesPackage(loc);
+        if (path == null && t.Id == "lunatask") path = StorePackage(loc, "Lunatask");
 
         string? version = null;
         if (path != null && File.Exists(path))
@@ -206,6 +252,14 @@ public static class ToolCatalog
             catch { }
         }
         return null;
+    }
+
+    /// <summary>A Store app's package folder (its exe may not be started directly; it proves the app is there).</summary>
+    static string? StorePackage(Locations loc, string name)
+    {
+        var packages = Path.Combine(loc.LocalAppData, "Packages");
+        if (!Directory.Exists(packages)) return null;
+        return Directory.EnumerateDirectories(packages).FirstOrDefault(d => Path.GetFileName(d).Contains(name, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Files from the Store or its sideload package has no exe on disk we may start; its package folder proves it is there.</summary>

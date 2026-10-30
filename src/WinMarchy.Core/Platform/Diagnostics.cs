@@ -36,7 +36,7 @@ public static class Diagnostics
 
         Guard("Processes and tools", () =>
         {
-            foreach (var name in new[] { "glazewm", "zebar", "AutoHotkey64", "AutoHotkey32", "AutoHotkey", "Flow.Launcher", "Greenshot", "WinMarchy" })
+            foreach (var name in new[] { "glazewm", "yasb", "zebar", "AutoHotkey64", "AutoHotkey32", "AutoHotkey", "Flow.Launcher", "Greenshot", "WinMarchy" })
                 foreach (var p in Process.GetProcessesByName(name))
                 {
                     string started = "", path = "";
@@ -139,11 +139,29 @@ public static class Diagnostics
         {
             Line($"auto-hide: {Taskbar.IsAutoHide()} · visible: {Taskbar.IsVisible()} · hide wanted: {s.HideTaskbar}");
         });
-        Guard("Bar (Zebar)", () =>
+        Guard("Bar", () =>
         {
-            Line(File.Exists(loc.ZebarSettings) ? FileSafety.ReadShared(loc.ZebarSettings).Trim() : loc.ZebarSettings + " missing");
-            var config = Path.Combine(loc.ZebarPackDir, "config.js");
-            Line(File.Exists(config) ? FileSafety.ReadShared(config).Trim() : config + " missing");
+            Line($"chosen: {Integrations.Bars.Chosen(s, loc)} (setting: {s.Bar ?? "not chosen"}) · shown: {s.ShowBar}");
+            Line($"YASB config: {(Integrations.YasbBar.IsInstalled(loc) ? "WinMarchy's" : File.Exists(loc.YasbConfig) ? "someone else's" : "missing")} · {loc.YasbDir}");
+            // YASB writes what it did not like in its config into its own log.
+            var yasbLog = Path.Combine(loc.YasbDir, "yasb.log");
+            if (File.Exists(yasbLog))
+            {
+                Line("yasb.log, last lines:");
+                foreach (var l in FileSafety.ReadShared(yasbLog).Split('\n').TakeLast(40)) Line("  " + l.TrimEnd());
+            }
+            if (Integrations.ZebarPack.IsInstalled(loc))
+            {
+                Line(File.Exists(loc.ZebarSettings) ? FileSafety.ReadShared(loc.ZebarSettings).Trim() : loc.ZebarSettings + " missing");
+                var config = Path.Combine(loc.ZebarPackDir, "config.js");
+                Line(File.Exists(config) ? FileSafety.ReadShared(config).Trim() : config + " missing");
+            }
+        });
+        Guard("Shell and Explorer extras", () =>
+        {
+            Line($"Starship prompt: {(File.Exists(Paths.PromptScript) ? Paths.PromptScript : "not set up")} · Fastfetch config: {(File.Exists(Paths.FastfetchConfig) ? "yes" : "no")}");
+            if (OperatingSystem.IsWindows())
+                Line("ExplorerBlurMica: " + (Integrations.ExplorerBlur.RegisteredDll(new WindowsUserRegistry()) ?? "not registered for this user"));
         });
         Guard("Greenshot", () =>
         {

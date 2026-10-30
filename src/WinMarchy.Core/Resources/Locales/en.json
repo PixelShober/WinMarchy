@@ -64,7 +64,7 @@
   "tools": {
     "roles": {
       "glazewm": "Window tiling",
-      "zebar": "Top bar",
+      "zebar": "Top bar (earlier)",
       "autohotkey": "Shortcuts",
       "flow": "App launcher",
       "pwsh": "Shell",
@@ -73,7 +73,12 @@
       "vscode": "Editor",
       "herdr": "Agent terminal",
       "pi": "Coding agent",
-      "greenshot": "Screenshots"
+      "greenshot": "Screenshots",
+      "yasb": "Top bar",
+      "starship": "Prompt",
+      "fastfetch": "System info",
+      "explorerblurmica": "Explorer effect",
+      "lunatask": "Tasks"
     },
     "running": "Running",
     "installedBadge": "Installed",
@@ -87,7 +92,8 @@
     "installed": "{tool} is now in {path}",
     "removed": "{tool} removed",
     "glazeStopping": "Ending GlazeWM for the swap, the windows stay open …",
-    "glazeFallback": "WinMarchy's build of GlazeWM was not available, installing the official release: {detail}"
+    "glazeFallback": "WinMarchy's build of GlazeWM was not available, installing the official release: {detail}",
+    "removeLater": "{tool} is still in use and is deleted at the next start: {path}"
   },
 
   "setup": {
@@ -97,13 +103,18 @@
     "programsText": "Every program comes straight from the vendor's GitHub release and is checked before it is unpacked. Everything goes to C:\\WinMarchy\\Tools, no admin rights needed.",
     "why": {
       "glazewm": "Tiles the windows and runs the workspaces. Nothing works without it.",
-      "zebar": "The top bar with workspaces, clock, network, sound and battery.",
+      "zebar": "The earlier bar at the top. New setups use YASB.",
       "autohotkey": "Catches the shortcuts, including the Win key on its own.",
       "flow": "The launcher behind the Win key, like Walker in Omarchy.",
       "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1.",
       "herdr": "Terminal workspace for coding agents, Win+Ctrl+Enter. Still beta on Windows.",
       "pi": "The Pi coding agent in the terminal, Win+Alt+Enter.",
-      "greenshot": "Screenshots with an editor, if Snipping Tool is not enough for you. Switch in the settings."
+      "greenshot": "Screenshots with an editor, if Snipping Tool is not enough for you. Switch in the settings.",
+      "yasb": "The bar at the top: workspaces, a clock with calendar, sound, Wi-Fi and battery. Small menus drop down from it; you add entries of your own on the Tiling page.",
+      "starship": "Omarchy's prompt for PowerShell 7: folder, Git branch and status, in the theme's colours.",
+      "fastfetch": "Shows in the terminal what is inside your computer, like Omarchy's About. In the bar's logo menu and as the action do:about.",
+      "explorerblurmica": "Blur behind Explorer in the theme's colour. Registered for your account only; switch it off under Settings.",
+      "lunatask": "Tasks, notes and habits in one place. Its vendor publishes no checksum, so WinMarchy does not download it: install it from lunatask.app, then the action app:lunatask starts it. The vendor's terms of use apply."
     },
     "detected": "{tool} found",
     "notDetected": "{tool} not found",
@@ -123,7 +134,10 @@
     "extrasText": "Not needed for the Omarchy desktop. You can also install them one by one later.",
     "installExtras": "Install extras only",
     "extrasDone": "Extras installed.",
-    "piNeedsBash": "Needs Git Bash, which is missing here."
+    "piNeedsBash": "Needs Git Bash, which is missing here.",
+    "experimental": "Experimental",
+    "fromVendor": "Get {tool} from the vendor",
+    "zebarStays": "The setup now uses YASB as the bar. You remove the Zebar from the earlier setup under Settings → Bar."
   },
 
   "themes": {
@@ -142,7 +156,6 @@
     "targets": "What gets coloured",
     "target": {
       "glazewm": "GlazeWM",
-      "zebar": "Bar",
       "terminal": "Terminal",
       "powershell": "PowerShell",
       "vscode": "VS Code",
@@ -150,7 +163,10 @@
       "files": "Files",
       "windows": "Windows",
       "wallpaper": "Wallpaper",
-      "lockscreen": "Lock screen"
+      "lockscreen": "Lock screen",
+      "bar": "Bar",
+      "shell": "Starship and Fastfetch",
+      "explorerBlur": "Explorer (ExplorerBlurMica)"
     },
     "wallpapers": "{total} wallpapers, {have} already downloaded ({size})",
     "noWallpapers": "This theme has no wallpapers.",
@@ -319,7 +335,8 @@
     "notepad": "Notepad",
     "stackfield": "Stackfield",
     "pi": "Pi",
-    "browser2": "Second browser"
+    "browser2": "Second browser",
+    "lunatask": "Lunatask"
   },
 
   "commands": {
@@ -357,7 +374,9 @@
     "focus": "Focus in a direction (left, right, up, down)",
     "swap": "Swap window (left, right, up, down)",
     "to-workspace": "Window to workspace (1 to 10)",
-    "screenshot": "Screenshot (region, window, screen)"
+    "screenshot": "Screenshot (region, window, screen)",
+    "about": "About this system (Fastfetch)",
+    "bar-shortcut": "Own bar entry"
   },
 
   "tiling": {
@@ -413,7 +432,17 @@
     "desktopAppLate": "{action} showed no window within 12 seconds; it was meant for workspace {workspace}.",
     "monitorsFailed": "Could not move workspaces to their monitors: {detail}",
     "trayPinned": "Always visible in the tray",
-    "trayPinnedHint": "Part of the name, separated by commas, such as Teams, OneDrive. The rest waits behind the small arrow; middle click on an icon pins it there."
+    "trayPinnedHint": "Part of the name, separated by commas, such as Teams, OneDrive. The rest waits behind the small arrow; middle click on an icon pins it there.",
+    "shortcuts": "Your own bar entries",
+    "shortcutsHint": "They sit in the menu under the logo, which drops down from the top; with “As button” also right in the bar. Write the action as for a shortcut: app:terminal, web:https://…, open:ms-settings:…, do:theme-menu or run:C:\\Path\\script.ps1. YASB only.",
+    "shortcutTitle": "Name",
+    "shortcutAction": "Action",
+    "shortcutTemplate": "Template …",
+    "shortcutInBar": "As button",
+    "shortcutRemove": "Remove",
+    "shortcutAdd": "Add entry",
+    "shortcutNoTitle": "The entry with the action {action} needs a name.",
+    "yasbOnly": "YASB only"
   },
 
   "layouts": {
@@ -508,7 +537,7 @@
       "backups": "Backups",
       "tools": "Programs",
       "glazewm": "GlazeWM config",
-      "zebar": "Bar"
+      "bar": "Bar"
     },
     "unreadable": "Could not read the settings, WinMarchy starts with the defaults: {detail}",
     "fileManager": "File manager",
@@ -542,7 +571,28 @@
     "glazeOfficialHint": "Signed by glzr-io. What the WinMarchy build adds, WinMarchy does from the outside as far as it can.",
     "glazeInstalled": "Installed now: {build}, version {version}.",
     "glazeMissing": "No GlazeWM installed yet.",
-    "glazeDone": "GlazeWM now runs as {build}."
+    "glazeDone": "GlazeWM now runs as {build}.",
+    "bar": "Bar",
+    "barText": "Which bar runs at the top. YASB is WinMarchy's new bar: the calendar, sound, Wi-Fi and the menu under the logo drop down from it, and on the Tiling page you add entries of your own. Zebar stays available until YASB works for you.",
+    "barYasbHint": "YASB runs now.",
+    "barZebarHint": "Zebar from an earlier setup runs now. A click on YASB gets YASB from its vendor, sets it up in your theme and starts it instead of Zebar.",
+    "barInstalled": "{tool} {version} is installed.",
+    "barNotInstalled": "{tool} is not installed yet.",
+    "barDone": "The bar is {tool} now.",
+    "zebarStillThere": "Zebar is still there and can be removed once YASB runs.",
+    "zebarElsewhere": "Zebar is installed outside WinMarchy ({path}). WinMarchy only takes out its own bar; you remove the program under Windows Settings → Apps.",
+    "zebarRemove": "Remove Zebar",
+    "zebarRemoveTitle": "Remove Zebar?",
+    "zebarRemoveConfirm": "WinMarchy ends Zebar, takes its bar out of Zebar's startup list and deletes Zebar from C:\\WinMarchy\\Tools. The bar's files go into a restore point. If you switch the bar back to Zebar later, WinMarchy downloads the program again.",
+    "zebarRemoved": "Zebar is removed.",
+    "explorerBlurText": "Blur behind Explorer, tinted with the theme. Explorer loads a DLL for it; WinMarchy registers it for your account only, without admin rights, and switching it off undoes that. Experimental: a Windows update can break it, and some companies only allow Explorer extensions registered for all users.",
+    "explorerBlurSwitch": "Switch ExplorerBlurMica on",
+    "explorerBlurTitle": "Switch ExplorerBlurMica on?",
+    "explorerBlurConfirm": "WinMarchy downloads ExplorerBlurMica from GitHub (Maplespe/ExplorerBlurMica), checks its checksum and registers the DLL for your account. Explorer windows you open then show the effect. If Explorer crashes afterwards: hold Esc while opening Explorer to keep the effect out, and switch it off here.",
+    "explorerBlurOnHint": "On. The tint follows the theme; new Explorer windows show it.",
+    "explorerBlurOffHint": "Off. Switching it on downloads ExplorerBlurMica if it is missing.",
+    "explorerBlurOn": "ExplorerBlurMica is on. Open a new Explorer window.",
+    "explorerBlurOff": "ExplorerBlurMica is off. It is fully gone after the next sign-in."
   },
 
   "log": {
@@ -606,7 +656,11 @@
     "extras": "Install extras: {tools}",
     "hotkeysImport": "Import shortcuts",
     "screenshots": "Switch the screenshot tool",
-    "glazeBuild": "Switch GlazeWM"
+    "glazeBuild": "Switch GlazeWM",
+    "bar": "Bar: {tool}",
+    "zebarRemove": "Remove Zebar",
+    "explorerBlurOn": "Switch ExplorerBlurMica on",
+    "explorerBlurOff": "Switch ExplorerBlurMica off"
   },
 
   "steps": {
@@ -616,8 +670,6 @@
     "notChosen": "not selected",
     "alreadyInstalled": "already there: {path}",
     "legacy": "Replace Winarchy Lite",
-    "zebarPack": "Set up the bar",
-    "zebarMissing": "Zebar is not installed",
     "glazeStart": "Start GlazeWM",
     "hotkeys": "Turn on shortcuts",
     "autostart": "Autostart",
@@ -625,7 +677,6 @@
     "autostartOff": "No autostart.",
     "themeAssets": "Download theme files",
     "glazewm": "Colour GlazeWM",
-    "zebar": "Colour the bar",
     "terminal": "Colour Windows Terminal",
     "powershell": "Colour PowerShell",
     "vscode": "Colour VS Code",
@@ -643,7 +694,18 @@
     "allWallpapers": "Download the wallpapers of all themes ({count})",
     "filesDefault": "Change folder association",
     "printKey": "Print key for Greenshot",
-    "saveChoice": "Save the choice"
+    "saveChoice": "Save the choice",
+    "barMissing": "{tool} is not installed",
+    "barSetup": "Set up the bar",
+    "barTheme": "Colour the bar",
+    "explorerBlur": "Register ExplorerBlurMica",
+    "explorerBlurOff": "Unregister ExplorerBlurMica",
+    "explorerBlurTheme": "Colour Explorer",
+    "starship": "Set up Starship",
+    "fastfetch": "Colour Fastfetch",
+    "shellTheme": "Colour Starship and Fastfetch",
+    "notSetUp": "not set up",
+    "zebarRemove": "Remove Zebar"
   },
 
   "integrations": {
@@ -690,6 +752,19 @@
       "on": "Folders, drives and Win+E now open Files.",
       "off": "Folders open in Explorer again.",
       "gone": "Files is no longer installed. Folders open in Explorer again."
+    },
+    "yasb": {
+      "done": "Bar set up: {path}"
+    },
+    "explorerBlur": {
+      "on": "ExplorerBlurMica is registered for your account. Explorer windows you open now show the effect; if not, sign out and in once.",
+      "off": "ExplorerBlurMica is unregistered. Explorer stops loading it after the next sign-in."
+    },
+    "starship": {
+      "done": "Starship is set up in PowerShell 7 and shows in the next terminal tab."
+    },
+    "fastfetch": {
+      "done": "Fastfetch has the theme's colours."
     }
   },
 
@@ -725,10 +800,33 @@
       "audio": "Sound",
       "cpu": "CPU",
       "memory": "Memory",
-      "battery": "Battery"
+      "battery": "Battery",
+      "media": "Media"
     },
     "trayOpen": "Show all tray icons. Middle click on an icon pins it.",
-    "trayClose": "Fold the tray away"
+    "trayClose": "Fold the tray away",
+    "glazeOffline": "GlazeWM is not running",
+    "muted": "muted",
+    "menu": {
+      "winmarchy": "WinMarchy menu",
+      "keybindings": "Keyboard shortcuts",
+      "themes": "Change theme",
+      "wallpapers": "Choose wallpaper",
+      "about": "About this system",
+      "settings": "Open WinMarchy"
+    },
+    "power": {
+      "shutdown": "Shut down",
+      "restart": "Restart",
+      "hibernate": "Hibernate",
+      "logout": "Sign out",
+      "lock": "Lock",
+      "sleep": "Sleep",
+      "system": "Settings",
+      "about": "About this PC",
+      "taskManager": "Task Manager"
+    },
+    "zebarElsewhere": "Zebar was not installed by WinMarchy and stays: {path}. You can remove it under Windows Settings → Apps."
   },
 
   "actions": {
@@ -746,7 +844,8 @@
     "batteryCharging": "Battery: {percent} %, charging",
     "batteryLeft": "Battery: {percent} %, {hours} h {minutes} min left",
     "noneMinimized": "No window is minimized.",
-    "restoredMinimized": "Windows brought back: {count}."
+    "restoredMinimized": "Windows brought back: {count}.",
+    "fastfetchMissing": "Fastfetch is not installed. You find it under Setup → Extras."
   },
 
   "agent": {
@@ -762,7 +861,6 @@
     "taskbarSettingOff": "The taskbar is not hidden in the first place. Turn that on under Tiling.",
     "taskbarShown": "Taskbar shown.",
     "taskbarHidden": "Taskbar hidden.",
-    "zebarMissing": "Zebar is not installed.",
     "awakeOn": "Staying awake. Screen and PC will not go to sleep.",
     "awakeOff": "Sleep back to normal.",
     "wallpaper": "Wallpaper: {name}",
@@ -776,7 +874,8 @@
     "glazeRestarting": "GlazeWM hung and restarts. Your windows stay open.",
     "glazeHungAgain": "GlazeWM hangs again. “Reload GlazeWM” in the tray menu restarts it; the log shows what happened before.",
     "glazeEnded": "Ended GlazeWM (PID {pid}).",
-    "glazeEndFailed": "Could not end GlazeWM: {detail}"
+    "glazeEndFailed": "Could not end GlazeWM: {detail}",
+    "barMissing": "{tool} is not installed."
   },
 
   "tray": {
@@ -972,7 +1071,8 @@
     "zipInvalidPath": "The ZIP contains an invalid path: {entry}",
     "filesMissing": "Files is not installed.",
     "hotkeysImportInvalid": "The file holds no WinMarchy shortcuts.",
-    "glazeNoAnswer": "GlazeWM did not answer “{command}”."
+    "glazeNoAnswer": "GlazeWM did not answer “{command}”.",
+    "barMissing": "{tool} is not installed."
   },
 
   "policies": {
@@ -996,7 +1096,7 @@
       "spotlight": "Windows Spotlight is off by policy.",
       "taskbarLocked": "Taskbar settings are locked. Hiding the taskbar may fail.",
       "winKeys": "Windows' own Win shortcuts are off. WinMarchy's still work.",
-      "allowList": "Only approved programs may start. GlazeWM, AutoHotkey and Zebar must be on the list.",
+      "allowList": "Only approved programs may start. GlazeWM, AutoHotkey and YASB must be on the list.",
       "blockList": "Some programs are blocked. If one of WinMarchy's is on the list, it does not start.",
       "appLocker": "AppLocker is set up. Programs in C:\\WinMarchy\\Tools may need approval.",
       "srp": "Software restriction policies are active. Programs in C:\\WinMarchy\\Tools may be blocked.",
@@ -1008,7 +1108,7 @@
       "taskManager": "Task Manager is blocked. Win+Shift+T opens nothing.",
       "registryTools": "The registry editor is blocked. WinMarchy still writes to HKEY_CURRENT_USER.",
       "notifications": "The notification center is switched off.",
-      "webView2": "IT has WebView2 settings. The bar (Zebar) runs on WebView2.",
+      "webView2": "IT has rules for WebView2. The earlier bar (Zebar) runs on WebView2, YASB does not need it.",
       "proxy": "A proxy is set ({value}). Downloads from GitHub go through it.",
       "proxyScript": "A proxy script is set ({value}). Downloads from GitHub go through it.",
       "mdm": "The PC is managed through {value} (Intune or another MDM). Such settings are not always in the registry."
@@ -1018,5 +1118,21 @@
   "screenshot": {
     "greenshotMissing": "Greenshot is not installed, so Snipping Tool steps in. You can install Greenshot in the settings.",
     "printKeyFreed": "Print no longer opens Snipping Tool; Greenshot takes the key."
+  },
+
+  "fastfetch": {
+    "os": "OS",
+    "host": "Host",
+    "kernel": "Kernel",
+    "uptime": "Uptime",
+    "shell": "Shell",
+    "terminal": "Terminal",
+    "display": "Display",
+    "cpu": "CPU",
+    "gpu": "GPU",
+    "memory": "Memory",
+    "disk": "Disk",
+    "battery": "Battery",
+    "locale": "Locale"
   }
 }

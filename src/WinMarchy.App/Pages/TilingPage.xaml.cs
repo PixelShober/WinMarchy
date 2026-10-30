@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using WinMarchy.App.Ui;
 using WinMarchy.Core;
 using WinMarchy.Core.GlazeWm;
+using WinMarchy.Core.Hotkeys;
+using WinMarchy.Core.Integrations;
 
 namespace WinMarchy.App.Pages;
 
@@ -22,6 +24,18 @@ public partial class TilingPage : UserControl, IPage
     readonly List<(TextBox Workspaces, ComboBox App)> _monitorRows = new();
     readonly Dictionary<string, CheckBox> _barModules = new();
     readonly TextBox _trayPinned = new();
+    readonly StackPanel _trayPinnedPanel = new();
+    readonly StackPanel _shortcutRows = new();
+    readonly TextBlock _shortcutError = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 4, 0, 0) };
+    readonly List<(TextBox Title, TextBox Action, CheckBox InBar)> _shortcuts = new();
+
+    /// <summary>Suggestions in the action box of a bar entry; anything a shortcut can do works.</summary>
+    static readonly string[] ActionSuggestions =
+    {
+        "app:terminal", "app:browser", "app:files", "app:editor", "app:mail", "app:calendar", "app:teams", "app:notes", "app:lunatask",
+        "app:stackfield", "app:calculator", "app:taskmanager", "do:theme-menu", "do:wallpaper-menu", "do:keybindings", "do:menu system",
+        "do:screenshot", "do:about", "do:lock", "open:ms-settings:", "web:https://", "run:",
+    };
 
     public TilingPage()
     {
@@ -56,20 +70,23 @@ public partial class TilingPage : UserControl, IPage
         // Which entries the bar shows; each one can be clicked.
         Desktop.Children.Add(UiKit.Text(L.T("tiling.barModules"), "H3", new Thickness(0, 2, 0, 6)));
         var modules = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
-        foreach (var (id, _) in Core.Integrations.ZebarPack.Modules)
+        foreach (var (id, _) in Bars.Modules)
         {
-            var box = new CheckBox { Content = L.T("bar.modules." + id), IsChecked = Core.Integrations.ZebarPack.IsOn(s, id), Margin = new Thickness(0, 0, 14, 6) };
+            var box = new CheckBox { Content = L.T("bar.modules." + id), IsChecked = Bars.IsOn(s, id), Margin = new Thickness(0, 0, 14, 6) };
             _barModules[id] = box;
             modules.Children.Add(box);
         }
         Desktop.Children.Add(modules);
-        Desktop.Children.Add(UiKit.Text(L.T("tiling.trayPinned"), "H3", new Thickness(0, 0, 0, 4)));
+        // Zebar keeps its own list of pinned tray icons; YASB pins with Alt+click.
+        _trayPinnedPanel.Children.Add(UiKit.Text(L.T("tiling.trayPinned"), "H3", new Thickness(0, 0, 0, 4)));
         _trayPinned.Text = string.Join(", ", s.BarTrayPinned);
         System.Windows.Automation.AutomationProperties.SetName(_trayPinned, L.T("tiling.trayPinned"));
-        Desktop.Children.Add(_trayPinned);
+        _trayPinnedPanel.Children.Add(_trayPinned);
         var trayHint = UiKit.Text(L.T("tiling.trayPinnedHint"), "Small", new Thickness(0, 4, 0, 12));
         trayHint.TextWrapping = TextWrapping.Wrap;
-        Desktop.Children.Add(trayHint);
+        _trayPinnedPanel.Children.Add(trayHint);
+        Desktop.Children.Add(_trayPinnedPanel);
+        BuildShortcuts(s);
         Desktop.Children.Add(_minimize);
         var touchpad = UiKit.Text(L.T("tiling.touchpadHint"), "Small", new Thickness(0, 4, 0, 8));
         touchpad.TextWrapping = TextWrapping.Wrap;
@@ -130,8 +147,104 @@ public partial class TilingPage : UserControl, IPage
         Select(InnerGap, s.InnerGap);
         Select(OuterGap, s.OuterGap);
         Select(ScrollingColumns, s.ScrollingColumns);
+        ShowBarChoice();
         RenderMonitors();
         _ = RenderWorkspacesAsync();
+    }
+
+    // ------------------------------------------------------------------ bar
+
+    /// <summary>What only one of the two bars can do follows the bar chosen in the settings.</summary>
+    void ShowBarChoice()
+    {
+        var zebar = AppModel.Engine.Components.Bar == Bars.Zebar;
+        foreach (var id in Bars.YasbOnly)
+        {
+            if (!_barModules.TryGetValue(id, out var box)) continue;
+            box.IsEnabled = !zebar;
+            box.ToolTip = zebar ? L.T("tiling.yasbOnly") : null;
+        }
+        _trayPinnedPanel.Visibility = zebar ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The user's own bar entries: in the menu under the logo, and as buttons if ticked (YASB).</summary>
+    void BuildShortcuts(UserSettings s)
+    {
+        Desktop.Children.Add(UiKit.Text(L.T("tiling.shortcuts"), "H3", new Thickness(0, 4, 0, 4)));
+        var hint = UiKit.Text(L.T("tiling.shortcutsHint"), "Small", new Thickness(0, 0, 0, 8));
+        hint.TextWrapping = TextWrapping.Wrap;
+        Desktop.Children.Add(hint);
+        Desktop.Children.Add(_shortcutRows);
+        foreach (var shortcut in s.BarShortcuts) AddShortcutRow(shortcut);
+        var add = UiKit.IconTextButton("plus", L.T("tiling.shortcutAdd"));
+        add.HorizontalAlignment = HorizontalAlignment.Left;
+        add.Click += (_, _) => AddShortcutRow(new BarShortcut());
+        Desktop.Children.Add(add);
+        _shortcutError.SetResourceReference(TextBlock.ForegroundProperty, "Error");
+        _shortcutError.Style = UiKit.S("Small");
+        Desktop.Children.Add(_shortcutError);
+        Desktop.Children.Add(new Border { Height = 12 });
+    }
+
+    void AddShortcutRow(BarShortcut shortcut)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+        foreach (var width in new[]
+                 {
+                     new GridLength(1, GridUnitType.Star), new GridLength(8), new GridLength(1.4, GridUnitType.Star), new GridLength(6), new GridLength(150),
+                     new GridLength(10), GridLength.Auto, new GridLength(6), GridLength.Auto,
+                 })
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
+        var title = new TextBox { Text = shortcut.Title };
+        System.Windows.Automation.AutomationProperties.SetName(title, L.T("tiling.shortcutTitle"));
+        var action = new TextBox { Text = shortcut.Action, Style = UiKit.S("MonoBox") };
+        System.Windows.Automation.AutomationProperties.SetName(action, L.T("tiling.shortcutAction"));
+        // A few starting points; the box takes anything a shortcut can do.
+        var templates = new ComboBox();
+        templates.Items.Add(new ComboBoxItem { Content = L.T("tiling.shortcutTemplate"), Tag = "" });
+        foreach (var suggestion in ActionSuggestions) templates.Items.Add(new ComboBoxItem { Content = suggestion, Tag = suggestion });
+        templates.SelectedIndex = 0;
+        templates.SelectionChanged += (_, _) =>
+        {
+            if (templates.SelectedItem is not ComboBoxItem { Tag: string { Length: > 0 } chosen }) return;
+            action.Text = chosen;
+            action.Focus();
+            action.CaretIndex = action.Text.Length;
+            templates.SelectedIndex = 0;
+        };
+        System.Windows.Automation.AutomationProperties.SetName(templates, L.T("tiling.shortcutTemplate"));
+        var inBar = new CheckBox { Content = L.T("tiling.shortcutInBar"), IsChecked = shortcut.InBar, VerticalAlignment = VerticalAlignment.Center };
+        var remove = UiKit.IconTextButton("trash", L.T("tiling.shortcutRemove"));
+        var row = (title, action, inBar);
+        remove.Click += (_, _) =>
+        {
+            _shortcutRows.Children.Remove(grid);
+            _shortcuts.Remove(row);
+        };
+        Grid.SetColumn(title, 0);
+        Grid.SetColumn(action, 2);
+        Grid.SetColumn(templates, 4);
+        Grid.SetColumn(inBar, 6);
+        Grid.SetColumn(remove, 8);
+        foreach (UIElement child in new UIElement[] { title, action, templates, inBar, remove }) grid.Children.Add(child);
+        _shortcutRows.Children.Add(grid);
+        _shortcuts.Add(row);
+    }
+
+    /// <summary>The entries as typed; an action that would not run is named in the error.</summary>
+    (List<BarShortcut> List, string? Error) ReadShortcuts()
+    {
+        var list = new List<BarShortcut>();
+        foreach (var (title, action, inBar) in _shortcuts)
+        {
+            var name = title.Text.Trim();
+            var what = action.Text.Trim();
+            if (name.Length == 0 && what.Length == 0) continue;
+            if (name.Length == 0) return (list, L.T("tiling.shortcutNoTitle", ("action", what)));
+            if (!HotkeyAction.TryParse(what, out _, out var error)) return (list, $"{name}: {error}");
+            list.Add(new BarShortcut { Title = name, Action = what, InBar = inBar.IsChecked == true });
+        }
+        return (list, null);
     }
 
     // ------------------------------------------------------------------ monitors
@@ -308,6 +421,10 @@ public partial class TilingPage : UserControl, IPage
             return;
         }
         MonitorsError.Visibility = Visibility.Collapsed;
+        var (shortcuts, shortcutError) = ReadShortcuts();
+        _shortcutError.Text = shortcutError ?? "";
+        _shortcutError.Visibility = shortcutError == null ? Visibility.Collapsed : Visibility.Visible;
+        if (shortcutError != null) return;
         AppModel.Update(s =>
         {
             s.WorkspaceMonitors = map;
@@ -325,6 +442,7 @@ public partial class TilingPage : UserControl, IPage
             s.BlockMinimize = _minimize.IsChecked == true;
             s.BarModules = _barModules.ToDictionary(m => m.Key, m => m.Value.IsChecked == true);
             s.BarTrayPinned = _trayPinned.Text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            s.BarShortcuts = shortcuts;
         });
         try
         {

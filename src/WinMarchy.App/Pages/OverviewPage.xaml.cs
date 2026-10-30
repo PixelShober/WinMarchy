@@ -40,6 +40,8 @@ public partial class OverviewPage : UserControl, IPage
         foreach (var tool in ToolCatalog.All)
         {
             var status = AppModel.Engine.Components.Status(tool);
+            // Zebar only while it is still there; new setups have YASB.
+            if (tool == ToolCatalog.Zebar && !status.Installed) continue;
             ToolTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var name = new StackPanel { Margin = new Thickness(0, 0, 18, 12) };

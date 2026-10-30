@@ -112,13 +112,24 @@ public static class TerminalTheme
         return sb.ToString();
     }
 
-    public static string ProfileHook(string colorFile) =>
-        $"{HookStart}\r\n$winmarchyColors = '{colorFile.Replace("'", "''")}'\r\nif (Test-Path -LiteralPath $winmarchyColors) {{ . $winmarchyColors }}\r\n{HookEnd}\r\n";
+    /// <summary>The colours PowerShell 7 loads (PSReadLine).</summary>
+    public static string ColorFile => Path.Combine(Paths.RuntimeDir, "psreadline-colors.ps1");
 
-    /// <summary>Adds the hook once; an existing hook is replaced (the colour file path may have moved).</summary>
-    internal static string WithHook(string profile, string colorFile)
+    /// <summary>
+    /// WinMarchy's block in the profile: the colours and, once Starship is set up, the prompt. Each
+    /// file is only loaded if it is there, so removing one never breaks the profile.
+    /// </summary>
+    public static string ProfileHook(string colorFile, string promptFile)
     {
-        var hook = ProfileHook(colorFile);
+        static string Q(string s) => "'" + s.Replace("'", "''") + "'";
+        return $"{HookStart}\r\n$winmarchyColors = {Q(colorFile)}\r\nif (Test-Path -LiteralPath $winmarchyColors) {{ . $winmarchyColors }}\r\n" +
+               $"$winmarchyPrompt = {Q(promptFile)}\r\nif (Test-Path -LiteralPath $winmarchyPrompt) {{ . $winmarchyPrompt }}\r\n{HookEnd}\r\n";
+    }
+
+    /// <summary>Adds the hook once; an existing hook is replaced (the file paths may have moved).</summary>
+    internal static string WithHook(string profile, string colorFile, string? promptFile = null)
+    {
+        var hook = ProfileHook(colorFile, promptFile ?? Paths.PromptScript);
         int start = profile.IndexOf(HookStart, StringComparison.Ordinal);
         int end = profile.IndexOf(HookEnd, StringComparison.Ordinal);
         if (start >= 0 && end > start)
@@ -138,14 +149,33 @@ public static class TerminalTheme
             ctx.Report(L.T("integrations.powershell.blocked", ("policy", policy)));
             return;
         }
-        var colorFile = Path.Combine(Paths.RuntimeDir, "psreadline-colors.ps1");
         // A UTF-8 BOM, so Windows PowerShell 5.1 would read it correctly as well.
-        ctx.WriteFile(colorFile, ColorScript(Build(palette)), bom: true);
+        ctx.WriteFile(ColorFile, ColorScript(Build(palette)), bom: true);
+        WriteHook(ctx);
+        ctx.Report(L.T("integrations.powershell.done", ("path", ctx.Loc.PowerShellProfile)));
+    }
+
+    /// <summary>
+    /// The profile block without new colours (Starship's setup). False if a group policy keeps
+    /// PowerShell from running profiles; then nothing is written.
+    /// </summary>
+    public static bool EnsureProfileHook(IntegrationContext ctx)
+    {
+        if (PowerShellPolicy.BlocksProfiles() is { } policy)
+        {
+            ctx.Report(L.T("integrations.powershell.blocked", ("policy", policy)));
+            return false;
+        }
+        WriteHook(ctx);
+        return true;
+    }
+
+    static void WriteHook(IntegrationContext ctx)
+    {
         var profile = ctx.Loc.PowerShellProfile;
         var current = File.Exists(profile) ? File.ReadAllText(profile) : "";
-        var updated = WithHook(current, colorFile);
+        var updated = WithHook(current, ColorFile);
         if (updated != current) ctx.WriteFile(profile, updated, bom: true);
-        ctx.Report(L.T("integrations.powershell.done", ("path", profile)));
     }
 }
 

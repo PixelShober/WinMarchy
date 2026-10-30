@@ -16,11 +16,11 @@ People who use Omarchy (Hyprland) at home and have to work on a Windows PC at th
 
 ## Product Purpose
 
-WinMarchy sets up and manages an Omarchy-like desktop on Windows: GlazeWM for tiling, a Zebar bar, AutoHotkey (or GlazeWM) for Omarchy's shortcuts, Flow Launcher as the app launcher, and the 22 Omarchy themes applied to Windows Terminal, PowerShell, VS Code, Flow, Files, Windows itself and the wallpaper. Every change can be undone, down to the state before WinMarchy. Success: a colleague downloads one exe, clicks "Einrichten", and has Omarchy's look and keys a few minutes later; and can get back to plain Windows with one click.
+WinMarchy sets up and manages an Omarchy-like desktop on Windows: GlazeWM for tiling, a YASB bar with menus that drop down from it, AutoHotkey (or GlazeWM) for Omarchy's shortcuts, Flow Launcher as the app launcher, and the 22 Omarchy themes applied to Windows Terminal, PowerShell, VS Code, Flow, Files, Windows itself and the wallpaper. Every change can be undone, down to the state before WinMarchy. Success: a colleague downloads one exe, clicks "Einrichten", and has Omarchy's look and keys a few minutes later; and can get back to plain Windows with one click.
 
 ## Positioning
 
-The predecessor (Winarchy Lite) was a set of PowerShell scripts; WinMarchy is one self-updating app that owns the whole setup, knows what it changed (restore points), and only uses programs that are free to use in companies (GlazeWM, Zebar, AutoHotkey, Flow Launcher, PowerShell, Windows Terminal, Files – not Komorebi).
+The predecessor (Winarchy Lite) was a set of PowerShell scripts; WinMarchy is one self-updating app that owns the whole setup, knows what it changed (restore points), and only uses programs that are free to use in companies (GlazeWM, YASB, AutoHotkey, Flow Launcher, PowerShell, Starship, Fastfetch, Windows Terminal, Files – not Komorebi).
 
 ## Operating Context
 

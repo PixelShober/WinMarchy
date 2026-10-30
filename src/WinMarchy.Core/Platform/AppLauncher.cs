@@ -75,6 +75,11 @@ public sealed class AppLauncher
             case "obsidian":
                 return First(Path.Combine(_loc.LocalAppData, "Programs", "Obsidian", "Obsidian.exe")) is { } obs
                     ? Start(obs) : Open("https://obsidian.md/download");
+            case "lunatask":
+                // The installer from lunatask.app, else the Store app (from the Start menu's list), else its download page.
+                if (Tool(ToolCatalog.Lunatask) is { } luna) return Start(luna);
+                if (StartApps.Current.FirstOrDefault(a => a.Name.Equals("Lunatask", StringComparison.OrdinalIgnoreCase)) is { } store) return StartApps.Launch(store);
+                return StartMenuEntry("Lunatask") is { } lunaLink ? Start(lunaLink) : Open(ToolCatalog.Lunatask.Homepage);
             case "bitwarden":
                 return First(Path.Combine(_loc.LocalAppData, "Programs", "Bitwarden", "Bitwarden.exe")) is { } bw
                     ? Start(bw) : Web("https://vault.bitwarden.com/");
@@ -88,6 +93,18 @@ public sealed class AppLauncher
         var shell = command ?? Tool(ToolCatalog.PowerShell) ?? ProcessRunner.SystemExe(Path.Combine("WindowsPowerShell", "v1.0", "powershell.exe"));
         var wt = Tool(ToolCatalog.Terminal);
         return wt != null ? Start(wt, $"-w -1 new-tab \"{shell}\"") : Start(shell);
+    }
+
+    /// <summary>
+    /// A PowerShell tab that runs a command and stays open afterwards (PowerShell 7 if it is
+    /// installed). The command must not contain ";", which Windows Terminal reads as its own separator.
+    /// </summary>
+    public bool Shell(string command)
+    {
+        var shell = Tool(ToolCatalog.PowerShell) ?? ProcessRunner.SystemExe(Path.Combine("WindowsPowerShell", "v1.0", "powershell.exe"));
+        var args = $"-NoLogo -NoExit -Command \"{command.Replace("\"", "\\\"")}\"";
+        var wt = Tool(ToolCatalog.Terminal);
+        return wt != null ? Start(wt, $"-w -1 new-tab \"{shell}\" {args}") : Start(shell, args);
     }
 
     /// <summary>Omarchy's web apps: the site in its own window without tabs (Edge or Chrome --app).</summary>

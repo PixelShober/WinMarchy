@@ -145,6 +145,33 @@ public sealed class ActionRunner
         else AppLauncher.Start(path);
     }
 
+    /// <summary>Omarchy's "About": Fastfetch's system information in a terminal that stays open.</summary>
+    void About()
+    {
+        var fastfetch = ToolCatalog.Detect(ToolCatalog.Fastfetch, Locations.Current, _host.Settings, AppState.Load()).Path;
+        if (fastfetch == null)
+        {
+            _host.Notify(L.T("actions.fastfetchMissing"));
+            return;
+        }
+        static string Q(string path) => "'" + path.Replace("'", "''") + "'";
+        var config = File.Exists(Paths.FastfetchConfig) ? " --config " + Q(Paths.FastfetchConfig) : "";
+        if (!_host.Apps.Shell("& " + Q(fastfetch) + config)) _host.Notify(L.T("actions.appMissing", ("app", "Fastfetch")));
+    }
+
+    /// <summary>
+    /// A button of the user's own in the bar (YASB): it calls by number, so the action itself never
+    /// passes through cmd.exe. The action is checked like any other.
+    /// </summary>
+    async Task BarShortcutAsync(string? arg, CancellationToken ct)
+    {
+        var list = _host.Settings.BarShortcuts;
+        if (arg == null || !int.TryParse(arg, out var n) || n < 1 || n > list.Count) return;
+        var action = list[n - 1].Action;
+        if (action.StartsWith("do:bar-shortcut", StringComparison.OrdinalIgnoreCase)) return;
+        await RunAsync(action, ct);
+    }
+
     async Task DoAsync(string value, CancellationToken ct)
     {
         var parts = value.Split(' ', 2, StringSplitOptions.TrimEntries);
@@ -168,6 +195,8 @@ public sealed class ActionRunner
             case "show-time": _host.Notify(DateTime.Now.ToString(L.Language == "de" ? "dddd, d. MMMM · HH:mm" : "dddd, MMMM d · h:mm tt", L.Culture)); break;
             case "show-battery": _host.Notify(BatteryText()); break;
             case "screenshot": await Screenshots.TakeAsync(_host.Settings, arg, _host.Notify, ct); break;
+            case "about": About(); break;
+            case "bar-shortcut": await BarShortcutAsync(arg, ct); break;
             case "scale-up":
             case "scale-down":
                 var scale = DisplayScale.Step(command == "scale-up" ? 1 : -1);

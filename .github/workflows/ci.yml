@@ -96,6 +96,17 @@ jobs:
           for f in artifacts/selftest/*.yaml; do npx --yes js-yaml@4.1.0 "$f" > /dev/null && echo "$f: OK"; done
           node -e "JSON.parse(require('fs').readFileSync('artifacts/selftest/zpack.json','utf8')); console.log('zpack.json: OK')"
 
+      # The bar's config against the schema of the YASB release WinMarchy installs.
+      - name: YASB-, Starship- und Fastfetch-Konfiguration prüfen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh api repos/amnweb/yasb/releases/latest --jq .tag_name)
+          curl -fsSL "https://raw.githubusercontent.com/amnweb/yasb/$tag/schema.json" -o artifacts/yasb-schema.json
+          python -m pip install --quiet --disable-pip-version-check jsonschema==4.23.0 pyyaml==6.0.2
+          python scripts/check-yasb.py artifacts/yasb-schema.json artifacts/selftest
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ github.event_name == 'pull_request' && format('WinMarchy-PR-{0}', github.event.pull_request.number) || format('WinMarchy-build-{0}', github.run_number) }}
@@ -111,4 +122,7 @@ jobs:
             artifacts/selftest/*.ahk
             artifacts/selftest/*.yaml
             artifacts/selftest/*.json
+            artifacts/selftest/*.css
+            artifacts/selftest/*.toml
+            artifacts/selftest/*.jsonc
           retention-days: 14

@@ -5,29 +5,17 @@ namespace WinMarchy.Core.Integrations;
 
 /// <summary>
 /// The WinMarchy bar as a Zebar widget pack in %USERPROFILE%\.glzr\zebar\winmarchy, registered as
-/// startup widget. The Zebar client library is bundled in the pack, so the bar needs no CDN.
+/// startup widget. The Zebar client library is bundled in the pack, so the bar needs no CDN. New
+/// setups use YASB (<see cref="YasbBar"/>); this stays for those who keep Zebar.
 /// </summary>
 public static class ZebarPack
 {
     public const string PackName = "winmarchy";
     public const string Widget = "bar";
-    public const int BarHeight = 26;
-
     static readonly string[] StaticFiles = { "bar.html", "bar.css", "bar.js", "zebar.js" };
 
-    /// <summary>
-    /// What the bar can show, in its order on the screen, and whether it is on unless the user says
-    /// otherwise. The defaults are Omarchy's Waybar: logo and workspaces, clock, tray, network, sound,
-    /// CPU and battery.
-    /// </summary>
-    public static readonly IReadOnlyList<(string Id, bool On)> Modules = new[]
-    {
-        ("logo", true), ("workspaces", true), ("clock", true), ("tray", true), ("direction", false),
-        ("network", true), ("audio", true), ("cpu", true), ("memory", false), ("battery", true),
-    };
-
-    public static bool IsOn(UserSettings s, string module) =>
-        s.BarModules.TryGetValue(module, out var on) ? on : Modules.FirstOrDefault(m => m.Id == module).On;
+    /// <summary>The pack is set up (an older WinMarchy installed Zebar as its bar).</summary>
+    public static bool IsInstalled(Locations loc) => File.Exists(Path.Combine(loc.ZebarPackDir, "zpack.json"));
 
     public static string ThemeCss(Palette p) =>
         $":root {{\n  --bg: {p.Background};\n  --fg: {p.Foreground};\n  --accent: {p.Accent};\n  --muted: {p.DarkForeground};\n  --warn: {ColorMath.Legible(p.Yellow, p.Background)};\n  --border: {p.InactiveBorder};\n}}\n";
@@ -35,7 +23,7 @@ public static class ZebarPack
     public static string ConfigJs(string winMarchyExe, UserSettings? settings = null)
     {
         var modules = new JsonObject();
-        foreach (var (id, _) in Modules) modules[id] = IsOn(settings ?? new UserSettings(), id);
+        foreach (var (id, _) in Bars.Modules.Where(m => !Bars.YasbOnly.Contains(m.Id))) modules[id] = Bars.IsOn(settings ?? new UserSettings(), id);
         var config = new JsonObject
         {
             ["exe"] = winMarchyExe,
@@ -89,7 +77,7 @@ public static class ZebarPack
                 ["offsetX"] = "0px",
                 ["offsetY"] = "0px",
                 ["width"] = "100%",
-                ["height"] = BarHeight + "px",
+                ["height"] = Bars.Height + "px",
                 ["monitorSelection"] = new JsonObject { ["type"] = "all" },
                 // GlazeWM leaves room through its top gap, as in its own sample config; no appbar reservation.
                 ["dockToEdge"] = new JsonObject { ["enabled"] = false, ["edge"] = "top", ["windowMargin"] = "0px" },
@@ -139,13 +127,29 @@ public static class ZebarPack
     }
 
     /// <summary>
+    /// Takes the pack out of Zebar: its folder and its entry in Zebar's startup list. Both are in the
+    /// restore point; the program itself is removed by the caller.
+    /// </summary>
+    public static void Uninstall(IntegrationContext ctx)
+    {
+        var dir = ctx.Loc.ZebarPackDir;
+        if (Directory.Exists(dir))
+        {
+            ctx.Backups.CaptureDirectory(ctx.Point, dir);
+            Directory.Delete(dir, true);
+        }
+        var settings = ctx.Loc.ZebarSettings;
+        if (File.Exists(settings)) ctx.WriteFile(settings, PatchSettings(FileSafety.ReadShared(settings), enabled: false));
+    }
+
+    /// <summary>
     /// The bar's choice of entries changed (Tiling page). The pack's config.js is written again; the
     /// caller restarts the bar so it reads it. False if the pack is not installed.
     /// </summary>
     public static bool WriteConfig(Locations loc, string winMarchyExe, UserSettings settings)
     {
         var dir = loc.ZebarPackDir;
-        if (!File.Exists(Path.Combine(dir, "zpack.json"))) return false;
+        if (!IsInstalled(loc)) return false;
         FileSafety.WriteText(Path.Combine(dir, "config.js"), ConfigJs(winMarchyExe, settings));
         // An older pack has the bar files of its time; the new config needs the new bar.
         foreach (var name in StaticFiles) FileSafety.WriteText(Path.Combine(dir, name), Resource(name));
@@ -156,7 +160,7 @@ public static class ZebarPack
     public static void ApplyTheme(IntegrationContext ctx, Palette palette)
     {
         var dir = ctx.Loc.ZebarPackDir;
-        if (!File.Exists(Path.Combine(dir, "zpack.json"))) return;
+        if (!IsInstalled(ctx.Loc)) return;
         ctx.Backups.CaptureDirectory(ctx.Point, dir);
         FileSafety.WriteText(Path.Combine(dir, "theme.css"), ThemeCss(palette));
     }

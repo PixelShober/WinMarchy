@@ -116,6 +116,35 @@
 
     <Border Style="{StaticResource Card}" Margin="0,20,0,0">
       <StackPanel>
+        <TextBlock Text="{ui:T settings.bar}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T settings.barText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
+        <Border Style="{StaticResource SegmentGroup}" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal">
+            <RadioButton x:Name="BarYasb" Style="{StaticResource Segment}" GroupName="bar" Tag="yasb" Checked="OnBar" Content="YASB" />
+            <RadioButton x:Name="BarZebar" Style="{StaticResource Segment}" GroupName="bar" Tag="zebar" Checked="OnBar" Content="Zebar" />
+          </StackPanel>
+        </Border>
+        <TextBlock x:Name="BarHint" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <Button x:Name="RemoveZebar" Content="{ui:T settings.zebarRemove}" Click="OnRemoveZebar" HorizontalAlignment="Left" Margin="0,10,0,0" />
+        <ui:JobView x:Name="BarJob" Margin="0,10,0,0" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="ExplorerBlurMica" Style="{StaticResource H2}" />
+          <Border x:Name="BlurBadge" Margin="10,0,0,0" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Text="{ui:T settings.explorerBlurText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
+        <CheckBox x:Name="BlurSwitch" Style="{StaticResource Switch}" Content="{ui:T settings.explorerBlurSwitch}" Click="OnExplorerBlur" />
+        <TextBlock x:Name="BlurHint" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <ui:JobView x:Name="BlurJob" Margin="0,10,0,0" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
         <TextBlock Text="{ui:T settings.paths}" Style="{StaticResource H2}" Margin="0,0,0,14" />
         <TextBlock Text="{ui:T settings.filesPath}" Style="{StaticResource H3}" Margin="0,0,0,4" />
         <DockPanel>

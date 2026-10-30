@@ -102,13 +102,13 @@ public sealed class AgentHost : IAgentHost, IDisposable
         try
         {
             if (!c.StartGlaze()) Log.Info(L.T("agent.glazeMissing"));
-            if (Settings.ShowBar && !Core.Services.Components.IsRunning("zebar")) c.StartBar();
+            if (Settings.ShowBar && !c.BarRunning) c.StartBar();
             if (Settings.HotkeyEngine == "autohotkey" && File.Exists(Paths.AhkScript) && !Core.Services.Components.OurAhkProcesses().Any()) c.StartAhk();
             // Print belongs to Greenshot when the user chose it; it has to run for that.
             if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
                 c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
             // Win opens Flow Launcher; after the setup it has never run yet.
-            Log.Trace($"components: glazewm {Core.Services.Components.IsRunning("glazewm")}, zebar {Core.Services.Components.IsRunning("zebar")}, " +
+            Log.Trace($"components: glazewm {Core.Services.Components.IsRunning("glazewm")}, {c.Bar} {c.BarRunning}, " +
                       $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, flow {Core.Services.Components.IsRunning("Flow.Launcher")}", "agent");
             if (c.StartFlow())
             {
@@ -426,7 +426,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         }
         _taskbarShownByUser = false;
         EnforceTaskbar();
-        var running = Core.Services.Components.IsRunning("zebar");
+        var running = AppModel.Engine.Components.BarRunning;
         if (Settings.ShowBar && !running && SetupDone) AppModel.Engine.Components.StartBar();
         else if (!Settings.ShowBar && running) AppModel.Engine.Components.StopBar();
     }
@@ -480,17 +480,12 @@ public sealed class AgentHost : IAgentHost, IDisposable
     public void ToggleBar()
     {
         var c = AppModel.Engine.Components;
-        if (Core.Services.Components.IsRunning("zebar"))
+        if (c.BarRunning)
         {
             c.StopBar();
             return;
         }
-        if (c.ZebarExe == null)
-        {
-            Notify(L.T("agent.zebarMissing"));
-            return;
-        }
-        c.StartBar();
+        if (!c.StartBar()) Notify(L.T("agent.barMissing", ("tool", Core.Integrations.Bars.Tool(c.Bar).Name)));
     }
 
     public void ToggleKeepAwake()

@@ -17,12 +17,14 @@ public partial class ThemesPage : UserControl, IPage
     static readonly (string Id, Func<ThemeTargets, bool> Get, Action<ThemeTargets, bool> Set)[] TargetList =
     {
         ("glazewm", t => t.GlazeWm, (t, v) => t.GlazeWm = v),
-        ("zebar", t => t.Zebar, (t, v) => t.Zebar = v),
+        ("bar", t => t.Bar, (t, v) => t.Bar = v),
         ("terminal", t => t.Terminal, (t, v) => t.Terminal = v),
         ("powershell", t => t.PowerShell, (t, v) => t.PowerShell = v),
         ("vscode", t => t.VsCode, (t, v) => t.VsCode = v),
         ("flow", t => t.Flow, (t, v) => t.Flow = v),
         ("files", t => t.Files, (t, v) => t.Files = v),
+        ("shell", t => t.Shell, (t, v) => t.Shell = v),
+        ("explorerBlur", t => t.ExplorerBlur, (t, v) => t.ExplorerBlur = v),
         ("windows", t => t.Windows, (t, v) => t.Windows = v),
         ("wallpaper", t => t.Wallpaper, (t, v) => t.Wallpaper = v),
         ("lockscreen", t => t.LockScreen, (t, v) => t.LockScreen = v),

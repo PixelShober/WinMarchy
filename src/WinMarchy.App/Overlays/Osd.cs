@@ -190,7 +190,7 @@ public static class Osd
             var area = Placement.CursorWorkArea();
             var scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
             var s = AppModel.Settings;
-            int top = (int)Math.Round(((s.ShowBar ? ZebarPack.BarHeight : 0) + s.OuterGap) * scale);
+            int top = (int)Math.Round(((s.ShowBar ? Bars.Height : 0) + s.OuterGap) * scale);
             int width = (int)Math.Round(ActualWidth * scale);
             Placement.MoveTopLeftPixels(this, area.Right - width - (int)Math.Round(Math.Max(s.OuterGap, MarginPx) * scale), area.Top + Math.Max(top, MarginPx));
         }

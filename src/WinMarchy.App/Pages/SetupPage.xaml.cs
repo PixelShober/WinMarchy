@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using WinMarchy.App.Ui;
 using WinMarchy.Core;
+using WinMarchy.Core.Integrations;
 using WinMarchy.Core.Services;
 using WinMarchy.Core.Themes;
 using WinMarchy.Core.Tools;
@@ -35,11 +36,18 @@ public partial class SetupPage : UserControl, IPage
         ToolChoices.Children.Clear();
         ExtraChoices.Children.Clear();
         _tools.Clear();
-        foreach (var tool in new[] { ToolCatalog.GlazeWm, ToolCatalog.Zebar, ToolCatalog.AutoHotkey, ToolCatalog.Flow })
+        // The bar is YASB, unless Zebar was chosen in the settings.
+        foreach (var tool in new[] { ToolCatalog.GlazeWm, Bars.Tool(Bars.ForSetup(AppModel.Settings)), ToolCatalog.AutoHotkey, ToolCatalog.Flow })
             ToolChoices.Children.Add(Choice(tool, tickedIfMissing: true));
-        // Extras stay unticked: nobody needs them for the Omarchy desktop.
+        if (ZebarPack.IsInstalled(Locations.Current) && Bars.ForSetup(AppModel.Settings) == Bars.Yasb)
+        {
+            var hint = UiKit.Text(L.T("setup.zebarStays"), "Small", new Thickness(0, 0, 0, 14));
+            hint.TextWrapping = TextWrapping.Wrap;
+            ToolChoices.Children.Add(hint);
+        }
+        // Extras stay unticked: nobody needs them for the Omarchy desktop. Lunatask is only linked.
         foreach (var tool in ToolCatalog.Extras)
-            ExtraChoices.Children.Add(Choice(tool, tickedIfMissing: false));
+            ExtraChoices.Children.Add(tool.Kind == InstallKind.None ? VendorChoice(tool) : Choice(tool, tickedIfMissing: false));
         UpdateExtrasButton();
         var detected = new[] { ToolCatalog.Terminal, ToolCatalog.Files, ToolCatalog.VsCode }
             .Select(t => (t, AppModel.Engine.Components.Status(t)))
@@ -56,6 +64,12 @@ public partial class SetupPage : UserControl, IPage
         var badge = status.Installed ? UiKit.Badge(status.Version ?? L.T("tools.installedBadge"), "ok") : UiKit.Badge(tool.License, "muted");
         badge.Margin = new Thickness(8, 0, 0, 0);
         title.Children.Add(badge);
+        if (tool.Experimental)
+        {
+            var experimental = UiKit.Badge(L.T("setup.experimental"), "warn");
+            experimental.Margin = new Thickness(6, 0, 0, 0);
+            title.Children.Add(experimental);
+        }
         label.Children.Add(title);
         var why = L.T("setup.why." + tool.Id);
         if (tool == ToolCatalog.Pi && ToolCatalog.GitBash(Locations.Current) == null) why += " " + L.T("setup.piNeedsBash");
@@ -75,12 +89,38 @@ public partial class SetupPage : UserControl, IPage
         return box;
     }
 
+    /// <summary>A program WinMarchy does not download: its name, what it is for, and a link to the vendor.</summary>
+    FrameworkElement VendorChoice(ToolDef tool)
+    {
+        var status = AppModel.Engine.Components.Status(tool);
+        var panel = new StackPanel { Margin = new Thickness(28, 0, 0, 14) };
+        var title = new StackPanel { Orientation = Orientation.Horizontal };
+        title.Children.Add(UiKit.Text(tool.Name, "H3"));
+        var badge = status.Installed ? UiKit.Badge(L.T("tools.installedBadge"), "ok") : UiKit.Badge(tool.License, "muted");
+        badge.Margin = new Thickness(8, 0, 0, 0);
+        title.Children.Add(badge);
+        panel.Children.Add(title);
+        var text = UiKit.Text(L.T("setup.why." + tool.Id), "Small");
+        text.TextWrapping = TextWrapping.Wrap;
+        panel.Children.Add(text);
+        if (!status.Installed)
+        {
+            var link = UiKit.IconTextButton("external", L.T("setup.fromVendor", ("tool", tool.Name)));
+            link.HorizontalAlignment = HorizontalAlignment.Left;
+            link.Margin = new Thickness(0, 6, 0, 0);
+            link.Click += (_, _) => Core.Platform.AppLauncher.Open(tool.Homepage);
+            panel.Children.Add(link);
+        }
+        return panel;
+    }
+
     IEnumerable<ToolDef> WantedExtras() => ToolCatalog.Extras.Where(t => _tools.TryGetValue(t.Id, out var b) && b.IsEnabled && b.IsChecked == true);
 
     void UpdateExtrasButton()
     {
         InstallExtras.IsEnabled = WantedExtras().Any();
-        InstallExtras.Visibility = ToolCatalog.Extras.All(t => AppModel.Engine.Components.Status(t).Installed) ? Visibility.Collapsed : Visibility.Visible;
+        InstallExtras.Visibility = ToolCatalog.Extras.Where(t => t.Kind != InstallKind.None).All(t => AppModel.Engine.Components.Status(t).Installed)
+            ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>Only the ticked extras, without the rest of the setup.</summary>
@@ -89,7 +129,7 @@ public partial class SetupPage : UserControl, IPage
         var tools = WantedExtras().ToList();
         if (tools.Count == 0) return;
         var job = AppModel.Run("extras", "setup", L.T("jobs.extras", ("tools", string.Join(", ", tools.Select(t => t.Name)))),
-            AppModel.Engine.InstallSteps(tools), async j =>
+            AppModel.Engine.ExtraSteps(tools), async j =>
             {
                 await Dispatcher.InvokeAsync(() =>
                 {
@@ -109,7 +149,7 @@ public partial class SetupPage : UserControl, IPage
             s.ShowBar = _bar.IsChecked == true;
         });
         bool Want(string id) => _tools.TryGetValue(id, out var b) && b.IsEnabled && b.IsChecked == true;
-        var options = new SetupOptions(Want("glazewm"), Want("zebar"), Want("autohotkey"), Want("flow"), _wallpapers.IsChecked == true)
+        var options = new SetupOptions(Want("glazewm"), Want(Bars.Tool(Bars.ForSetup(AppModel.Settings)).Id), Want("autohotkey"), Want("flow"), _wallpapers.IsChecked == true)
         {
             Extras = WantedExtras().Select(t => t.Id).ToList(),
         };

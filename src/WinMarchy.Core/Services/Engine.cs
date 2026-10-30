@@ -8,10 +8,10 @@ using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Services;
 
-/// <summary>Which programs the full setup installs if they are missing.</summary>
-public sealed record SetupOptions(bool InstallGlazeWm, bool InstallZebar, bool InstallAutoHotkey, bool InstallFlow, bool DownloadWallpapers)
+/// <summary>Which programs the full setup installs if they are missing. The bar is YASB unless Zebar was chosen.</summary>
+public sealed record SetupOptions(bool InstallGlazeWm, bool InstallBar, bool InstallAutoHotkey, bool InstallFlow, bool DownloadWallpapers)
 {
-    /// <summary>Ticked extras: PowerShell 7, Herdr, Pi (tool ids).</summary>
+    /// <summary>Ticked extras: PowerShell 7, Starship, Fastfetch, Herdr, Pi … (tool ids).</summary>
     public IReadOnlyCollection<string> Extras { get; init; } = Array.Empty<string>();
 }
 
@@ -64,7 +64,7 @@ public sealed class Engine
     public string GlazeConfigText(Palette palette, bool gapsOff = false)
     {
         var s = S;
-        var options = GlazeConfig.FromSettings(s, palette, ZebarPack.BarHeight);
+        var options = GlazeConfig.FromSettings(s, palette, Bars.Height);
         if (gapsOff)
         {
             options.InnerGap = 0;
@@ -89,11 +89,23 @@ public sealed class Engine
     {
         var point = Backups.Begin("tiling", L.T("jobs.tiling"));
         var step = new SetupStep(L.T("steps.glazewm"), (_, _) => Task.CompletedTask);
-        WriteGlazeConfig(Context(point, step), CurrentTheme.Palette);
+        var ctx = Context(point, step);
+        WriteGlazeConfig(ctx, CurrentTheme.Palette);
         await Components.ReloadGlazeAsync(Glaze(), ct);
-        // The bar's entries: Zebar reads config.js when the bar starts.
-        var dir = _loc.ZebarPackDir;
-        Backups.CaptureDirectory(point, dir);
+        WriteBarConfig(ctx);
+    }
+
+    bool FastfetchInstalled => Components.Status(ToolCatalog.Fastfetch).Installed;
+
+    /// <summary>The bar's entries and shortcuts. YASB reads its config again by itself; Zebar reads config.js only when it starts.</summary>
+    void WriteBarConfig(IntegrationContext ctx)
+    {
+        if (Components.Bar == Bars.Yasb)
+        {
+            YasbBar.WriteConfig(ctx, Components.SelfExe, FastfetchInstalled);
+            return;
+        }
+        Backups.CaptureDirectory(ctx.Point, _loc.ZebarPackDir);
         if (ZebarPack.WriteConfig(_loc, Components.SelfExe, S) && Components.IsRunning("zebar"))
         {
             Components.StopBar();
@@ -263,8 +275,13 @@ public sealed class Engine
                 WriteGlazeConfig(Ctx(step), palette);
                 await Components.ReloadGlazeAsync(Glaze(), ct);
             }, () => targets.GlazeWm ? null : L.T("steps.off")),
-            new(L.T("steps.zebar"), (step, _) => { ZebarPack.ApplyTheme(Ctx(step), palette); return Task.CompletedTask; },
-                () => targets.Zebar ? null : L.T("steps.off")),
+            new(L.T("steps.barTheme"), (step, _) =>
+            {
+                // Whichever bar is set up; the other one is not there and is skipped.
+                YasbBar.ApplyTheme(Ctx(step), palette);
+                ZebarPack.ApplyTheme(Ctx(step), palette);
+                return Task.CompletedTask;
+            }, () => targets.Bar ? null : L.T("steps.off")),
             new(L.T("steps.terminal"), (step, _) => { TerminalTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
                 () => targets.Terminal ? null : L.T("steps.off")),
             new(L.T("steps.powershell"), (step, _) => { TerminalTheme.ApplyPowerShell(Ctx(step), palette); return Task.CompletedTask; },
@@ -277,6 +294,10 @@ public sealed class Engine
                 () => targets.Files ? null : L.T("steps.off")),
             new(L.T("steps.windows"), (step, _) => { WindowsAppearance.Apply(Ctx(step), palette); return Task.CompletedTask; },
                 () => targets.Windows ? null : L.T("steps.off")),
+            new(L.T("steps.shellTheme"), (step, _) => { ShellExtras.ApplyTheme(Ctx(step), palette); return Task.CompletedTask; },
+                () => !targets.Shell ? L.T("steps.off") : File.Exists(Paths.StarshipConfig) || File.Exists(Paths.FastfetchConfig) ? null : L.T("steps.notSetUp")),
+            new(L.T("steps.explorerBlurTheme"), (step, _) => { ExplorerBlur.ApplyTheme(Ctx(step), palette); return Task.CompletedTask; },
+                () => !targets.ExplorerBlur ? L.T("steps.off") : ExplorerBlur.IsOn(Backups.Registry) ? null : L.T("steps.notSetUp")),
             new(L.T("steps.wallpaper"), (step, _) =>
             {
                 var index = AppState.Load().WallpaperIndex.GetValueOrDefault(theme.Name);
@@ -380,6 +401,157 @@ public sealed class Engine
         };
     }
 
+    // ------------------------------------------------------------------ bar
+
+    SetupStep SaveBarChoice(string bar) => new(L.T("steps.saveChoice"), (_, _) =>
+    {
+        var s = S.Clone();
+        s.Bar = bar == Bars.Zebar ? Bars.Zebar : Bars.Yasb;
+        _save(s);
+        return Task.CompletedTask;
+    });
+
+    /// <summary>The chosen bar's files: YASB's config.yaml and styles.css, or Zebar's widget pack.</summary>
+    SetupStep BarSetupStep(Func<RestorePoint> pointOf) => new(L.T("steps.barSetup"), (step, _) =>
+    {
+        var ctx = Context(pointOf(), step);
+        if (Components.Bar == Bars.Yasb) YasbBar.Install(ctx, CurrentTheme.Palette, Components.SelfExe, FastfetchInstalled);
+        else ZebarPack.Install(ctx, CurrentTheme.Palette, Components.SelfExe);
+        return Task.CompletedTask;
+    }, () => Components.BarExe == null ? L.T("steps.barMissing", ("tool", Bars.Tool(Components.Bar).Name)) : null);
+
+    /// <summary>
+    /// Settings → Bar: YASB or Zebar. The other bar is ended; its files stay (Zebar is removed with
+    /// its own button), so switching back needs no download.
+    /// </summary>
+    public List<SetupStep> BarSteps(string bar)
+    {
+        RestorePoint? point = null;
+        var tool = Bars.Tool(bar);
+        return new List<SetupStep>
+        {
+            BeginStep("bar", L.T("jobs.bar", ("tool", tool.Name)), p => point = p),
+            new(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); },
+                () => Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null),
+            SaveBarChoice(bar),
+            BarSetupStep(() => point!),
+            new(L.T("steps.bar"), (step, _) =>
+            {
+                Components.StopBar();
+                if (S.ShowBar && AppState.Load().SetupDone && !Components.StartBar()) throw new WinMarchyException("barMissing", ("tool", tool.Name));
+                return Task.CompletedTask;
+            }),
+        };
+    }
+
+    /// <summary>
+    /// Settings → Bar → Remove Zebar: it is ended, WinMarchy's widget pack and its startup entry go
+    /// (both in the restore point), and the program goes if WinMarchy installed it. A Zebar installed
+    /// some other way stays; the step says where it is.
+    /// </summary>
+    public List<SetupStep> RemoveZebarSteps()
+    {
+        RestorePoint? point = null;
+        return new List<SetupStep>
+        {
+            BeginStep("zebar-remove", L.T("jobs.zebarRemove"), p => point = p),
+            new(L.T("steps.zebarRemove"), (step, _) =>
+            {
+                foreach (var p in Process.GetProcessesByName("zebar"))
+                {
+                    using (p)
+                    {
+                        try { p.Kill(entireProcessTree: true); p.WaitForExit(3000); } catch { }
+                    }
+                }
+                ZebarPack.Uninstall(Context(point!, step));
+                var status = Components.Status(ToolCatalog.Zebar);
+                if (status.InstalledByWinMarchy)
+                {
+                    ToolInstaller.Remove(ToolCatalog.Zebar, _loc);
+                    step.Report(L.T("tools.removed", ("tool", ToolCatalog.Zebar.Name)));
+                }
+                else if (status.Path != null)
+                {
+                    step.Report(L.T("bar.zebarElsewhere", ("path", status.Path)));
+                }
+                if (S.Bar != Bars.Yasb)
+                {
+                    var s = S.Clone();
+                    s.Bar = Bars.Yasb;
+                    _save(s);
+                }
+                return Task.CompletedTask;
+            }),
+        };
+    }
+
+    // ------------------------------------------------------------------ extras
+
+    /// <summary>What an extra needs besides its files: Starship's prompt, Fastfetch's colours, ExplorerBlurMica's registration.</summary>
+    SetupStep? ExtraSetup(ToolDef tool, Func<RestorePoint> pointOf)
+    {
+        string? Exe() => Components.Status(tool).Path;
+        if (tool == ToolCatalog.Starship)
+            return new SetupStep(L.T("steps.starship"), (step, _) =>
+            {
+                ShellExtras.ApplyStarship(Context(pointOf(), step), CurrentTheme.Palette, Exe() ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)));
+                return Task.CompletedTask;
+            });
+        if (tool == ToolCatalog.Fastfetch)
+            return new SetupStep(L.T("steps.fastfetch"), (step, _) =>
+            {
+                ShellExtras.ApplyFastfetch(Context(pointOf(), step), CurrentTheme.Palette);
+                // The logo menu offers the system information from now on.
+                if (Components.Bar == Bars.Yasb) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, fastfetch: true);
+                return Task.CompletedTask;
+            });
+        if (tool == ToolCatalog.ExplorerBlurMica)
+            return new SetupStep(L.T("steps.explorerBlur"), (step, _) =>
+            {
+                ExplorerBlur.Enable(Context(pointOf(), step), Exe() ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)), CurrentTheme.Palette);
+                return Task.CompletedTask;
+            });
+        return null;
+    }
+
+    /// <summary>Extras later on (Setup page), in a restore point of their own: the files, then what each one needs.</summary>
+    public List<SetupStep> ExtraSteps(IEnumerable<ToolDef> tools)
+    {
+        RestorePoint? point = null;
+        var list = tools.ToList();
+        var steps = new List<SetupStep> { BeginStep("extras", L.T("jobs.extras", ("tools", string.Join(", ", list.Select(t => t.Name)))), p => point = p) };
+        foreach (var tool in list)
+        {
+            steps.AddRange(InstallSteps(new[] { tool }));
+            if (ExtraSetup(tool, () => point!) is { } setup) steps.Add(setup);
+        }
+        return steps;
+    }
+
+    public bool ExplorerBlurIsOn => ExplorerBlur.IsOn(Backups.Registry);
+
+    /// <summary>Settings → ExplorerBlurMica: downloaded if needed and registered for this user, or registered no more.</summary>
+    public List<SetupStep> ExplorerBlurSteps(bool on)
+    {
+        RestorePoint? point = null;
+        var steps = new List<SetupStep> { BeginStep("explorer-blur", L.T(on ? "jobs.explorerBlurOn" : "jobs.explorerBlurOff"), p => point = p) };
+        if (on)
+        {
+            steps.AddRange(InstallSteps(new[] { ToolCatalog.ExplorerBlurMica }));
+            steps.Add(ExtraSetup(ToolCatalog.ExplorerBlurMica, () => point!)!);
+        }
+        else
+        {
+            steps.Add(new SetupStep(L.T("steps.explorerBlurOff"), (step, _) =>
+            {
+                ExplorerBlur.Disable(Context(point!, step));
+                return Task.CompletedTask;
+            }));
+        }
+        return steps;
+    }
+
     // ------------------------------------------------------------------ full setup
 
     /// <summary>Extras later on, without running the whole setup again. Only C:\WinMarchy\Tools changes.</summary>
@@ -402,10 +574,15 @@ public sealed class Engine
             (step, ct) => InstallGlazeAsync(step, ct),
             () => !o.InstallGlazeWm ? L.T("steps.notChosen")
                 : ToolCatalog.IsWantedGlaze(Components.GlazeExe, S) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null));
-        Install(ToolCatalog.Zebar, o.InstallZebar);
+        var bar = Bars.ForSetup(S);
+        Install(Bars.Tool(bar), o.InstallBar);
         Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
         Install(ToolCatalog.Flow, o.InstallFlow);
-        foreach (var extra in ToolCatalog.Extras) Install(extra, o.Extras.Contains(extra.Id));
+        foreach (var extra in ToolCatalog.Extras.Where(t => t.Kind != InstallKind.None))
+        {
+            Install(extra, o.Extras.Contains(extra.Id));
+            if (o.Extras.Contains(extra.Id) && ExtraSetup(extra, () => point!) is { } setup) steps.Add(setup);
+        }
 
         steps.Add(new SetupStep(L.T("steps.legacy"), (step, _) =>
         {
@@ -414,11 +591,8 @@ public sealed class Engine
             ImportLegacyThemes(step);
             return Task.CompletedTask;
         }));
-        steps.Add(new SetupStep(L.T("steps.zebarPack"), (step, _) =>
-        {
-            ZebarPack.Install(Context(point!, step), CurrentTheme.Palette, Components.SelfExe);
-            return Task.CompletedTask;
-        }, () => Components.ZebarExe == null ? L.T("steps.zebarMissing") : null));
+        steps.Add(SaveBarChoice(bar));
+        steps.Add(BarSetupStep(() => point!));
         steps.Add(new SetupStep(L.T("steps.glazeStart"), async (step, ct) =>
         {
             WriteGlazeConfig(Context(point!, step), CurrentTheme.Palette);
@@ -439,6 +613,8 @@ public sealed class Engine
         steps.AddRange(ThemeChanges(CurrentTheme, o.DownloadWallpapers, () => point!));
         steps.Add(new SetupStep(L.T("steps.bar"), (step, _) =>
         {
+            // A Zebar from before must not run next to YASB.
+            Components.StopBar();
             if (S.ShowBar) Components.StartBar();
             AppState.Update(st => st.SetupDone = true);
             return Task.CompletedTask;
