@@ -36,7 +36,16 @@
           </StackPanel>
         </DockPanel>
         <StackPanel x:Name="Monitors" Margin="0,14,0,0" />
-        <TextBlock x:Name="MonitorsError" Style="{StaticResource Small}" Foreground="{DynamicResource Error}" Visibility="Collapsed" Margin="0,6,0,0" />
+        <TextBlock x:Name="MonitorsError" Style="{StaticResource Small}" Foreground="{DynamicResource Error}" Visibility="Collapsed" Margin="0,6,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+      <StackPanel>
+        <TextBlock Text="{ui:T tiling.workModes}" Style="{StaticResource H2}" />
+        <TextBlock Text="{ui:T tiling.workModesText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+        <StackPanel x:Name="WorkModesPanel" Margin="0,14,0,0" />
+        <TextBlock x:Name="WorkModesError" Style="{StaticResource Small}" Foreground="{DynamicResource Error}" Visibility="Collapsed" Margin="0,6,0,0" TextWrapping="Wrap" />
       </StackPanel>
     </Border>
 

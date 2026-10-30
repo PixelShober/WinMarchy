@@ -135,7 +135,9 @@ public class HotkeySetTests
         Assert.Contains(set.Active, b => b.Keys == "Win+Shift+G" && b.Do == "app:stackfield");
         Assert.Contains(set.Active, b => b.Keys == "Win+N" && b.Do == "app:notepad");
         Assert.Contains(set.Active, b => b.Keys == "Win+J" && b.Do == "do:toggle-split");
-        Assert.Contains(set.Active, b => b.Keys == "Win+Ctrl+D" && b.Do == "do:desktop-new");
+        Assert.Contains(set.Active, b => b.Keys == "Win+Ctrl+D" && b.Do == "do:work-mode 1");
+        Assert.Contains(set.Active, b => b.Keys == "Win+Ctrl+2" && b.Do == "do:work-mode 2");
+        Assert.Contains(set.Active, b => b.Keys == "Win+Ctrl+3" && b.Do == "do:work-mode 3");
     }
 
     [Fact]

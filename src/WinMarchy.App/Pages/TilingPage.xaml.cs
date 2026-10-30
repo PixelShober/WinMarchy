@@ -13,15 +13,18 @@ public partial class TilingPage : UserControl, IPage
     static readonly int[] Gaps = { 0, 5, 10, 15, 20, 30 };
     static readonly string[] LayoutIds = { "dwindle", "columns", "scrolling", "floating", "manual" };
     static readonly LayoutMode[] Modes = { LayoutMode.Dwindle, LayoutMode.Columns, LayoutMode.Scrolling, LayoutMode.Floating, LayoutMode.Manual };
-    /// <summary>What Win+Ctrl+D can start on a monitor's new workspace.</summary>
-    static readonly string[] DesktopApps =
+    /// <summary>More screens than this are not shown, whatever settings.json says.</summary>
+    const int MaxScreens = 8;
+    /// <summary>Starting points for a work mode's programs; the box takes anything that opens a window.</summary>
+    static readonly string[] ModeSuggestions =
     {
-        "terminal", "browser", "browser2", "files", "editor", "notepad", "mail", "calendar", "notes", "word", "stackfield", "herdr", "pi",
-        "calculator", "taskmanager",
+        "app:browser https://", "app:browser2 https://", "web:https://", "app:mail", "app:calendar", "app:teams", "app:terminal",
+        "app:files", "app:editor", "app:notes", "app:word", "app:stackfield", "app:lunatask", "app:obsidian", "app:herdr", "run:",
     };
     readonly Dictionary<string, RadioButton> _layouts = new();
     readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _minimize, _fullscreen;
-    readonly List<(TextBox Workspaces, ComboBox App)> _monitorRows = new();
+    readonly List<TextBox> _monitorRows = new();
+    readonly List<(TextBox Name, List<TextBox> Apps)> _modeRows = new();
     readonly Dictionary<string, CheckBox> _barModules = new();
     readonly TextBox _trayPinned = new();
     readonly StackPanel _trayPinnedPanel = new();
@@ -150,6 +153,7 @@ public partial class TilingPage : UserControl, IPage
         Select(ScrollingColumns, s.ScrollingColumns);
         ShowBarChoice();
         RenderMonitors();
+        RenderWorkModes();
         _ = RenderWorkspacesAsync();
     }
 
@@ -201,19 +205,7 @@ public partial class TilingPage : UserControl, IPage
         var action = new TextBox { Text = shortcut.Action, Style = UiKit.S("MonoBox") };
         System.Windows.Automation.AutomationProperties.SetName(action, L.T("tiling.shortcutAction"));
         // A few starting points; the box takes anything a shortcut can do.
-        var templates = new ComboBox();
-        templates.Items.Add(new ComboBoxItem { Content = L.T("tiling.shortcutTemplate"), Tag = "" });
-        foreach (var suggestion in ActionSuggestions) templates.Items.Add(new ComboBoxItem { Content = suggestion, Tag = suggestion });
-        templates.SelectedIndex = 0;
-        templates.SelectionChanged += (_, _) =>
-        {
-            if (templates.SelectedItem is not ComboBoxItem { Tag: string { Length: > 0 } chosen }) return;
-            action.Text = chosen;
-            action.Focus();
-            action.CaretIndex = action.Text.Length;
-            templates.SelectedIndex = 0;
-        };
-        System.Windows.Automation.AutomationProperties.SetName(templates, L.T("tiling.shortcutTemplate"));
+        var templates = TemplatePicker(action, ActionSuggestions);
         var inBar = new CheckBox { Content = L.T("tiling.shortcutInBar"), IsChecked = shortcut.InBar, VerticalAlignment = VerticalAlignment.Center };
         var remove = UiKit.IconTextButton("trash", L.T("tiling.shortcutRemove"));
         var row = (title, action, inBar);
@@ -230,6 +222,25 @@ public partial class TilingPage : UserControl, IPage
         foreach (UIElement child in new UIElement[] { title, action, templates, inBar, remove }) grid.Children.Add(child);
         _shortcutRows.Children.Add(grid);
         _shortcuts.Add(row);
+    }
+
+    /// <summary>A drop-down of starting points that fills <paramref name="target"/> and leaves the cursor at its end.</summary>
+    static ComboBox TemplatePicker(TextBox target, IEnumerable<string> suggestions)
+    {
+        var templates = new ComboBox { VerticalAlignment = VerticalAlignment.Center };
+        templates.Items.Add(new ComboBoxItem { Content = L.T("tiling.shortcutTemplate"), Tag = "" });
+        foreach (var suggestion in suggestions) templates.Items.Add(new ComboBoxItem { Content = suggestion, Tag = suggestion });
+        templates.SelectedIndex = 0;
+        templates.SelectionChanged += (_, _) =>
+        {
+            if (templates.SelectedItem is not ComboBoxItem { Tag: string { Length: > 0 } chosen }) return;
+            target.Text = chosen;
+            target.Focus();
+            target.CaretIndex = target.Text.Length;
+            templates.SelectedIndex = 0;
+        };
+        System.Windows.Automation.AutomationProperties.SetName(templates, L.T("tiling.shortcutTemplate"));
+        return templates;
     }
 
     /// <summary>The entries as typed; an action that would not run is named in the error.</summary>
@@ -254,6 +265,10 @@ public partial class TilingPage : UserControl, IPage
     static List<System.Windows.Forms.Screen> Screens() =>
         System.Windows.Forms.Screen.AllScreens.OrderBy(m => m.Bounds.X).ThenBy(m => m.Bounds.Y).ToList();
 
+    /// <summary>
+    /// A row per screen: the connected ones, and those that still have workspaces from another setup
+    /// (the docking station at work), so a laptop on its own keeps them for the next time.
+    /// </summary>
     void RenderMonitors()
     {
         Monitors.Children.Clear();
@@ -261,19 +276,17 @@ public partial class TilingPage : UserControl, IPage
         MonitorsError.Visibility = Visibility.Collapsed;
         var s = AppModel.Settings;
         var screens = Screens();
-        for (int i = 0; i < screens.Count; i++)
+        int rows = Math.Clamp(Math.Max(screens.Count, s.WorkspaceMonitors.Values.DefaultIfEmpty(-1).Max() + 1), 1, MaxScreens);
+        for (int i = 0; i < rows; i++)
         {
-            var screen = screens[i];
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
 
             var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             name.Children.Add(UiKit.Text(L.T("tiling.monitorName", ("number", i + 1)), "H3"));
-            name.Children.Add(UiKit.Text(L.T(screen.Primary ? "tiling.monitorPrimary" : "tiling.monitorSize",
-                ("width", screen.Bounds.Width), ("height", screen.Bounds.Height)), "Small"));
+            name.Children.Add(UiKit.Text(i >= screens.Count ? L.T("tiling.monitorAbsent")
+                : L.T(screens[i].Primary ? "tiling.monitorPrimary" : "tiling.monitorSize", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height)), "Small"));
             grid.Children.Add(name);
 
             var mine = s.WorkspaceMonitors.Where(p => p.Value == i).Select(p => int.TryParse(p.Key, out var n) ? n : 0).Where(n => n > 0).OrderBy(n => n);
@@ -282,20 +295,109 @@ public partial class TilingPage : UserControl, IPage
             Grid.SetColumn(workspaces, 1);
             grid.Children.Add(workspaces);
 
-            var app = new ComboBox { VerticalAlignment = VerticalAlignment.Center, ToolTip = L.T("tiling.monitorAppHint") };
-            app.Items.Add(new ComboBoxItem { Content = L.T("tiling.monitorAppNone"), Tag = "" });
-            foreach (var id in DesktopApps) app.Items.Add(new ComboBoxItem { Content = L.T("tiling.monitorAppPrefix") + " " + L.T("apps." + id), Tag = "app:" + id });
-            var chosen = s.DesktopApps.TryGetValue(i.ToString(), out var a) ? a : "";
-            app.SelectedItem = app.Items.Cast<ComboBoxItem>().FirstOrDefault(x => (string)x.Tag == chosen) ?? app.Items[0];
-            Grid.SetColumn(app, 3);
-            grid.Children.Add(app);
-
             Monitors.Children.Add(grid);
-            _monitorRows.Add((workspaces, app));
+            _monitorRows.Add(workspaces);
         }
         var hint = UiKit.Text(L.T("tiling.monitorsHint"), "Small");
         hint.TextWrapping = TextWrapping.Wrap;
         Monitors.Children.Add(hint);
+    }
+
+    // ------------------------------------------------------------------ work modes
+
+    /// <summary>The three work modes: a name and a program per screen, at least three screens' worth.</summary>
+    void RenderWorkModes()
+    {
+        WorkModesPanel.Children.Clear();
+        _modeRows.Clear();
+        WorkModesError.Visibility = Visibility.Collapsed;
+        var s = AppModel.Settings;
+        int slots = Math.Clamp(new[] { 3, Screens().Count, s.WorkModes.Select(m => m.Apps.Count).DefaultIfEmpty(0).Max() }.Max(), 1, MaxScreens);
+        var active = AppModel.Engine.CurrentHotkeys().Active;
+        for (int n = 1; n <= WorkMode.Count; n++)
+        {
+            var mode = s.WorkModeOf(n);
+            var panel = new StackPanel { Margin = new Thickness(0, n == 1 ? 0 : 14, 0, 0) };
+            var head = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+            var keys = ModeKeys(active, n);
+            DockPanel.SetDock(keys, Dock.Right);
+            head.Children.Add(keys);
+            head.Children.Add(UiKit.Text(L.T("workModes.default", ("number", n)), "H3"));
+            panel.Children.Add(head);
+
+            var name = new TextBox { Text = mode.Name, ToolTip = L.T("tiling.workModeNameHint") };
+            System.Windows.Automation.AutomationProperties.SetName(name, L.T("tiling.workModeName"));
+            panel.Children.Add(ModeRow(L.T("tiling.workModeName"), name, null));
+            var apps = new List<TextBox>();
+            for (int k = 0; k < slots; k++)
+            {
+                var box = new TextBox { Style = UiKit.S("MonoBox"), Text = k < mode.Apps.Count ? mode.Apps[k] : "", ToolTip = L.T("tiling.workModeAppHint") };
+                System.Windows.Automation.AutomationProperties.SetName(box, L.T("tiling.workModeApp", ("mode", n), ("number", k + 1)));
+                panel.Children.Add(ModeRow(L.T("tiling.monitorName", ("number", k + 1)), box, TemplatePicker(box, ModeSuggestions)));
+                apps.Add(box);
+            }
+            WorkModesPanel.Children.Add(panel);
+            _modeRows.Add((name, apps));
+        }
+        var hint = UiKit.Text(L.T("tiling.workModesHint"), "Small", new Thickness(0, 12, 0, 0));
+        hint.TextWrapping = TextWrapping.Wrap;
+        WorkModesPanel.Children.Add(hint);
+    }
+
+    /// <summary>A label, the box, and the drop-down of starting points if there is one.</summary>
+    static Grid ModeRow(string label, TextBox box, ComboBox? templates)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        foreach (var width in new[] { new GridLength(130), new GridLength(1, GridUnitType.Star), new GridLength(8), new GridLength(170) })
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
+        var text = UiKit.Text(label, "Body");
+        text.VerticalAlignment = VerticalAlignment.Center;
+        grid.Children.Add(text);
+        Grid.SetColumn(box, 1);
+        if (templates == null) Grid.SetColumnSpan(box, 3);
+        grid.Children.Add(box);
+        if (templates != null)
+        {
+            Grid.SetColumn(templates, 3);
+            grid.Children.Add(templates);
+        }
+        return grid;
+    }
+
+    /// <summary>The shortcuts that start mode <paramref name="number"/>, as key caps.</summary>
+    static FrameworkElement ModeKeys(IEnumerable<HotkeyBinding> active, int number)
+    {
+        var bindings = active.Where(b => WorkMode.NumberOf(b.Do) == number).ToList();
+        if (bindings.Count == 0) return UiKit.Text(L.T("tiling.workModeNoKeys"), "Small");
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        foreach (var b in bindings)
+        {
+            var caps = UiKit.Keycaps(b.Keys);
+            caps.Margin = new Thickness(10, 0, 0, 0);
+            panel.Children.Add(caps);
+        }
+        return panel;
+    }
+
+    /// <summary>The modes as typed, without empty ones at the end; a program that would not start is named in the error.</summary>
+    (List<WorkMode> Modes, string? Error) ReadWorkModes()
+    {
+        var modes = new List<WorkMode>();
+        for (int n = 0; n < _modeRows.Count; n++)
+        {
+            var (name, boxes) = _modeRows[n];
+            var mode = new WorkMode { Name = name.Text.Trim(), Apps = boxes.Select(b => b.Text.Trim()).ToList() };
+            for (int k = 0; k < mode.Apps.Count; k++)
+            {
+                if (mode.Apps[k].Length == 0) continue;
+                WorkModePlan.Startable(mode.Apps[k], out var error);
+                if (error != null) return (modes, L.T("tiling.workModeInvalid", ("mode", mode.Title(n + 1)), ("number", k + 1), ("detail", error)));
+            }
+            while (mode.Apps.Count > 0 && mode.Apps[^1].Length == 0) mode.Apps.RemoveAt(mode.Apps.Count - 1);
+            modes.Add(mode);
+        }
+        while (modes.Count > 0 && modes[^1].Name.Length == 0 && modes[^1].Apps.Count == 0) modes.RemoveAt(modes.Count - 1);
+        return (modes, null);
     }
 
     /// <summary>1, 2, 3, 5 → "1-3, 5".</summary>
@@ -328,7 +430,10 @@ public partial class TilingPage : UserControl, IPage
         return result;
     }
 
-    /// <summary>Workspaces 1–10 shared out evenly, left to right (two screens: 1–5 and 6–10).</summary>
+    /// <summary>
+    /// Workspaces 1–10 shared out evenly, left to right (two screens: 1–5 and 6–10), over every row:
+    /// also screens that are not connected right now keep their share.
+    /// </summary>
     void OnSplitWorkspaces(object sender, RoutedEventArgs e)
     {
         int count = _monitorRows.Count;
@@ -337,29 +442,27 @@ public partial class TilingPage : UserControl, IPage
         for (int i = 0; i < count; i++)
         {
             int take = per + (i < extra ? 1 : 0);
-            _monitorRows[i].Workspaces.Text = take == 0 ? "" : Ranges(Enumerable.Range(next, take));
+            _monitorRows[i].Text = take == 0 ? "" : Ranges(Enumerable.Range(next, take));
             next += take;
         }
     }
 
     /// <summary>The page's choice, or an error text when a workspace is given to two screens.</summary>
-    (Dictionary<string, int> Map, Dictionary<string, string> Apps, string? Error) ReadMonitors()
+    (Dictionary<string, int> Map, string? Error) ReadMonitors()
     {
         var map = new Dictionary<string, int>();
-        var apps = new Dictionary<string, string>();
         for (int i = 0; i < _monitorRows.Count; i++)
         {
-            var numbers = ParseRanges(_monitorRows[i].Workspaces.Text);
-            if (numbers == null) return (map, apps, L.T("tiling.monitorsInvalid", ("number", i + 1)));
+            var numbers = ParseRanges(_monitorRows[i].Text);
+            if (numbers == null) return (map, L.T("tiling.monitorsInvalid", ("number", i + 1)));
             foreach (var n in numbers)
             {
                 if (map.TryGetValue(n.ToString(), out var other))
-                    return (map, apps, L.T("tiling.monitorsTwice", ("workspace", n), ("a", other + 1), ("b", i + 1)));
+                    return (map, L.T("tiling.monitorsTwice", ("workspace", n), ("a", other + 1), ("b", i + 1)));
                 map[n.ToString()] = i;
             }
-            if (_monitorRows[i].App.SelectedItem is ComboBoxItem { Tag: string action } && action.Length > 0) apps[i.ToString()] = action;
         }
-        return (map, apps, null);
+        return (map, null);
     }
 
     static void Select(ComboBox box, int value) =>
@@ -414,14 +517,13 @@ public partial class TilingPage : UserControl, IPage
     async void OnApply(object sender, RoutedEventArgs e)
     {
         var layout = _layouts.FirstOrDefault(l => l.Value.IsChecked == true).Key ?? "dwindle";
-        var (map, apps, error) = ReadMonitors();
-        if (error != null)
-        {
-            MonitorsError.Text = error;
-            MonitorsError.Visibility = Visibility.Visible;
-            return;
-        }
-        MonitorsError.Visibility = Visibility.Collapsed;
+        var (map, error) = ReadMonitors();
+        MonitorsError.Text = error ?? "";
+        MonitorsError.Visibility = error == null ? Visibility.Collapsed : Visibility.Visible;
+        var (modes, modeError) = ReadWorkModes();
+        WorkModesError.Text = modeError ?? "";
+        WorkModesError.Visibility = modeError == null ? Visibility.Collapsed : Visibility.Visible;
+        if (error != null || modeError != null) return;
         var (shortcuts, shortcutError) = ReadShortcuts();
         _shortcutError.Text = shortcutError ?? "";
         _shortcutError.Visibility = shortcutError == null ? Visibility.Collapsed : Visibility.Visible;
@@ -429,7 +531,7 @@ public partial class TilingPage : UserControl, IPage
         AppModel.Update(s =>
         {
             s.WorkspaceMonitors = map;
-            s.DesktopApps = apps;
+            s.WorkModes = modes;
             s.ScrollingColumns = ScrollingColumns.SelectedItem is ComboBoxItem { Tag: int c } ? c : s.ScrollingColumns;
             s.DefaultLayout = layout;
             s.InnerGap = InnerGap.SelectedItem is ComboBoxItem { Tag: int i } ? i : s.InnerGap;

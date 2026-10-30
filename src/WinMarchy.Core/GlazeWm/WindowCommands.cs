@@ -34,7 +34,7 @@ public sealed class ScratchStore
 /// <summary>
 /// Window functions GlazeWM has no single command for, built from queries and commands: Omarchy's
 /// scratchpad, focus and swap that also work from floating windows and in the scrolling layout, the
-/// split toggle, a new workspace on every monitor, next/previous workspace, restoring minimized windows.
+/// split toggle, the screens of a work mode, next/previous workspace, restoring minimized windows.
 /// </summary>
 public sealed class WindowCommands
 {
@@ -461,55 +461,52 @@ public sealed class WindowCommands
         await Cmd($"focus --workspace {next}", ct);
     }
 
+    /// <summary>What every monitor shows and which windows are where, from one query.</summary>
+    public async Task<DesktopState> DesktopStateAsync(CancellationToken ct) => DesktopState.From(await _ipc.QueryAsync("monitors", ct));
+
     /// <summary>
-    /// Win+Ctrl+D, like a new virtual desktop in Windows: every monitor gets an empty workspace.
-    /// Monitors that already show an empty one keep it. Workspaces pinned to a screen are only used
-    /// there; when a screen's own are all in use, it gets one pinned to no screen. Returns which
-    /// workspace each monitor (by index) now shows.
+    /// Shows on every monitor what <paramref name="targets"/> asks for: a given workspace, a fresh one
+    /// (see <see cref="WorkModePlan.FreeWorkspace"/>; the empty one it shows already counts), or what
+    /// it shows now. The focus goes back to the monitor that had it.
     /// </summary>
-    public async Task<IReadOnlyList<(int Monitor, string Workspace)>> NewDesktopAsync(int workspaceCount, IReadOnlyDictionary<string, int> pinned, CancellationToken ct)
+    /// <returns>The workspace each monitor shows afterwards; null where none was free.</returns>
+    public async Task<IReadOnlyList<string?>> ShowScreensAsync(IReadOnlyList<ScreenTarget> targets, int workspaceCount, IReadOnlyDictionary<string, int> pinned, CancellationToken ct)
     {
-        var opened = new List<(int, string)>();
+        var shown = new List<string?>();
         await Exclusive(async () =>
         {
-            var data = await _ipc.QueryAsync("monitors", ct);
-            var monitors = GlazeTree.List(data, "monitors").ToList();
-            if (monitors.Count == 0) return;
-            int focusedMonitor = Math.Max(0, monitors.FindIndex(m => GlazeTree.Bool(m, "hasFocus")));
-            var active = monitors.SelectMany(GlazeTree.Children).Select(w => GlazeTree.Str(w, "name")).OfType<string>().ToHashSet();
-            var names = Enumerable.Range(1, workspaceCount).Select(n => n.ToString()).ToList();
-            bool full = false;
-            Log.Trace($"desktop-new: {monitors.Count} monitors, focus on {focusedMonitor}, open {string.Join(", ", active)}, " +
-                      $"pinned {string.Join(", ", pinned.Select(p => $"{p.Key}→{p.Value}"))}", "desktop");
-
-            for (int i = 0; i < monitors.Count; i++)
+            var state = DesktopState.From(await _ipc.QueryAsync("monitors", ct));
+            var screens = state.Screens;
+            var focused = screens.FirstOrDefault(m => m.Focused)?.Index ?? 0;
+            var taken = new HashSet<string>(state.Active, StringComparer.OrdinalIgnoreCase);
+            Log.Trace($"screens: {screens.Count} monitors, focus on {focused}, open {string.Join(", ", state.Active)}, " +
+                      $"pinned {string.Join(", ", pinned.Select(p => $"{p.Key}→{p.Value}"))}, wanted {string.Join(", ", targets)}", "desktop");
+            bool moved = false;
+            foreach (var screen in screens)
             {
-                var shown = GlazeTree.Children(monitors[i]).FirstOrDefault(w => GlazeTree.Bool(w, "isDisplayed"));
-                if (shown.ValueKind == JsonValueKind.Object && !GlazeTree.Windows(shown).Any() && GlazeTree.IsRegularWorkspace(shown))
+                var target = screen.Index < targets.Count ? targets[screen.Index] : ScreenTarget.Keep;
+                var name = target.Goal switch
                 {
-                    opened.Add((i, GlazeTree.Str(shown, "name")!));
-                    continue;
-                }
-                // This monitor's own workspaces first; when they are all in use, one pinned to no monitor.
-                var name = names.FirstOrDefault(n => !active.Contains(n) && pinned.TryGetValue(n, out var m) && m == i)
-                           ?? names.FirstOrDefault(n => !active.Contains(n) && !pinned.ContainsKey(n));
+                    ScreenGoal.Show => target.Workspace,
+                    ScreenGoal.Fresh => screen.Shown != null && screen.ShownEmpty ? screen.Shown : WorkModePlan.FreeWorkspace(workspaceCount, taken, pinned, screen.Index, screens.Count),
+                    _ => screen.Shown,
+                };
+                shown.Add(name);
                 if (name == null)
                 {
-                    Log.Trace($"desktop-new: monitor {i} has no free workspace", "desktop");
-                    if (!full) _notify(L.T("tiling.allTaken", ("count", workspaceCount)));
-                    full = true;
+                    if (target.Goal == ScreenGoal.Fresh) Log.Trace($"screens: monitor {screen.Index} has no free workspace", "desktop");
                     continue;
                 }
-                Log.Trace($"desktop-new: monitor {i} → workspace {name}", "desktop");
-                active.Add(name);
-                await Cmd($"focus --monitor {i}", ct);
+                taken.Add(name);
+                if (name == screen.Shown) continue;
+                Log.Trace($"screens: monitor {screen.Index} → workspace {name}", "desktop");
+                if (screens.Count > 1) await Cmd($"focus --monitor {screen.Index}", ct);
                 await Cmd($"focus --workspace {name}", ct);
-                opened.Add((i, name));
+                moved = true;
             }
-            if (monitors.Count > 1) await Cmd($"focus --monitor {focusedMonitor}", ct);
+            if (moved && screens.Count > 1) await Cmd($"focus --monitor {focused}", ct);
         }, ct);
-        if (opened.Count > 0) _notify(L.T("tiling.newDesktop", ("workspaces", string.Join(" · ", opened.Select(o => o.Item2)))));
-        return opened;
+        return shown;
     }
 
     /// <summary>
@@ -559,10 +556,10 @@ public sealed class WindowCommands
     /// there, and one that opens elsewhere anyway is moved over. Apps that allow only one window
     /// (Stackfield, Teams, …) bring their open window to the front instead: when, shortly after the
     /// start, the focus jumps to a window on another workspace, that one comes over. The layouts
-    /// leave new windows alone meanwhile and place this one once it is where it belongs. False if
-    /// nothing came in time.
+    /// leave new windows alone meanwhile and place this one once it is where it belongs.
     /// </summary>
-    public async Task<bool> CatchNextWindowAsync(string workspace, Action start, TimeSpan timeout, CancellationToken ct)
+    /// <returns>The window's id; null if nothing came in time.</returns>
+    public async Task<string?> CatchNextWindowAsync(string workspace, Action start, TimeSpan timeout, CancellationToken ct)
     {
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         await Cmd($"focus --workspace {workspace}", ct);
@@ -586,19 +583,19 @@ public sealed class WindowCommands
             started = DateTime.Now;
             start();
             var done = await Task.WhenAny(tcs.Task, Task.Delay(timeout, ct));
-            if (done != tcs.Task) return false;
+            if (done != tcs.Task) return null;
             var id = tcs.Task.Result;
             var data = await _ipc.QueryAsync("workspaces", ct);
             if (GlazeTree.WorkspaceOf(data, id) is { } ws && GlazeTree.Str(ws, "name") is { } now && now != workspace)
             {
-                Log.Trace($"desktop-new: window {id} came up on workspace {now}, moving it to {workspace}", "desktop");
+                Log.Trace($"work mode: window {id} came up on workspace {now}, moving it to {workspace}", "desktop");
                 await Cmd($"move --workspace {workspace}", ct, id);
                 await Cmd($"focus --workspace {workspace}", ct);
             }
             _ipc.Event -= OnEvent;
             hold?.Dispose();
             if (_layouts != null) await _layouts.AdoptAsync(id, ct);
-            return true;
+            return id;
         }
         finally
         {
@@ -643,6 +640,11 @@ public sealed class WindowCommands
     {
         var data = await _ipc.QueryAsync("monitors", ct);
         var monitors = GlazeTree.List(data, "monitors").ToList();
+        if (monitors.Count < 2)
+        {
+            _notify(L.T("tiling.oneMonitor"));
+            return;
+        }
         var current = monitors.Cast<JsonElement?>().FirstOrDefault(m => GlazeTree.Bool(m!.Value, "hasFocus"));
         if (current is not { } cur) return;
         double Cx(JsonElement m) => GlazeTree.Int(m, "x") + GlazeTree.Int(m, "width") / 2.0;

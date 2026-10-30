@@ -21,9 +21,11 @@ public sealed class AppLauncher
 
     string WindowsApps => Path.Combine(_loc.LocalAppData, "Microsoft", "WindowsApps");
 
+    /// <summary>Starts an app by its id (see <c>HotkeyAction.Apps</c>); a browser opens <paramref name="urls"/> as the tabs of its new window.</summary>
     /// <returns>false when nothing could be started.</returns>
-    public bool Launch(string id)
+    public bool Launch(string id, IReadOnlyList<string>? urls = null)
     {
+        urls ??= Array.Empty<string>();
         switch (id)
         {
             case "terminal": return Terminal(null);
@@ -37,9 +39,9 @@ public sealed class AppLauncher
             case "stackfield":
                 // The desktop app if it is installed (found through its Start menu entry), else the web app.
                 return StartMenuEntry("Stackfield") is { } sf ? Start(sf) : Web("https://www.stackfield.com/");
-            case "browser": return Browser(_settings().Browser, privateWindow: false);
-            case "browser2": return Browser(_settings().Browser2, privateWindow: false);
-            case "browser-private": return Browser(_settings().Browser, privateWindow: true);
+            case "browser": return Browser(_settings().Browser, privateWindow: false, urls);
+            case "browser2": return Browser(_settings().Browser2, privateWindow: false, urls);
+            case "browser-private": return Browser(_settings().Browser, privateWindow: true, urls);
             case "files":
                 return First(Alias("files-stable.exe"), Alias("files.exe"), Alias("files-preview.exe"), Alias("files-dev.exe")) is { } files
                     ? Start(files) : Start("explorer.exe");
@@ -130,19 +132,29 @@ public sealed class AppLauncher
     /// <summary>A chosen browser exe if it still exists, else the default browser.</summary>
     static string? Resolve(string? chosen) => chosen != null && File.Exists(chosen) ? chosen : DefaultBrowser();
 
-    bool Browser(string? chosen, bool privateWindow)
+    bool Browser(string? chosen, bool privateWindow, IReadOnlyList<string> urls)
     {
         var exe = Resolve(chosen) ?? AppPath("msedge.exe");
-        if (exe == null) return Open("https://");
-        var name = Path.GetFileName(exe).ToLowerInvariant();
-        var args = name switch
+        if (exe == null) return urls.Count == 0 ? Open("https://") : urls.All(Open);
+        return Start(exe, BrowserArgs(Path.GetFileName(exe), privateWindow, urls));
+    }
+
+    /// <summary>
+    /// A new window of the browser, with the pages as its tabs. Firefox opens a single page in a new
+    /// window only when told to; several pages always get a new window of their own. Private windows
+    /// start empty (only "browser" and "browser2" take pages).
+    /// </summary>
+    internal static string BrowserArgs(string exeName, bool privateWindow, IReadOnlyList<string> urls)
+    {
+        var pages = privateWindow ? "" : string.Concat(urls.Select(u => " \"" + u + "\""));
+        return exeName.ToLowerInvariant() switch
         {
-            "firefox.exe" => privateWindow ? "-private-window" : "-new-window",
-            "msedge.exe" => privateWindow ? "--inprivate" : "--new-window",
-            "opera.exe" => privateWindow ? "--private" : "--new-window",
-            _ => privateWindow ? "--incognito" : "--new-window",
+            "firefox.exe" when privateWindow => "-private-window",
+            "firefox.exe" => urls.Count > 1 ? pages.TrimStart() : "-new-window" + pages,
+            "msedge.exe" => (privateWindow ? "--inprivate" : "--new-window") + pages,
+            "opera.exe" => (privateWindow ? "--private" : "--new-window") + pages,
+            _ => (privateWindow ? "--incognito" : "--new-window") + pages,
         };
-        return Start(exe, args);
     }
 
     /// <summary>Executable of the default browser for https links (from its ProgId's open command).</summary>

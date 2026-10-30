@@ -43,6 +43,7 @@ public static class Paths
     public static string StateFile => Path.Combine(ConfigDir, "state.json");
     public static string WindowFile => Path.Combine(ConfigDir, "window.json");
     public static string ScratchpadFile => Path.Combine(ConfigDir, "scratchpad.json");
+    public static string WorkModesFile => Path.Combine(ConfigDir, "workmodes.json");
 
     public static string AhkScript => Path.Combine(RuntimeDir, "winmarchy-hotkeys.ahk");
     /// <summary>Starship's settings for the prompt WinMarchy sets up (STARSHIP_CONFIG points here, the user's own file stays untouched).</summary>

@@ -37,6 +37,40 @@ public sealed class BarShortcut
     public bool InBar { get; set; }
 }
 
+/// <summary>
+/// A work mode (Win+Ctrl+D, Win+Ctrl+1 to 3): fresh workspaces on every screen, with the programs
+/// listed here, one per screen.
+/// </summary>
+public sealed class WorkMode
+{
+    /// <summary>How many modes there are (Win+Ctrl+1 to 3).</summary>
+    public const int Count = 3;
+
+    /// <summary>Empty: "Work mode 1" and so on.</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>
+    /// What starts on screen 1, 2, 3 …, written like a shortcut's action ("app:browser https://…",
+    /// "web:…", "run:…"); empty: nothing. Programs for screens that are not connected go to the last one.
+    /// </summary>
+    public List<string> Apps { get; set; } = new();
+
+    /// <summary>
+    /// The mode a shortcut's action starts: "do:work-mode 2" → 2; "do:work-mode" and the older
+    /// "do:desktop-new" → 1; anything else → null.
+    /// </summary>
+    public static int? NumberOf(string? action)
+    {
+        var parts = (action ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0 || parts[0] is not ("do:work-mode" or "do:desktop-new")) return null;
+        if (parts.Length == 1) return 1;
+        return int.TryParse(parts[1], out var n) && n is >= 1 and <= Count ? n : null;
+    }
+
+    /// <summary>The name to show for mode <paramref name="number"/> (1 to 3).</summary>
+    public string Title(int number) => Name.Trim() is { Length: > 0 } name ? name : L.T("workModes.default", ("number", number));
+}
+
 /// <summary>C:\WinMarchy\Config\settings.json – everything the user chooses in the app.</summary>
 public sealed class UserSettings
 {
@@ -92,8 +126,18 @@ public sealed class UserSettings
     /// <summary>Workspace "1" … "10" → monitor index (0 = leftmost). Missing: any monitor.</summary>
     public Dictionary<string, int> WorkspaceMonitors { get; set; } = new();
 
-    /// <summary>Win+Ctrl+D: the app ("app:…" or "web:…") that starts on the new workspace of each monitor index.</summary>
-    public Dictionary<string, string> DesktopApps { get; set; } = new();
+    /// <summary>Win+Ctrl+D and Win+Ctrl+1 to 3, in that order. Missing modes start nothing.</summary>
+    public List<WorkMode> WorkModes { get; set; } = new();
+
+    /// <summary>
+    /// Settings from before the work modes: the program Win+Ctrl+D started per monitor index. Read
+    /// once into the first work mode, then no longer written.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? DesktopApps { get; set; }
+
+    /// <summary>Work mode <paramref name="number"/> (1 to 3); an empty one if it was never set.</summary>
+    public WorkMode WorkModeOf(int number) => WorkModes.ElementAtOrDefault(number - 1) ?? new WorkMode();
 
     /// <summary>Browser behind Win+Shift+B and web apps: null = Windows' default browser, else an exe.</summary>
     public string? Browser { get; set; }
@@ -139,7 +183,7 @@ public sealed class UserSettings
         try
         {
             if (File.Exists(Paths.SettingsFile))
-                return Json.Deserialize<UserSettings>(File.ReadAllText(Paths.SettingsFile)) ?? new UserSettings();
+                return (Json.Deserialize<UserSettings>(File.ReadAllText(Paths.SettingsFile)) ?? new UserSettings()).Upgraded();
         }
         catch (Exception ex)
         {
@@ -149,6 +193,19 @@ public sealed class UserSettings
     }
 
     public void Save() => FileSafety.WriteText(Paths.SettingsFile, Json.Serialize(this, indented: true));
+
+    /// <summary>Older settings in today's form: the programs Win+Ctrl+D started per monitor become the first work mode.</summary>
+    public UserSettings Upgraded()
+    {
+        if (DesktopApps is { Count: > 0 } old && WorkModes.Count == 0)
+        {
+            var screens = old.Keys.Select(k => int.TryParse(k, out var i) ? i : -1).Where(i => i is >= 0 and < 16).DefaultIfEmpty(-1).Max() + 1;
+            if (screens > 0)
+                WorkModes.Add(new WorkMode { Apps = Enumerable.Range(0, screens).Select(i => old.TryGetValue(i.ToString(), out var a) ? a : "").ToList() });
+        }
+        DesktopApps = null;
+        return this;
+    }
 
     public UserSettings Clone() => Json.Deserialize<UserSettings>(Json.Serialize(this))!;
 }

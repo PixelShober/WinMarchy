@@ -54,6 +54,7 @@ public static class Diagnostics
 
         Guard("Settings", () => Line(Json.Serialize(s, indented: true)));
         Guard("State", () => Line(Json.Serialize(AppState.Load(), indented: true)));
+        Guard("Work modes (windows they started, screens before the last switch)", () => Line(Json.Serialize(WorkModeStore.Load(), indented: true)));
         Guard("Screens (Windows)", () => { foreach (var screen in screens) Line(screen); });
 
         Head("GlazeWM");

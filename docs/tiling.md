@@ -53,7 +53,7 @@ GlazeWM ohne Eingriff. Gut für Leute, die GlazeWM schon kennen.
 | Fokus von schwebenden Fenstern aus | nur links und rechts zwischen schwebenden | `Win+Pfeil` sucht das nächste Fenster in der Richtung auf dem Bildschirm, ob gekachelt oder schwebend |
 | Nächster/vorheriger Workspace | springt auch auf versteckte Workspaces | `Win+Tab` überspringt sie |
 | Workspaces fest pro Bildschirm (Plugin Screens) | `bind_to_monitor` in der Konfiguration | Karte **Bildschirme und Workspaces** unter Tiling, siehe unten |
-| Virtuelle Desktops über alle Bildschirme | Workspaces gehören je einem Monitor | `Win+Strg+D` gibt jedem Bildschirm einen leeren Workspace, `Win+Strg+Pfeil` schaltet alle zusammen weiter |
+| Virtuelle Desktops über alle Bildschirme | Workspaces gehören je einem Monitor | Arbeitsmodi (`Win+Strg+D`, `Win+Strg+1` bis `3`) geben jedem Bildschirm einen frischen Workspace mit festen Programmen, `Win+Strg+Pfeil` schaltet alle zusammen weiter |
 | Minimieren | gibt es in Omarchy nicht | WinMarchy holt minimierte Fenster sofort in ihre Kachel zurück; `Win+M` holt alles zurück, was trotzdem minimiert ist |
 | Abstände aus (`Super+Umschalt+Backspace`) | nur per Konfiguration | WinMarchy schreibt die Konfiguration ohne Abstände und lädt sie neu; ein zweiter Druck stellt sie wieder her |
 | Rahmen in der Akzentfarbe, eckig | ja | kommt aus dem Theme, 2 px wie in Omarchy |
@@ -81,21 +81,45 @@ Welche Fenster zum Scratchpad gehören, merkt sich WinMarchy in `C:\WinMarchy\Co
 Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces, etwa der linke 1 bis 5 und der rechte 6 bis 10. „Gleichmäßig aufteilen“ macht genau das. WinMarchy schreibt die Zuordnung als `bind_to_monitor` in GlazeWMs Konfiguration:
 
 - `Win+3` öffnet Workspace 3 immer auf seinem Bildschirm, egal wo du gerade bist.
-- `Win+Strg+D` nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Sind die alle belegt, nimmt er einen freien, der keinem Bildschirm zugeordnet ist.
+- Ein Arbeitsmodus nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Sind die alle belegt, nimmt er einen freien, der keinem Bildschirm zugeordnet ist, oder einen, dessen Bildschirm gerade fehlt.
 - Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um und kommen zurück, wenn er wieder da ist.
+- Am Laptop ohne Dock stehen die abgesteckten Bildschirme weiter in der Karte, als „nicht angeschlossen“. Ihre Workspaces bleiben ihnen zugeordnet, bis du die Zeile leerst; „Gleichmäßig aufteilen“ zählt sie mit.
 
 GlazeWM beachtet `bind_to_monitor` nur, wenn ein Workspace neu angelegt wird. Steht einer schon auf dem falschen Bildschirm, bleibt er dort. WinMarchy schiebt deshalb beim Verbinden und nach jedem **Übernehmen** unter Tiling jeden zugeordneten Workspace selbst auf seinen Bildschirm. Klappt das nicht, steht eine Warnung im Protokoll; mit dem ausführlichen Protokoll steht dort jeder Schritt.
 
 Ohne Eintrag nimmt ein Bildschirm, was frei ist, wie bisher.
 
-## Ein Workspace auf jedem Bildschirm
+## Arbeitsmodi
 
-Windows wechselt virtuelle Desktops auf allen Bildschirmen zugleich, GlazeWM hat pro Monitor eigene Workspaces. Zwei Kürzel bringen das zusammen:
+Windows wechselt virtuelle Desktops auf allen Bildschirmen zugleich, GlazeWM hat pro Monitor eigene Workspaces. Die Arbeitsmodi bringen das zusammen und gehen einen Schritt weiter: Ein Modus ist ein frischer Workspace auf jedem Bildschirm mit festen Programmen, zum Beispiel „Recherche“ mit dem Browser und zwei Seiten links, den Notizen in der Mitte und dem Explorer rechts, oder „Tools“ mit Outlook, Teams und dem Fachverfahren. Unter **Tiling → Arbeitsmodi** legst du bis zu drei an.
 
-- `Win+Strg+D` gibt jedem Bildschirm einen leeren Workspace, wie ein neuer Desktop. Zeigt ein Bildschirm schon einen leeren, bleibt er. Pro Bildschirm lässt sich unter **Tiling** ein Programm wählen, das dort gleich startet, zum Beispiel Outlook links und der Browser rechts. WinMarchy startet sie nacheinander und setzt jedes Fenster auf den Workspace seines Bildschirms. Programme mit nur einem Fenster (Stackfield, Teams, Outlook) öffnen kein neues, wenn sie schon laufen, sondern holen ihr Fenster nach vorn; WinMarchy holt dieses Fenster dann auf den neuen Workspace.
-- `Win+Strg+Rechts` und `Win+Strg+Links` schalten auf jedem Bildschirm zum nächsten oder vorigen Workspace, alle zusammen.
+- `Win+Strg+D` oder `Win+Strg+1` öffnet Modus 1, `Win+Strg+2` und `Win+Strg+3` die anderen beiden.
+- Beim ersten Druck bekommt jeder Bildschirm einen frischen Workspace; zeigt er schon einen leeren, bleibt der. Die offenen Fenster bleiben unangetastet auf ihren Workspaces. Danach starten die Programme des Modus nacheinander, jedes auf dem Workspace seines Bildschirms.
+- Läuft der Modus schon, holt die Taste seine Workspaces zurück, statt alles noch einmal zu starten. Nur was du geschlossen hast, startet neu. WinMarchy erkennt die Fenster am Fenster-Handle und merkt sie sich in `C:\WinMarchy\Config\workmodes.json`, auch über einen Neustart von WinMarchy hinweg.
+- Ist der Modus schon zu sehen, bringt dieselbe Taste zurück, was vorher auf den Bildschirmen war. So springst du mit einer Taste zwischen deiner Arbeit und dem Modus hin und her.
+- Ein Modus ohne Programme ist einfach ein leerer Desktop auf allen Bildschirmen.
 
-Das Drei-Finger-Wischen auf dem Touchpad legst du unter **Einstellungen → Bluetooth und Geräte → Touchpad → Erweiterte Gesten** auf diese Kürzel (Tiling hat dafür einen Knopf). „Desktops wechseln“ lieber nicht wählen: Windows' eigene virtuelle Desktops vertragen sich nicht mit GlazeWM.
+Die Programme schreibst du wie die Aktion eines Tastenkürzels. Der Browser nimmt Adressen mit und öffnet sie als Tabs eines neuen Fensters: `app:browser https://seite-eins.de https://seite-zwei.de` (`app:browser2` für den zweiten Browser). Edge, Chrome, Brave, Vivaldi und Opera öffnen dafür ein neues Fenster mit allen Tabs, Firefox ebenso. Daneben gehen `web:` (eine Seite als eigenes App-Fenster), `run:` (ein Programm oder eine Verknüpfung, etwa ein Fachverfahren) und `open:`.
+
+Programme mit nur einem Fenster (Stackfield, Teams, Outlook) öffnen kein neues, wenn sie schon laufen, sondern holen ihr Fenster nach vorn; WinMarchy holt dieses Fenster dann in den Modus. Es fehlt danach auf dem Workspace, auf dem es vorher lag.
+
+### Ein Bildschirm, zwei, drei
+
+Jedes Programm gehört zu einem Bildschirm: das erste zum linken, das zweite zum nächsten und so weiter. Fehlt ein Bildschirm, kommt sein Programm auf den letzten, der angeschlossen ist:
+
+| Angeschlossen | Programm 1 | Programm 2 | Programm 3 |
+|-|-|-|-|
+| drei Bildschirme | Bildschirm 1 | Bildschirm 2 | Bildschirm 3 |
+| zwei Bildschirme | Bildschirm 1 | Bildschirm 2 | Bildschirm 2 |
+| ein Bildschirm | Bildschirm 1 | Bildschirm 1 | Bildschirm 1 |
+
+Teilen sich mehrere Programme einen Bildschirm, ordnet sie das Dwindle-Layout an: das erste links, das zweite rechts oben, das dritte rechts unten. Das gilt nur, solange dieser Workspace offen ist. Schließt GlazeWM ihn, weil sein letztes Fenster zu ist, hat der Workspace wieder sein Layout von vorher. Wählst du in der Zwischenzeit selbst ein Layout für ihn (`Win+Strg+J`), bleibt deins.
+
+Auch sonst ist ein einzelner Bildschirm kein Sonderfall: Workspaces, die einem fehlenden Bildschirm zugeordnet sind, nimmt der vorhandene mit, und `Win+Strg+Pfeil` schaltet eben nur ihn weiter.
+
+### Alle Bildschirme zusammen weiterschalten
+
+`Win+Strg+Rechts` und `Win+Strg+Links` schalten auf jedem Bildschirm zum nächsten oder vorigen Workspace, alle zusammen. Das Drei-Finger-Wischen auf dem Touchpad legst du unter **Einstellungen → Bluetooth und Geräte → Touchpad → Erweiterte Gesten** auf diese Kürzel (Tiling hat dafür einen Knopf). „Desktops wechseln“ lieber nicht wählen: Windows' eigene virtuelle Desktops vertragen sich nicht mit GlazeWM.
 
 ## Minimieren
 
@@ -105,7 +129,7 @@ Omarchy minimiert nicht; was aus dem Weg soll, kommt auf einen anderen Workspace
 
 Öffnet sich auf einem Workspace ein neues Fenster, während dort eines im Vollbild ist, geht das Vollbild-Fenster zurück an seinen Platz (in seine Kachel oder schwebend), wie bei Hyprlands `new_window_takes_over_fullscreen`. So liegt das neue Fenster weder versteckt dahinter noch darüber. Abschalten lässt sich das unter **Tiling → Neues Fenster beendet Vollbild**. Dialoge, die schwebend aufgehen, beenden das Vollbild nicht.
 
-## Win+Strg+D und das Scrolling-Layout
+## Arbeitsmodi und das Scrolling-Layout
 
-Win+Strg+D startet die Programme der Bildschirme nacheinander. Vor jedem Start bekommt der neue Workspace den Fokus, damit das Fenster gleich dort aufgeht. Solange WinMarchy auf die Fenster wartet, lassen die Layouts neue Fenster in Ruhe, und jedes wird erst angeordnet, wenn es auf seinem Workspace liegt. Vorher konnte das Scrolling-Layout ein Fenster auf dem Workspace festhalten, den es gerade verlassen sollte.
+Ein Arbeitsmodus startet seine Programme nacheinander. Vor jedem Start bekommt der neue Workspace den Fokus, damit das Fenster gleich dort aufgeht. Solange WinMarchy auf die Fenster wartet, lassen die Layouts neue Fenster in Ruhe, und jedes wird erst angeordnet, wenn es auf seinem Workspace liegt. Vorher konnte das Scrolling-Layout ein Fenster auf dem Workspace festhalten, den es gerade verlassen sollte.
 

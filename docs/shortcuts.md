@@ -102,7 +102,10 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+Tab` | Nächster Workspace | gleich |
 | `Win+Umschalt+Tab` | Vorheriger Workspace | gleich |
 | `Win+Strg+Tab` | Zuletzt benutzter Workspace · *optional* | gleich |
-| `Win+Strg+D` | Neuer Workspace auf jedem Bildschirm (Welche Programme dort starten, legst du unter Tiling fest.) | gleich |
+| `Win+Strg+D` | Arbeitsmodus 1: frische Workspaces mit seinen Programmen (Die offenen Fenster bleiben auf ihren Workspaces. Nochmal drücken: zurück. Programme legst du unter Tiling fest.) | gleich |
+| `Win+Strg+1` | Arbeitsmodus 1 · *optional* | gleich |
+| `Win+Strg+2` | Arbeitsmodus 2 (Etwa Recherche neben den aktiven Tools in Modus 1.) | gleich |
+| `Win+Strg+3` | Arbeitsmodus 3 | gleich |
 | `Win+Strg+Right` | Alle Bildschirme: nächster Workspace (Lässt sich aufs Drei-Finger-Wischen legen.) | gleich |
 | `Win+Strg+Left` | Alle Bildschirme: vorheriger Workspace (Lässt sich aufs Drei-Finger-Wischen legen.) | gleich |
 | `Win+WheelDown` | Nächster Workspace (Mausrad) · *optional* | gleich |

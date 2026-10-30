@@ -249,7 +249,7 @@
     },
     "kindHints": {
       "wm": "Ein GlazeWM-Befehl, z. B. focus --direction left. Mehrere mit ; trennen.",
-      "app": "Eins der Programme, die WinMarchy kennt.",
+      "app": "Eins der Programme, die WinMarchy kennt. Der Browser nimmt auch Adressen mit, die als Tabs aufgehen: browser https://…",
       "web": "Eine https-Adresse. Sie öffnet als eigenes Fenster, wie die Web-Apps in Omarchy.",
       "open": "Zum Beispiel ms-settings:display, mailto: oder spotify:.",
       "send": "Tasten, die an das Fenster vorne gehen, z. B. Ctrl+Shift+T.",
@@ -284,7 +284,9 @@
       "unknownCommand": "„{command}“ ist keine WinMarchy-Funktion.",
       "runEmpty": "Gib einen Pfad an.",
       "duplicate": "{keys} ist doppelt belegt. Es gilt der letzte Eintrag.",
-      "wheelNeedsAhk": "Kürzel mit dem Mausrad gehen nur mit AutoHotkey."
+      "wheelNeedsAhk": "Kürzel mit dem Mausrad gehen nur mit AutoHotkey.",
+      "appNoUrls": "Adressen nimmt nur der Browser mit, „{app}“ nicht.",
+      "appUrl": "„{url}“ ist keine Webadresse (https://…)."
     },
     "export": "Exportieren",
     "exportTip": "Deine eigenen Kürzel, abgeschaltete und Favoriten als Datei sichern.",
@@ -372,7 +374,7 @@
     "paste": "Einfügen, auch im Terminal",
     "reload": "GlazeWM neu laden",
     "toggle-split": "Teilung drehen",
-    "desktop-new": "Neuer Workspace auf jedem Bildschirm",
+    "desktop-new": "Arbeitsmodus 1 (alter Name)",
     "desktop-next": "Alle Bildschirme: nächster Workspace",
     "desktop-prev": "Alle Bildschirme: vorheriger Workspace",
     "wallpaper-menu": "Hintergrund wählen",
@@ -382,7 +384,8 @@
     "screenshot": "Bildschirmfoto (region, window, screen)",
     "about": "Über dieses System (Fastfetch)",
     "bar-shortcut": "Eigener Eintrag der Leiste",
-    "bar-menu": "Menü der Leiste öffnen (calendar, audio, network …)"
+    "bar-menu": "Menü der Leiste öffnen (calendar, audio, network …)",
+    "work-mode": "Arbeitsmodus 1 bis 3 (Nummer dahinter)"
   },
 
   "tiling": {
@@ -413,17 +416,16 @@
     "applied": "GlazeWM hat die neuen Einstellungen.",
     "splitNext": "Die Teilung gilt ab dem nächsten Fenster.",
     "allTaken": "Alle {count} Workspaces sind belegt.",
-    "newDesktop": "Neue Workspaces: {workspaces}",
     "touchpad": "Touchpad-Gesten öffnen",
-    "touchpadHint": "Win+Strg+D gibt jedem Bildschirm einen neuen Workspace, Win+Strg+Pfeil schaltet alle zusammen weiter, wie virtuelle Desktops. Unter „Erweiterte Gesten“ legst du das Drei-Finger-Wischen auf diese Kürzel. „Desktops wechseln“ lieber nicht: Windows' virtuelle Desktops vertragen sich nicht mit GlazeWM.",
+    "touchpadHint": "Win+Strg+Pfeil schaltet alle Bildschirme zusammen weiter, wie virtuelle Desktops, und Win+Strg+D öffnet Arbeitsmodus 1. Unter „Erweiterte Gesten“ legst du das Drei-Finger-Wischen auf diese Kürzel. „Desktops wechseln“ lieber nicht: Windows' virtuelle Desktops vertragen sich nicht mit GlazeWM.",
     "scrollingColumns": "Scrolling zeigt",
     "columnsCount": "{count} nebeneinander",
     "barModules": "Die Leiste zeigt",
     "blockMinimize": "Minimieren verhindern",
     "blockMinimizeHint": "Wie in Omarchy: ein minimiertes Fenster kommt sofort in seine Kachel zurück. Win+M holt alles zurück, was trotzdem minimiert ist.",
     "monitors": "Bildschirme und Workspaces",
-    "monitorsText": "Wie im Omarchy-Plugin Screens: Jeder Bildschirm bekommt feste Workspaces. Win+3 öffnet Workspace 3 immer auf seinem Bildschirm, und Win+Strg+D nimmt nur Workspaces dieses Bildschirms.",
-    "monitorsHint": "Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um.",
+    "monitorsText": "Wie im Omarchy-Plugin Screens: Jeder Bildschirm bekommt feste Workspaces. Win+3 öffnet Workspace 3 immer auf seinem Bildschirm, und ein Arbeitsmodus nimmt dort nur Workspaces dieses Bildschirms.",
+    "monitorsHint": "Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um. Seine Zeile bleibt hier stehen, bis du sie leerst, damit die Aufteilung am Dock wieder passt.",
     "monitorsSplit": "Gleichmäßig aufteilen",
     "monitorsInvalid": "Bildschirm {number}: nur Workspace-Nummern von 1 bis 10, etwa 1-5 oder 6, 7.",
     "monitorsTwice": "Workspace {workspace} steht bei Bildschirm {a} und {b}. Jeder Workspace gehört zu einem Bildschirm.",
@@ -432,9 +434,6 @@
     "monitorSize": "{width} × {height}",
     "monitorWorkspaces": "Workspaces",
     "monitorWorkspacesHint": "Zum Beispiel 1-5 oder 6, 7, 8. Leer: Dieser Bildschirm nimmt, was frei ist.",
-    "monitorAppNone": "Win+Strg+D startet nichts",
-    "monitorAppPrefix": "Win+Strg+D startet",
-    "monitorAppHint": "Startet bei Win+Strg+D auf dem neuen Workspace dieses Bildschirms.",
     "desktopAppLate": "{action} hat nach 12 Sekunden noch kein Fenster gezeigt; vorgesehen war Workspace {workspace}.",
     "monitorsFailed": "Workspaces ließen sich nicht auf ihre Bildschirme verschieben: {detail}",
     "trayPinned": "Im Infobereich immer sichtbar",
@@ -450,7 +449,18 @@
     "shortcutNoTitle": "Der Eintrag mit der Aktion {action} braucht einen Namen.",
     "yasbOnly": "Nur mit YASB",
     "newWindowEndsFullscreen": "Neues Fenster beendet Vollbild",
-    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland."
+    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland.",
+    "oneMonitor": "Es ist nur ein Bildschirm angeschlossen.",
+    "monitorAbsent": "nicht angeschlossen",
+    "workModes": "Arbeitsmodi",
+    "workModesText": "Ein Tastendruck gibt jedem Bildschirm einen frischen Workspace und öffnet dort die Programme des Modus, etwa für die Recherche oder für die Tools der laufenden Arbeit. Die offenen Fenster bleiben auf ihren Workspaces. Läuft der Modus schon, holt die Taste ihn zurück und startet nur, was du geschlossen hast. Drückst du sie im Modus noch einmal, kommt zurück, was vorher zu sehen war.",
+    "workModesHint": "Ein Programm pro Bildschirm. Fehlt ein Bildschirm, kommt sein Programm auf den letzten, der angeschlossen ist. An einem einzelnen Bildschirm teilen sich alle Programme des Modus den Platz, im Dwindle-Layout. Der Browser nimmt Adressen mit und öffnet sie als Tabs eines neuen Fensters: app:browser https://seite-eins.de https://seite-zwei.de",
+    "workModeName": "Name",
+    "workModeNameHint": "Steht in der Meldung beim Wechseln. Leer: Arbeitsmodus 1, 2 oder 3.",
+    "workModeApp": "Arbeitsmodus {mode}, Bildschirm {number}",
+    "workModeAppHint": "Was hier startet, geschrieben wie die Aktion eines Tastenkürzels. Leer: nichts.",
+    "workModeNoKeys": "kein Tastenkürzel",
+    "workModeInvalid": "{mode}, Bildschirm {number}: {detail}"
   },
 
   "layouts": {
@@ -631,7 +641,7 @@
     "diagnoseFile": "diagnose",
     "diagnoseWritten": "Diagnosebericht geschrieben: {path}",
     "verbose": "Ausführlich protokollieren",
-    "verboseHint": "Für die Fehlersuche: jedes Tastenkürzel, jeder GlazeWM-Befehl und was Flow, Taskleiste, Scratchpad, Scrolling und Win+Strg+D tun. Zu sehen unter „Alles“. Danach wieder ausschalten, es wird viel.",
+    "verboseHint": "Für die Fehlersuche: jedes Tastenkürzel, jeder GlazeWM-Befehl und was Flow, Taskleiste, Scratchpad, Scrolling und die Arbeitsmodi tun. Zu sehen unter „Alles“. Danach wieder ausschalten, es wird viel.",
     "verboseOn": "Ausführliches Protokoll ist an.",
     "verboseOff": "Ausführliches Protokoll ist aus."
   },
@@ -1157,5 +1167,15 @@
     "battery": "Akku",
     "locale": "Sprache",
     "localip": "IP und MAC"
+  },
+
+  "workModes": {
+    "default": "Arbeitsmodus {number}",
+    "opened": "{name}: Workspaces {workspaces}",
+    "back": "Zurück: Workspaces {workspaces}",
+    "already": "„{name}“ ist schon offen.",
+    "skipped": "Arbeitsmodus „{name}“ lässt ein Programm aus: {detail}",
+    "notAProgram": "„{action}“ öffnet kein Fenster. Ein Arbeitsmodus startet Programme: app:, web:, run: oder open:.",
+    "unknown": "Einen Arbeitsmodus „{mode}“ gibt es nicht, nur 1 bis 3."
   }
 }

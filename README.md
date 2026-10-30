@@ -105,7 +105,7 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+Pfeiltasten` | Fokus wechseln, mit Umschalt Fenster tauschen |
 | `Win+J` | Teilung drehen, sofort sichtbar |
 | `Win+1` … `Win+0` | Workspace 1 bis 10 |
-| `Win+Strg+D` | Neuer Workspace auf jedem Bildschirm, `Win+Strg+Pfeil` schaltet alle weiter |
+| `Win+Strg+D`, `Win+Strg+1` bis `3` | Arbeitsmodus: frischer Workspace auf jedem Bildschirm mit festen Programmen, auch der Browser mit festen Seiten; nochmal drücken holt zurück, was vorher da war. `Win+Strg+Pfeil` schaltet alle Bildschirme weiter |
 | `Win+Strg+J` | Layout des Workspace wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
 | `Win+Strg+M` | Musik abspielen oder anhalten |
 | `Win+Alt+D`, `Win+Alt+A` | Kalender und Lautstärke der Leiste aufklappen (YASB, optional) |
@@ -131,7 +131,7 @@ Greift eine Gruppenrichtlinie oder Intune ein (Hintergrund, Sperrbildschirm, Far
 
 Tut ein Kürzel nichts oder startet etwas nicht, hilft die Seite **Protokoll**:
 
-1. **Ausführlich protokollieren** einschalten. Ab dann steht unter „Alles“ jedes Tastenkürzel, das ankommt, jeder Befehl an GlazeWM mit Dauer und Antwort, und was Flow, Taskleiste, Scratchpad, Scrolling, Bildschirm-Zuordnung und `Win+Strg+D` gerade tun.
+1. **Ausführlich protokollieren** einschalten. Ab dann steht unter „Alles“ jedes Tastenkürzel, das ankommt, jeder Befehl an GlazeWM mit Dauer und Antwort, und was Flow, Taskleiste, Scratchpad, Scrolling, Bildschirm-Zuordnung und die Arbeitsmodi gerade tun.
 2. Den Fehler nachstellen.
 3. **Diagnosebericht** drücken. Er landet als Textdatei in `C:\WinMarchy\Logs` und zeigt, was WinMarchy sieht: laufende Programme, Bildschirme, GlazeWMs Monitore, Workspaces und Fenster (ohne Titel), die erzeugten Tastenkürzel, Flows Einstellungen und letzte Protokollzeilen, Taskleiste und Leiste.
 4. Danach den Schalter wieder ausschalten, das Protokoll wird sonst schnell lang.

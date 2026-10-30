@@ -54,7 +54,7 @@ public sealed class ActionRunner
             switch (action.Kind)
             {
                 case ActionKind.Wm: await WmAsync(action, ct); break;
-                case ActionKind.App: await AppAsync(action.Value, ct); break;
+                case ActionKind.App: await AppAsync(action.AppId, action.AppUrls, ct); break;
                 case ActionKind.Web: _host.Apps.Web(action.Value); break;
                 case ActionKind.Open: AppLauncher.Open(action.Value); break;
                 case ActionKind.Send: KeySender.Send(KeyCombo.Parse(action.Value)); break;
@@ -95,7 +95,7 @@ public sealed class ActionRunner
         }
     }
 
-    async Task AppAsync(string id, CancellationToken ct)
+    async Task AppAsync(string id, IReadOnlyList<string> urls, CancellationToken ct)
     {
         if (id == "winmarchy")
         {
@@ -107,7 +107,7 @@ public sealed class ActionRunner
             await LauncherAsync(ct);
             return;
         }
-        if (!_host.Apps.Launch(id)) _host.Notify(L.T("actions.appMissing", ("app", L.T("apps." + id))));
+        if (!_host.Apps.Launch(id, urls)) _host.Notify(L.T("actions.appMissing", ("app", L.T("apps." + id))));
     }
 
     /// <summary>Flow Launcher listens on Alt+F24 (set by WinMarchy). If it is not running yet, it is started first.</summary>
@@ -268,7 +268,15 @@ public sealed class ActionRunner
             case "to-workspace" when arg != null && int.TryParse(arg, out var n) && n is >= 1 and <= GlazeConfig.WorkspaceCount:
                 await windows.ToWorkspaceAsync(arg, ct);
                 break;
-            case "desktop-new": await NewDesktopAsync(windows, ct); break;
+            // "desktop-new" from the time Win+Ctrl+D had only one set of programs.
+            case "work-mode" or "desktop-new":
+                if (WorkMode.NumberOf("do:" + command + (arg != null ? " " + arg : "")) is not { } number)
+                {
+                    _host.Notify(L.T("workModes.unknown", ("mode", arg ?? "")));
+                    break;
+                }
+                await new WorkModeRunner(windows, layouts, _host.Notify).RunAsync(number, _host.Settings, action => _ = RunAsync(action, ct), ct);
+                break;
             case "desktop-next": await windows.DesktopStepAsync(1, ct); break;
             case "desktop-prev": await windows.DesktopStepAsync(-1, ct); break;
             case "workspace-next": await windows.WorkspaceStepAsync(1, ct); break;
@@ -283,31 +291,6 @@ public sealed class ActionRunner
     }
 
     static string Direction(string? arg) => arg is "left" or "right" or "up" or "down" ? arg : "right";
-
-    /// <summary>
-    /// Win+Ctrl+D: a fresh workspace on every monitor, then the program chosen for each monitor
-    /// (Tiling page). One after the other, each caught as it opens and put on its monitor's workspace.
-    /// </summary>
-    async Task NewDesktopAsync(WindowCommands windows, CancellationToken ct)
-    {
-        var s = _host.Settings;
-        var opened = await windows.NewDesktopAsync(GlazeConfig.WorkspaceCount, s.WorkspaceMonitors, ct);
-        Log.Trace("desktop-new: opened " + string.Join(", ", opened.Select(o => $"monitor {o.Monitor} → {o.Workspace}")) +
-                  "; apps " + string.Join(", ", s.DesktopApps.Select(p => $"{p.Key}={p.Value}")), "desktop");
-        // Each app starts with its workspace in focus; afterwards the focus goes back to the screen the user was on.
-        var home = await windows.FocusedWorkspaceAsync(ct);
-        bool started = false;
-        foreach (var (monitor, workspace) in opened)
-        {
-            if (!s.DesktopApps.TryGetValue(monitor.ToString(), out var action) || !HotkeyAction.TryParse(action, out var a, out _) ||
-                a.Kind is not (ActionKind.App or ActionKind.Web)) continue;
-            Log.Trace($"desktop-new: starting {action} for workspace {workspace}", "desktop");
-            started = true;
-            if (!await windows.CatchNextWindowAsync(workspace, () => _ = RunAsync(action, ct), TimeSpan.FromSeconds(12), ct))
-                Log.Info(L.T("tiling.desktopAppLate", ("action", action), ("workspace", workspace)));
-        }
-        if (started && home != null) await windows.FocusWorkspaceAsync(home, ct);
-    }
 
     static bool ForegroundIsTerminal()
     {

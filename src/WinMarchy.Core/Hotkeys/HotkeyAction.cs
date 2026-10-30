@@ -4,7 +4,7 @@ public enum ActionKind
 {
     /// <summary>GlazeWM command(s), separated by ";": "wm:move --workspace 2;focus --workspace 2".</summary>
     Wm,
-    /// <summary>A program WinMarchy knows how to find: "app:terminal".</summary>
+    /// <summary>A program WinMarchy knows how to find: "app:terminal"; a browser also with pages: "app:browser https://a https://b".</summary>
     App,
     /// <summary>A website in its own app window (Edge --app), like Omarchy's web apps: "web:https://maps.google.com/".</summary>
     Web,
@@ -39,6 +39,9 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi", "lunatask",
     };
 
+    /// <summary>Apps that take web addresses: a new window with them as tabs.</summary>
+    public static readonly IReadOnlySet<string> UrlApps = new HashSet<string>(StringComparer.Ordinal) { "browser", "browser2" };
+
     /// <summary>WinMarchy functions behind "do:…" (first word; some take an argument).</summary>
     public static readonly IReadOnlyList<string> Commands = new[]
     {
@@ -46,7 +49,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         "layout-next", "layout-prev", "layout", "scratch-toggle", "scratch-store", "workspace-next", "workspace-prev",
         "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "gaps-toggle",
         "transparency-toggle", "move-window-monitor", "restore-minimized", "copy", "paste", "reload",
-        "toggle-split", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
+        "toggle-split", "work-mode", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
         "focus", "swap", "to-workspace", "screenshot", "about", "bar-shortcut", "bar-menu",
     };
 
@@ -104,7 +107,13 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
                 }
                 return null;
             case ActionKind.App:
-                return Apps.Contains(Value) ? null : L.T("hotkeys.errors.unknownApp", ("app", Value));
+                if (!Apps.Contains(AppId)) return L.T("hotkeys.errors.unknownApp", ("app", AppId));
+                var urls = Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToList();
+                if (urls.Count > 0 && !UrlApps.Contains(AppId)) return L.T("hotkeys.errors.appNoUrls", ("app", AppId));
+                foreach (var url in urls)
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out var page) || page.Scheme is not ("https" or "http"))
+                        return L.T("hotkeys.errors.appUrl", ("url", url));
+                return null;
             case ActionKind.Web:
                 return Uri.TryCreate(Value, UriKind.Absolute, out var web) && web.Scheme == "https"
                     ? null : L.T("hotkeys.errors.webUrl", ("url", Value));
@@ -120,6 +129,16 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         }
         return null;
     }
+
+    /// <summary>"app:browser https://a" → "browser".</summary>
+    public string AppId => Value.Split(' ', 2)[0];
+
+    /// <summary>"app:browser https://a https://b" → both addresses, as Windows passes them on (spaces and quotes escaped).</summary>
+    public IReadOnlyList<string> AppUrls =>
+        Kind == ActionKind.App
+            ? Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1)
+                .Select(u => Uri.TryCreate(u, UriKind.Absolute, out var page) ? page.AbsoluteUri : null).OfType<string>().ToList()
+            : Array.Empty<string>();
 
     public IEnumerable<string> WmCommands =>
         Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

@@ -249,7 +249,7 @@
     },
     "kindHints": {
       "wm": "A GlazeWM command, e.g. focus --direction left. Separate several with ;.",
-      "app": "One of the programs WinMarchy knows.",
+      "app": "One of the programs WinMarchy knows. The browser also takes addresses, which open as tabs: browser https://…",
       "web": "An https address. It opens in its own window, like Omarchy's web apps.",
       "open": "For example ms-settings:display, mailto: or spotify:.",
       "send": "Keys sent to the window in front, e.g. Ctrl+Shift+T.",
@@ -284,7 +284,9 @@
       "unknownCommand": "“{command}” is not a WinMarchy function.",
       "runEmpty": "Enter a path.",
       "duplicate": "{keys} is bound twice. The last entry wins.",
-      "wheelNeedsAhk": "Mouse wheel shortcuts only work with AutoHotkey."
+      "wheelNeedsAhk": "Mouse wheel shortcuts only work with AutoHotkey.",
+      "appNoUrls": "Only the browser takes addresses, “{app}” does not.",
+      "appUrl": "“{url}” is not a web address (https://…)."
     },
     "export": "Export",
     "exportTip": "Save your own shortcuts, switched-off ones and favourites to a file.",
@@ -372,7 +374,7 @@
     "paste": "Paste, also in the terminal",
     "reload": "Reload GlazeWM",
     "toggle-split": "Toggle split",
-    "desktop-new": "New workspace on every monitor",
+    "desktop-new": "Work mode 1 (old name)",
     "desktop-next": "All monitors: next workspace",
     "desktop-prev": "All monitors: previous workspace",
     "wallpaper-menu": "Choose background",
@@ -382,7 +384,8 @@
     "screenshot": "Screenshot (region, window, screen)",
     "about": "About this system (Fastfetch)",
     "bar-shortcut": "Own bar entry",
-    "bar-menu": "Open a menu of the bar (calendar, audio, network …)"
+    "bar-menu": "Open a menu of the bar (calendar, audio, network …)",
+    "work-mode": "Work mode 1 to 3 (number after it)"
   },
 
   "tiling": {
@@ -413,17 +416,16 @@
     "applied": "GlazeWM has the new settings.",
     "splitNext": "The split applies from the next window on.",
     "allTaken": "All {count} workspaces are in use.",
-    "newDesktop": "New workspaces: {workspaces}",
     "touchpad": "Open touchpad gestures",
-    "touchpadHint": "Win+Ctrl+D gives every monitor a new workspace, Win+Ctrl+Arrow switches all of them together, like virtual desktops. Under “Advanced gestures” you can put the three-finger swipe on these shortcuts. Better not “Switch desktops”: Windows' virtual desktops do not get along with GlazeWM.",
+    "touchpadHint": "Win+Ctrl+Arrow switches all monitors together, like virtual desktops, and Win+Ctrl+D opens work mode 1. Under “Advanced gestures” you can put the three-finger swipe on these shortcuts. Better not “Switch desktops”: Windows' virtual desktops do not get along with GlazeWM.",
     "scrollingColumns": "Scrolling shows",
     "columnsCount": "{count} side by side",
     "barModules": "The bar shows",
     "blockMinimize": "Prevent minimizing",
     "blockMinimizeHint": "As in Omarchy: a minimized window goes straight back into its tile. Win+M brings back anything that is minimized anyway.",
     "monitors": "Monitors and workspaces",
-    "monitorsText": "As in the Omarchy plugin Screens: every monitor gets fixed workspaces. Win+3 always opens workspace 3 on its monitor, and Win+Ctrl+D only takes that monitor's workspaces.",
-    "monitorsHint": "Monitors count from left to right, as GlazeWM counts them. Unplug one and its workspaces move to another.",
+    "monitorsText": "As in the Omarchy plugin Screens: every monitor gets fixed workspaces. Win+3 always opens workspace 3 on its monitor, and a work mode only takes that monitor's workspaces there.",
+    "monitorsHint": "Monitors count from left to right, as GlazeWM counts them. Unplug one and its workspaces move to another. Its row stays here until you clear it, so the split fits again at the dock.",
     "monitorsSplit": "Split evenly",
     "monitorsInvalid": "Monitor {number}: only workspace numbers from 1 to 10, such as 1-5 or 6, 7.",
     "monitorsTwice": "Workspace {workspace} is listed for monitor {a} and {b}. Each workspace belongs to one monitor.",
@@ -432,9 +434,6 @@
     "monitorSize": "{width} × {height}",
     "monitorWorkspaces": "Workspaces",
     "monitorWorkspacesHint": "For example 1-5 or 6, 7, 8. Empty: this monitor takes whatever is free.",
-    "monitorAppNone": "Win+Ctrl+D starts nothing",
-    "monitorAppPrefix": "Win+Ctrl+D starts",
-    "monitorAppHint": "Starts on this monitor's new workspace with Win+Ctrl+D.",
     "desktopAppLate": "{action} showed no window within 12 seconds; it was meant for workspace {workspace}.",
     "monitorsFailed": "Could not move workspaces to their monitors: {detail}",
     "trayPinned": "Always visible in the tray",
@@ -450,7 +449,18 @@
     "shortcutNoTitle": "The entry with the action {action} needs a name.",
     "yasbOnly": "YASB only",
     "newWindowEndsFullscreen": "A new window ends full screen",
-    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, the full-screen window goes back into its tile, as in Hyprland."
+    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, the full-screen window goes back into its tile, as in Hyprland.",
+    "oneMonitor": "Only one monitor is connected.",
+    "monitorAbsent": "not connected",
+    "workModes": "Work modes",
+    "workModesText": "One key press gives every monitor a fresh workspace and opens the mode's programs there, for research, say, or for the tools of the work at hand. Open windows stay on their workspaces. If the mode is running already, the key brings it back and starts only what you closed. Press it again while in the mode and what was on the screens before comes back.",
+    "workModesHint": "One program per monitor. If a monitor is missing, its program goes to the last one that is connected. On a single monitor all of the mode's programs share it, in the dwindle layout. The browser takes addresses and opens them as the tabs of a new window: app:browser https://page-one.com https://page-two.com",
+    "workModeName": "Name",
+    "workModeNameHint": "Shown in the notice when switching. Empty: work mode 1, 2 or 3.",
+    "workModeApp": "Work mode {mode}, monitor {number}",
+    "workModeAppHint": "What starts here, written like a shortcut's action. Empty: nothing.",
+    "workModeNoKeys": "no shortcut",
+    "workModeInvalid": "{mode}, monitor {number}: {detail}"
   },
 
   "layouts": {
@@ -631,7 +641,7 @@
     "diagnoseFile": "diagnosis",
     "diagnoseWritten": "Diagnosis report written: {path}",
     "verbose": "Verbose log",
-    "verboseHint": "For finding faults: every shortcut, every GlazeWM command and what Flow, the taskbar, the scratchpad, scrolling and Win+Ctrl+D do. Shown under “All”. Switch it off afterwards, it is a lot.",
+    "verboseHint": "For finding faults: every shortcut, every GlazeWM command and what Flow, the taskbar, the scratchpad, scrolling and the work modes do. Shown under “All”. Switch it off afterwards, it is a lot.",
     "verboseOn": "Verbose log is on.",
     "verboseOff": "Verbose log is off."
   },
@@ -1157,5 +1167,15 @@
     "battery": "Battery",
     "locale": "Locale",
     "localip": "IP and MAC"
+  },
+
+  "workModes": {
+    "default": "Work mode {number}",
+    "opened": "{name}: workspaces {workspaces}",
+    "back": "Back: workspaces {workspaces}",
+    "already": "“{name}” is open already.",
+    "skipped": "Work mode “{name}” leaves out a program: {detail}",
+    "notAProgram": "“{action}” opens no window. A work mode starts programs: app:, web:, run: or open:.",
+    "unknown": "There is no work mode “{mode}”, only 1 to 3."
   }
 }

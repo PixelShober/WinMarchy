@@ -24,6 +24,12 @@ public sealed class LayoutStore
     /// <summary>Scrolling workspaces: their columns left to right, by window handle (survives a restart of WinMarchy).</summary>
     public Dictionary<string, List<long>> Columns { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Workspaces whose layout holds only while they are open (a work mode's shared screen), with the
+    /// layout chosen for them before (null: the default).
+    /// </summary>
+    public Dictionary<string, LayoutMode?> UntilClosed { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     public static LayoutStore Load()
     {
         try
@@ -105,7 +111,7 @@ public sealed class LayoutEngine
         _settings = settings ?? (() => new UserSettings());
     }
 
-    public static readonly string[] Events = { "focus_changed", "window_managed", "window_unmanaged" };
+    public static readonly string[] Events = { "focus_changed", "window_managed", "window_unmanaged", "workspace_deactivated" };
 
     public LayoutMode ModeOf(string workspace) =>
         _store.Workspaces.TryGetValue(workspace, out var m) ? m : _default();
@@ -126,7 +132,7 @@ public sealed class LayoutEngine
     int _holding;
 
     /// <summary>
-    /// While Win+Ctrl+D waits for the windows it starts, new windows are left alone: one that opens
+    /// While a work mode waits for the windows it starts, new windows are left alone: one that opens
     /// on the wrong workspace is moved first and only then placed (<see cref="AdoptAsync"/>).
     /// Otherwise the layout of the workspace it left would place it there again.
     /// </summary>
@@ -168,6 +174,19 @@ public sealed class LayoutEngine
 
     public async Task OnEventAsync(GlazeEvent e, CancellationToken ct)
     {
+        if (e.Type == "workspace_deactivated")
+        {
+            // Never skipped: a layout meant only for the open workspace would stay otherwise.
+            try
+            {
+                if (GlazeTree.Str(e.Data, "deactivatedName") is { } closed) await ClosedAsync(new[] { closed }, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Log.Debug("Layout: " + ex.Message);
+            }
+            return;
+        }
         // Events come in bursts; if one is still being handled after half a second, this one is skipped.
         if (!await _busy.WaitAsync(500, ct)) return;
         try
@@ -276,14 +295,68 @@ public sealed class LayoutEngine
         await SetAsync(name, Cycle[(i + 1) % Cycle.Length], ct);
     }
 
+    /// <summary>The user's choice for a workspace (Win+Ctrl+J, Tiling page): it stays, with a notice.</summary>
     public async Task SetAsync(string workspace, LayoutMode mode, CancellationToken ct)
     {
         // Say it first: rearranging can take a moment, the notice should not wait for it.
         _notify(L.T("layouts.changed", ("workspace", workspace), ("layout", Name(mode))));
+        await ApplyAsync(workspace, mode, untilClosed: false, ct);
+    }
+
+    /// <summary>
+    /// A layout only while the workspace stays open (a work mode's shared screen), without a notice.
+    /// When GlazeWM closes the workspace, the layout it had before comes back; choosing one by hand
+    /// in the meantime keeps that one.
+    /// </summary>
+    public async Task UseUntilClosedAsync(string workspace, LayoutMode mode, CancellationToken ct)
+    {
+        if (ModeOf(workspace) == mode) return;
+        await ApplyAsync(workspace, mode, untilClosed: true, ct);
+    }
+
+    /// <summary>After connecting: workspaces that closed while WinMarchy was not listening get their layout from before.</summary>
+    public async Task ForgetClosedAsync(CancellationToken ct)
+    {
+        if (_store.UntilClosed.Count == 0) return;
+        var open = GlazeTree.List(await _ipc.QueryAsync("workspaces", ct), "workspaces").Select(w => GlazeTree.Str(w, "name")).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        await ClosedAsync(_store.UntilClosed.Keys.Where(n => !open.Contains(n)).ToList(), ct);
+    }
+
+    async Task ClosedAsync(IReadOnlyCollection<string> names, CancellationToken ct)
+    {
+        if (names.Count == 0) return;
+        await _busy.WaitAsync(ct);
+        try
+        {
+            bool changed = false;
+            foreach (var name in names)
+            {
+                if (!_store.UntilClosed.Remove(name, out var before)) continue;
+                if (before is { } b && b != _default()) _store.Workspaces[name] = b;
+                else _store.Workspaces.Remove(name);
+                // A closed workspace has no windows, so no columns either.
+                _strips.Remove(name);
+                _store.Columns.Remove(name);
+                Log.Trace($"layout: workspace {name} closed, back to {Name(ModeOf(name))}", "layout");
+                changed = true;
+            }
+            if (changed) _store.Save();
+        }
+        finally
+        {
+            _busy.Release();
+        }
+    }
+
+    async Task ApplyAsync(string workspace, LayoutMode mode, bool untilClosed, CancellationToken ct)
+    {
         await _busy.WaitAsync(ct);
         try
         {
             var before = ModeOf(workspace);
+            if (!untilClosed) _store.UntilClosed.Remove(workspace);
+            else if (!_store.UntilClosed.ContainsKey(workspace))
+                _store.UntilClosed[workspace] = _store.Workspaces.TryGetValue(workspace, out var chosen) ? chosen : null;
             if (mode == _default()) _store.Workspaces.Remove(workspace);
             else _store.Workspaces[workspace] = mode;
             _store.Save();

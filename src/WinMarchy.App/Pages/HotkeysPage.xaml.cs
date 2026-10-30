@@ -393,8 +393,9 @@ public partial class HotkeysPage : UserControl, IPage
     {
         if (_editing == null || EditKind.SelectedItem is not ComboBoxItem { Tag: string kind }) return;
         var value = EditChoice.Visibility == Visibility.Visible && EditChoice.SelectedItem is ComboBoxItem { Tag: string v } ? v : EditValue.Text.Trim();
-        // Commands with an argument keep the argument the profile had ("menu system").
-        if (kind == "do" && _editing.Action is { Kind: ActionKind.Do } old && old.Value.StartsWith(value + " ")) value = old.Value;
+        // Commands and apps with an argument keep the argument the profile had ("menu system", a browser's pages).
+        if (kind is "do" or "app" && _editing.Action is { Kind: ActionKind.Do or ActionKind.App } old &&
+            old.Kind.ToString().Equals(kind, StringComparison.OrdinalIgnoreCase) && old.Value.StartsWith(value + " ")) value = old.Value;
 
         string error;
         if (!KeyCombo.TryParse(EditKeys.Text, out var combo, out error) || (combo.ReservedReason() is { } r && (error = r) != null) ||

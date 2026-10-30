@@ -319,6 +319,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         try
         {
             await windows.RecoverAsync(ct);
+            await layouts.ForgetClosedAsync(ct);
             await windows.EnforceMonitorsAsync(Settings.WorkspaceMonitors, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) { Log.Debug("Recover: " + Net.Describe(ex)); }
