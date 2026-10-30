@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- theme.css is rewritten by WinMarchy on every theme change; bar.js reloads it. -->
+    <link rel="stylesheet" href="./theme.css" id="theme" />
+    <link rel="stylesheet" href="./bar.css" />
+  </head>
+  <body>
+    <div class="bar">
+      <div class="left">
+        <button class="logo" id="logo" type="button" aria-label="WinMarchy">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <rect x="1" y="1" width="6" height="14" fill="currentColor" />
+            <rect x="9" y="1" width="6" height="6" class="logo-accent" />
+            <rect x="9" y="9" width="6" height="6" fill="currentColor" />
+          </svg>
+        </button>
+        <div class="workspaces" id="workspaces"></div>
+      </div>
+      <div class="center">
+        <button class="clock" id="clock" type="button"></button>
+      </div>
+      <div class="right">
+        <div class="tray" id="tray"></div>
+        <button class="item" id="direction" type="button"></button>
+        <button class="item" id="network" type="button"></button>
+        <button class="item" id="audio" type="button"></button>
+        <button class="item" id="cpu" type="button"></button>
+        <button class="item" id="memory" type="button"></button>
+        <button class="item" id="battery" type="button"></button>
+      </div>
+    </div>
+    <script type="module" src="./bar.js"></script>
+  </body>
+</html>

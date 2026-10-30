@@ -1,0 +1,128 @@
+name: CI
+
+# Runs on every pull request and on main. The PR build can be downloaded from the run page:
+# "WinMarchy-PR-<number>" holds WinMarchy.exe, "Screenshots-PR-<number>" every page in light and dark.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Texte, Leiste, Tests (Linux)
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: UTF-8, Umlaute und Übersetzungen prüfen
+        run: node scripts/check-encoding.mjs
+      - name: Leiste (bar.js) prüfen
+        run: node --check src/WinMarchy.Core/Resources/Zebar/bar.js
+      - name: Tests
+        run: dotnet test tests/WinMarchy.Core.Tests -c Release
+
+  windows:
+    name: WinMarchy.exe (WPF)
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Tests
+        run: dotnet test tests/WinMarchy.Core.Tests -c Release
+      - name: Abhängigkeits-Wächter
+        run: node scripts/check-deps.mjs
+      - name: WinMarchy.exe bauen
+        shell: bash
+        run: dotnet publish src/WinMarchy.App/WinMarchy.App.csproj -c Release -o artifacts/exe "-p:Version=0.0.0-ci.${{ github.run_number }}"
+
+      # Renders every page in light and dark, writes the generated AutoHotkey script and GlazeWM
+      # configs, and fails on texts that came out as a bare locale key.
+      - name: Selbsttest mit Screenshots
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath artifacts/exe/WinMarchy.exe -ArgumentList '--selftest', "$PWD/artifacts/selftest" -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Selbsttest hängt' }
+          # Lock screen calls and policy check, only answerable on Windows.
+          if (Test-Path artifacts/selftest/windows-checks.txt) { Get-Content artifacts/selftest/windows-checks.txt }
+          if (-not (Test-Path artifacts/selftest/selftest.txt)) { throw "Selbsttest abgestürzt (Exit-Code $($p.ExitCode))" }
+          Get-Content artifacts/selftest/selftest.txt
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+
+      - name: AutoHotkey-Skripte mit AutoHotkey prüfen
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download -R AutoHotkey/AutoHotkey -p 'AutoHotkey_2*.zip' -D artifacts/ahk
+          Expand-Archive (Get-ChildItem artifacts/ahk/*.zip | Select-Object -First 1).FullName artifacts/ahk/bin
+          $ahk = (Get-ChildItem artifacts/ahk/bin -Recurse -Filter AutoHotkey64.exe | Select-Object -First 1).FullName
+          $failed = $false
+          foreach ($script in Get-ChildItem artifacts/selftest/*.ahk) {
+            $p = Start-Process -FilePath $ahk -ArgumentList '/ErrorStdOut=UTF-8', '/Validate', "`"$($script.FullName)`"" -NoNewWindow -Wait -PassThru -RedirectStandardError "$($script.FullName).err"
+            $err = Get-Content "$($script.FullName).err" -Raw
+            if ($p.ExitCode -ne 0) { Write-Host "::error file=$($script.Name)::$err"; $failed = $true } else { Write-Host "$($script.Name): OK" }
+          }
+          if ($failed) { exit 1 }
+
+      - name: GlazeWM-Konfigurationen und Zebar-Manifest prüfen
+        shell: bash
+        run: |
+          for f in artifacts/selftest/*.yaml; do npx --yes js-yaml@4.1.0 "$f" > /dev/null && echo "$f: OK"; done
+          node -e "JSON.parse(require('fs').readFileSync('artifacts/selftest/zpack.json','utf8')); console.log('zpack.json: OK')"
+
+      # The bar's config against the schema of the YASB release WinMarchy installs.
+      - name: YASB-, Starship- und Fastfetch-Konfiguration prüfen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh api repos/amnweb/yasb/releases/latest --jq .tag_name)
+          curl -fsSL "https://raw.githubusercontent.com/amnweb/yasb/$tag/schema.json" -o artifacts/yasb-schema.json
+          python -m pip install --quiet --disable-pip-version-check jsonschema==4.23.0 pyyaml==6.0.2
+          python scripts/check-yasb.py artifacts/yasb-schema.json artifacts/selftest
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ github.event_name == 'pull_request' && format('WinMarchy-PR-{0}', github.event.pull_request.number) || format('WinMarchy-build-{0}', github.run_number) }}
+          path: artifacts/exe/WinMarchy.exe
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{ github.event_name == 'pull_request' && format('Screenshots-PR-{0}', github.event.pull_request.number) || format('Screenshots-build-{0}', github.run_number) }}
+          path: |
+            artifacts/selftest/*.png
+            artifacts/selftest/*.txt
+            artifacts/selftest/*.ahk
+            artifacts/selftest/*.yaml
+            artifacts/selftest/*.json
+            artifacts/selftest/*.css
+            artifacts/selftest/*.toml
+            artifacts/selftest/*.jsonc
+          retention-days: 14
