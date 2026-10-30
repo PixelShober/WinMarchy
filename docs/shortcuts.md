@@ -147,6 +147,8 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+Strg+O` | Schalter-Menü · *optional* | gleich |
 | `Win+Strg+H` | Hardware-Menü · *optional* | gleich |
 | `Win+Strg+E` | Emojis | gleich |
+| `Win+Alt+D` | Kalender der Leiste (nur mit YASB) · *optional* | gleich |
+| `Win+Alt+A` | Lautstärke der Leiste (nur mit YASB) · *optional* | gleich |
 
 ### Werkzeuge
 
@@ -157,6 +159,7 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+X` | Ausschneiden | gleich |
 | `Win+A` | Alles markieren | gleich |
 | `Win+Strg+V` | Zwischenablage-Verlauf | gleich |
+| `Win+Strg+M` | Musik abspielen oder anhalten | gleich |
 | `PrintScreen` | Bildschirmfoto (Mit Windows oder Greenshot, je nach Einstellung.) | gleich |
 | `Win+Strg+Alt+C` | Bildschirmfoto | gleich |
 | `Alt+PrintScreen` | Bildschirmaufnahme | gleich |

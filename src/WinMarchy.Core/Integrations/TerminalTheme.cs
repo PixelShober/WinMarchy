@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using Microsoft.Win32;
 using WinMarchy.Core.Themes;
+using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Integrations;
 
@@ -116,20 +118,20 @@ public static class TerminalTheme
     public static string ColorFile => Path.Combine(Paths.RuntimeDir, "psreadline-colors.ps1");
 
     /// <summary>
-    /// WinMarchy's block in the profile: the colours and, once Starship is set up, the prompt. Each
+    /// WinMarchy's block in the profile: the colours and, once Starship or Fastfetch is set up, what a new tab starts with. Each
     /// file is only loaded if it is there, so removing one never breaks the profile.
     /// </summary>
-    public static string ProfileHook(string colorFile, string promptFile)
+    public static string ProfileHook(string colorFile, string shellFile)
     {
         static string Q(string s) => "'" + s.Replace("'", "''") + "'";
         return $"{HookStart}\r\n$winmarchyColors = {Q(colorFile)}\r\nif (Test-Path -LiteralPath $winmarchyColors) {{ . $winmarchyColors }}\r\n" +
-               $"$winmarchyPrompt = {Q(promptFile)}\r\nif (Test-Path -LiteralPath $winmarchyPrompt) {{ . $winmarchyPrompt }}\r\n{HookEnd}\r\n";
+               $"$winmarchyShell = {Q(shellFile)}\r\nif (Test-Path -LiteralPath $winmarchyShell) {{ . $winmarchyShell }}\r\n{HookEnd}\r\n";
     }
 
     /// <summary>Adds the hook once; an existing hook is replaced (the file paths may have moved).</summary>
-    internal static string WithHook(string profile, string colorFile, string? promptFile = null)
+    internal static string WithHook(string profile, string colorFile, string? shellFile = null)
     {
-        var hook = ProfileHook(colorFile, promptFile ?? Paths.PromptScript);
+        var hook = ProfileHook(colorFile, shellFile ?? Paths.ShellScript);
         int start = profile.IndexOf(HookStart, StringComparison.Ordinal);
         int end = profile.IndexOf(HookEnd, StringComparison.Ordinal);
         if (start >= 0 && end > start)
@@ -144,63 +146,111 @@ public static class TerminalTheme
 
     public static void ApplyPowerShell(IntegrationContext ctx, Palette palette)
     {
-        if (PowerShellPolicy.BlocksProfiles() is { } policy)
-        {
-            ctx.Report(L.T("integrations.powershell.blocked", ("policy", policy)));
-            return;
-        }
-        // A UTF-8 BOM, so Windows PowerShell 5.1 would read it correctly as well.
+        // A UTF-8 BOM, so Windows PowerShell 5.1 reads it correctly as well.
         ctx.WriteFile(ColorFile, ColorScript(Build(palette)), bom: true);
-        WriteHook(ctx);
-        ctx.Report(L.T("integrations.powershell.done", ("path", ctx.Loc.PowerShellProfile)));
+        var profiles = EnsureProfileHook(ctx);
+        if (profiles.Count > 0) ctx.Report(L.T("integrations.powershell.done", ("path", string.Join(" · ", profiles))));
     }
 
     /// <summary>
-    /// The profile block without new colours (Starship's setup). False if a group policy keeps
-    /// PowerShell from running profiles; then nothing is written.
+    /// WinMarchy's block in the profiles of PowerShell 7 and of Windows PowerShell 5.1, wherever the
+    /// execution policy lets PowerShell load a profile; otherwise PowerShell would print an error on
+    /// every start. Returns the profiles that have the block.
     /// </summary>
-    public static bool EnsureProfileHook(IntegrationContext ctx)
+    public static IReadOnlyList<string> EnsureProfileHook(IntegrationContext ctx)
     {
-        if (PowerShellPolicy.BlocksProfiles() is { } policy)
+        var done = new List<string>();
+        var pwsh = ToolCatalog.Detect(ToolCatalog.PowerShell, ctx.Loc, ctx.Settings, AppState.Load()).Installed;
+        if (PowerShellPolicy.BlocksProfiles() is { } core)
         {
-            ctx.Report(L.T("integrations.powershell.blocked", ("policy", policy)));
-            return false;
+            if (pwsh) ctx.Report(L.T("integrations.powershell.blocked", ("policy", core)));
         }
-        WriteHook(ctx);
-        return true;
+        else
+        {
+            WriteHook(ctx, ctx.Loc.PowerShellProfile);
+            done.Add(ctx.Loc.PowerShellProfile);
+        }
+        var desktop = PowerShellPolicy.WindowsPowerShell();
+        if (PowerShellPolicy.LoadsProfiles(desktop))
+        {
+            WriteHook(ctx, ctx.Loc.WindowsPowerShellProfile);
+            done.Add(ctx.Loc.WindowsPowerShellProfile);
+        }
+        // Only worth saying when it is the PowerShell the terminal opens.
+        else if (!pwsh)
+        {
+            ctx.Report(L.T("integrations.powershell.desktopBlocked", ("policy", desktop)));
+        }
+        return done;
     }
 
-    static void WriteHook(IntegrationContext ctx)
+    static void WriteHook(IntegrationContext ctx, string profile)
     {
-        var profile = ctx.Loc.PowerShellProfile;
         var current = File.Exists(profile) ? File.ReadAllText(profile) : "";
         var updated = WithHook(current, ColorFile);
         if (updated != current) ctx.WriteFile(profile, updated, bom: true);
     }
 }
 
-/// <summary>Execution policy set by group policy: under AllSigned or Restricted a profile would fail on every start.</summary>
+/// <summary>Execution policies: under AllSigned or Restricted a profile would fail on every start.</summary>
 public static class PowerShellPolicy
 {
+    /// <summary>PowerShell 7 set to AllSigned or Restricted by group policy (its own default is RemoteSigned).</summary>
     public static string? BlocksProfiles()
     {
         if (!OperatingSystem.IsWindows()) return null;
-        foreach (var hive in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+        foreach (var hive in new[] { Registry.LocalMachine, Registry.CurrentUser })
         {
-            try
-            {
-                using var key = hive.OpenSubKey(@"SOFTWARE\Policies\Microsoft\PowerShellCore");
-                if (key?.GetValue("EnableScripts") is int enabled)
-                {
-                    if (enabled == 0) return "Restricted";
-                    if (key.GetValue("ExecutionPolicy") is string p && p is "AllSigned" or "Restricted") return p;
-                }
-            }
-            catch
-            {
-                // not readable: assume no policy
-            }
+            if (FromPolicy(hive, @"SOFTWARE\Policies\Microsoft\PowerShellCore") is { } p && !LoadsProfiles(p)) return p;
         }
         return null;
+    }
+
+    /// <summary>
+    /// The execution policy of Windows PowerShell 5.1, worked out as PowerShell does it: group policy
+    /// for the machine, then for the user, then the user's own setting, then the machine's.
+    /// Restricted when nothing is set, the default on Windows 10 and 11.
+    /// </summary>
+    public static string WindowsPowerShell()
+    {
+        if (!OperatingSystem.IsWindows()) return "Restricted";
+        foreach (var hive in new[] { Registry.LocalMachine, Registry.CurrentUser })
+        {
+            if (FromPolicy(hive, @"SOFTWARE\Policies\Microsoft\Windows\PowerShell") is { } p) return p;
+        }
+        foreach (var hive in new[] { Registry.CurrentUser, Registry.LocalMachine })
+        {
+            if (Read(hive, @"SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell", "ExecutionPolicy") is string p && p.Length > 0 &&
+                !p.Equals("Undefined", StringComparison.OrdinalIgnoreCase)) return p;
+        }
+        return "Restricted";
+    }
+
+    /// <summary>A local, unsigned profile runs under these.</summary>
+    public static bool LoadsProfiles(string policy) =>
+        policy.Equals("RemoteSigned", StringComparison.OrdinalIgnoreCase) || policy.Equals("Unrestricted", StringComparison.OrdinalIgnoreCase) ||
+        policy.Equals("Bypass", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>"Turn on Script Execution" in group policy: off is Restricted, on names the policy.</summary>
+    static string? FromPolicy(RegistryKey hive, string key) =>
+        Read(hive, key, "EnableScripts") switch
+        {
+            0 => "Restricted",
+            1 => Read(hive, key, "ExecutionPolicy") as string ?? "AllSigned",
+            _ => null,
+        };
+
+    static object? Read(RegistryKey hive, string key, string name)
+    {
+        try
+        {
+            using var k = hive.OpenSubKey(key);
+            return k?.GetValue(name);
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            // Not readable: as if not set.
+            return null;
+        }
     }
 }

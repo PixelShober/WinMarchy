@@ -123,6 +123,49 @@ public sealed class LayoutEngine
 
     int Visible => Math.Clamp(_settings().ScrollingColumns, 1, 3);
 
+    int _holding;
+
+    /// <summary>
+    /// While Win+Ctrl+D waits for the windows it starts, new windows are left alone: one that opens
+    /// on the wrong workspace is moved first and only then placed (<see cref="AdoptAsync"/>).
+    /// Otherwise the layout of the workspace it left would place it there again.
+    /// </summary>
+    public IDisposable HoldNewWindows()
+    {
+        Interlocked.Increment(ref _holding);
+        return new Hold(this);
+    }
+
+    sealed class Hold(LayoutEngine owner) : IDisposable
+    {
+        int _done;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _done, 1) == 0) Interlocked.Decrement(ref owner._holding);
+        }
+    }
+
+    /// <summary>Places a window held back by <see cref="HoldNewWindows"/>, as if it had just opened where it is now.</summary>
+    public async Task AdoptAsync(string id, CancellationToken ct)
+    {
+        await _busy.WaitAsync(ct);
+        try
+        {
+            var workspaces = await _ipc.QueryAsync("workspaces", ct);
+            var window = GlazeTree.List(workspaces, "workspaces").SelectMany(GlazeTree.Windows).FirstOrDefault(w => GlazeTree.Str(w, "id") == id);
+            if (window.ValueKind == JsonValueKind.Object) await PlaceLockedAsync("window_managed", window, id, workspaces, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Debug("Layout: " + ex.Message);
+        }
+        finally
+        {
+            _busy.Release();
+        }
+    }
+
     public async Task OnEventAsync(GlazeEvent e, CancellationToken ct)
     {
         // Events come in bursts; if one is still being handled after half a second, this one is skipped.
@@ -150,52 +193,9 @@ public sealed class LayoutEngine
             if (window.ValueKind != JsonValueKind.Object || GlazeTree.Type(window) != "window") return;
             var id = GlazeTree.Str(window, "id");
             if (id == null) return;
+            if (e.Type == "window_managed" && Volatile.Read(ref _holding) > 0) return;
 
-            var workspaces = await _ipc.QueryAsync("workspaces", ct);
-            var ws = GlazeTree.WorkspaceOf(workspaces, id);
-            var name = ws is { } w2 ? GlazeTree.Str(w2, "name") : null;
-            if (name == null || !GlazeConfig.IsRegular(name)) return;
-
-            switch (ModeOf(name))
-            {
-                case LayoutMode.Dwindle when GlazeTree.WindowState(window) == "tiling":
-                    var width = GlazeTree.Int(window, "width");
-                    var height = GlazeTree.Int(window, "height");
-                    if (width > 0 && height > 0)
-                        await _ipc.CommandAsync("set-tiling-direction " + (width >= height ? "horizontal" : "vertical"), ct, id);
-                    break;
-
-                case LayoutMode.Columns:
-                    var wsId = GlazeTree.Str(ws!.Value, "id");
-                    if (wsId != null && GlazeTree.Str(ws.Value, "tilingDirection") == "vertical")
-                    {
-                        await _ipc.CommandAsync("set-tiling-direction horizontal", ct, wsId);
-                        // GlazeWM changes the direction but does not draw it until something else moves.
-                        await _ipc.CommandAsync("wm-redraw", ct);
-                    }
-                    break;
-
-                case LayoutMode.Scrolling when !GlazeTree.ShownOnTop(window):
-                    // A new window, one moved here, or a click on a column off the screen.
-                    var strip = Strip(name);
-                    var index = strip.Ids.IndexOf(id);
-                    // A dialog or a window floated by a rule is not a column; leave its focus alone.
-                    if (index < 0 && GlazeTree.WindowState(window) != "tiling") break;
-                    if (index >= 0 && GlazeTree.WindowState(window) == "floating")
-                    {
-                        if (index == strip.Focus) break;
-                        bool onScreen = index >= strip.Start && index < strip.Start + Visible;
-                        strip.Focus = index;
-                        if (onScreen) break;
-                    }
-                    await ArrangeLockedAsync(name, id, ct);
-                    break;
-
-                case LayoutMode.Floating when e.Type == "window_managed" && GlazeTree.WindowState(window) == "tiling":
-                    await _ipc.CommandAsync("set-floating --centered", ct, id);
-                    _floatedBy[id] = name;
-                    break;
-            }
+            await PlaceLockedAsync(e.Type, window, id, await _ipc.QueryAsync("workspaces", ct), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -204,6 +204,66 @@ public sealed class LayoutEngine
         finally
         {
             _busy.Release();
+        }
+    }
+
+    /// <summary>What the layout of the window's workspace does with a window that opened, moved in or got the focus. Caller holds the gate.</summary>
+    async Task PlaceLockedAsync(string eventType, JsonElement window, string id, JsonElement workspaces, CancellationToken ct)
+    {
+        var ws = GlazeTree.WorkspaceOf(workspaces, id);
+        var name = ws is { } w2 ? GlazeTree.Str(w2, "name") : null;
+        if (name == null || !GlazeConfig.IsRegular(name)) return;
+
+        // A new window next to one in full screen: that one goes back to where it was (its tile, or
+        // floating), so the new one is not hidden behind it or lying over it.
+        if (eventType == "window_managed" && _settings().NewWindowEndsFullscreen && GlazeTree.WindowState(window) == "tiling")
+        {
+            foreach (var other in GlazeTree.Windows(ws!.Value).Where(w => GlazeTree.WindowState(w) == "fullscreen" && GlazeTree.Str(w, "id") != id).ToList())
+            {
+                Log.Trace($"fullscreen: {GlazeTree.Str(other, "id")} leaves full screen for new window {id}", "layout");
+                await _ipc.CommandAsync("toggle-fullscreen", ct, GlazeTree.Str(other, "id"));
+            }
+        }
+
+        switch (ModeOf(name))
+        {
+            case LayoutMode.Dwindle when GlazeTree.WindowState(window) == "tiling":
+                var width = GlazeTree.Int(window, "width");
+                var height = GlazeTree.Int(window, "height");
+                if (width > 0 && height > 0)
+                    await _ipc.CommandAsync("set-tiling-direction " + (width >= height ? "horizontal" : "vertical"), ct, id);
+                break;
+
+            case LayoutMode.Columns:
+                var wsId = GlazeTree.Str(ws!.Value, "id");
+                if (wsId != null && GlazeTree.Str(ws.Value, "tilingDirection") == "vertical")
+                {
+                    await _ipc.CommandAsync("set-tiling-direction horizontal", ct, wsId);
+                    // GlazeWM changes the direction but does not draw it until something else moves.
+                    await _ipc.CommandAsync("wm-redraw", ct);
+                }
+                break;
+
+            case LayoutMode.Scrolling when !GlazeTree.ShownOnTop(window):
+                // A new window, one moved here, or a click on a column off the screen.
+                var strip = Strip(name);
+                var index = strip.Ids.IndexOf(id);
+                // A dialog or a window floated by a rule is not a column; leave its focus alone.
+                if (index < 0 && GlazeTree.WindowState(window) != "tiling") break;
+                if (index >= 0 && GlazeTree.WindowState(window) == "floating")
+                {
+                    if (index == strip.Focus) break;
+                    bool onScreen = index >= strip.Start && index < strip.Start + Visible;
+                    strip.Focus = index;
+                    if (onScreen) break;
+                }
+                await ArrangeLockedAsync(name, id, ct);
+                break;
+
+            case LayoutMode.Floating when eventType == "window_managed" && GlazeTree.WindowState(window) == "tiling":
+                await _ipc.CommandAsync("set-floating --centered", ct, id);
+                _floatedBy[id] = name;
+                break;
         }
     }
 

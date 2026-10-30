@@ -181,18 +181,27 @@ public class BarTests
         Assert.Contains($"success_symbol = \"[❯](bold {ColorMath.Legible(Tokyo.Accent, Tokyo.Background, 3.0)})\"", toml);
         Assert.Contains("ahead = \"⇡${count} \"", toml);
 
-        var prompt = ShellExtras.PromptScript(@"C:\Win'Marchy\starship.exe", @"C:\WinMarchy\Runtime\starship.toml");
-        Assert.Contains("LanguageMode -eq 'FullLanguage'", prompt);
-        Assert.Contains(@"'C:\Win''Marchy\starship.exe'", prompt);
+        var script = ShellExtras.ShellScript(@"C:\Win'Marchy\starship.exe", @"C:\WinMarchy\Tools\fastfetch\fastfetch.exe");
+        // Starship only in full language mode (AppLocker), Fastfetch also there, but never in scripts.
+        Assert.Contains("$winmarchyFull = $ExecutionContext.SessionState.LanguageMode -eq 'FullLanguage'", script);
+        Assert.Contains(@"if ($winmarchyFull -and (Test-Path -LiteralPath 'C:\Win''Marchy\starship.exe'))", script);
+        Assert.Contains(@"function fastfetch { & 'C:\WinMarchy\Tools\fastfetch\fastfetch.exe' --config", script);
+        Assert.Contains("$Host.Name -eq 'ConsoleHost'", script);
+        Assert.Contains("GetCommandLineArgs()", script);
+        Assert.DoesNotContain("starship", ShellExtras.ShellScript(null, @"C:\ff.exe"));
 
-        var hook = TerminalTheme.WithHook("", @"C:\WinMarchy\Runtime\colors.ps1", @"C:\WinMarchy\Runtime\starship-prompt.ps1");
-        Assert.Contains(@"$winmarchyPrompt = 'C:\WinMarchy\Runtime\starship-prompt.ps1'", hook);
-        Assert.Contains("if (Test-Path -LiteralPath $winmarchyPrompt)", hook);
+        var hook = TerminalTheme.WithHook("", @"C:\WinMarchy\Runtime\colors.ps1", @"C:\WinMarchy\Runtime\shell-start.ps1");
+        Assert.Contains(@"$winmarchyShell = 'C:\WinMarchy\Runtime\shell-start.ps1'", hook);
+        Assert.Contains("if (Test-Path -LiteralPath $winmarchyShell)", hook);
 
         var fastfetch = Jsonc.ParseObject(ShellExtras.FastfetchConfig(Tokyo));
         var (r, g, b) = ColorMath.Rgb(ColorMath.Legible(Tokyo.Accent, Tokyo.Background, 3.0));
         Assert.Equal($"38;2;{r};{g};{b}", (string?)fastfetch["display"]!["color"]!["keys"]);
         Assert.Equal("colors", (string?)fastfetch["modules"]!.AsArray().Last());
+        // The address in use and its MAC, for IT tickets.
+        var ip = fastfetch["modules"]!.AsArray().OfType<JsonObject>().Single(m => (string?)m["type"] == "localip");
+        Assert.True((bool)ip["showMac"]!);
+        Assert.True((bool)ip["defaultRouteOnly"]!);
     }
 
     [Theory]
@@ -218,5 +227,53 @@ public class BarTests
         Assert.Contains("lunatask", Hotkeys.HotkeyAction.Apps);
         Assert.Contains(ToolCatalog.ExplorerBlurMica, ToolCatalog.Extras);
         Assert.True(ToolCatalog.ExplorerBlurMica.Experimental);
+    }
+
+    [Fact]
+    public void Bar_menus_listen_for_keys_nobody_presses_and_wifi_falls_back_to_windows()
+    {
+        var root = Parse(YasbBar.Config(Exe, new UserSettings { BarModules = { ["memory"] = true, ["media"] = true } }));
+        foreach (var (name, (module, keys, action)) in YasbBar.Menus)
+        {
+            var binding = root["widgets"]![module]!["options"]!["keybindings"]!.AsArray().OfType<JsonObject>().Single();
+            Assert.Equal(keys.ToLowerInvariant(), (string?)binding["keys"]);
+            Assert.Equal(action, (string?)binding["action"]);
+            // WinMarchy sends exactly this combination.
+            Assert.Equal(keys, Hotkeys.KeyCombo.Parse(keys).ToString());
+        }
+        Assert.Equal(YasbBar.Menus.Count, YasbBar.Menus.Values.Select(m => m.Keys).Distinct().Count());
+
+        // Without the location for desktop apps Windows hands out no Wi-Fi list: Windows' own list instead.
+        var noLocation = Parse(YasbBar.Config(Exe, new UserSettings(), new YasbOptions(WifiMenu: false)));
+        var network = noLocation["widgets"]!["network"]!["options"]!;
+        Assert.Equal($"exec \"{Exe}\" --action {YasbBar.NetworkListAction}", (string?)network["callbacks"]!["on_left"]);
+        Assert.Empty(network["keybindings"]!.AsArray());
+    }
+
+    [Fact]
+    public void Media_keys_can_be_sent_without_a_modifier()
+    {
+        Assert.True(Hotkeys.KeyCombo.TryParse("MediaPlayPause", out var play, out _));
+        Assert.Equal("{Media_Play_Pause}", play.ToAhkSend());
+        Assert.True(Hotkeys.HotkeyAction.TryParse("send:MediaPlayPause", out _, out _));
+        Assert.False(Hotkeys.KeyCombo.TryParse("A", out _, out _));
+    }
+
+    [Theory]
+    [InlineData("v2.0.8", "v2.0.7", null, false)]
+    [InlineData("v2.0.7", "v2.0.7", null, true)]
+    [InlineData("v2.0.7", null, "2.0.7", true)]
+    [InlineData("v3.10.1-winmarchy.2", null, "3.10.1-winmarchy.1", false)]
+    [InlineData("2.70.0", null, null, false)]
+    public void A_program_is_updated_when_its_release_changed(string latest, string? installedTag, string? version, bool current) =>
+        Assert.Equal(current, ToolInstaller.IsCurrent(latest, installedTag, version));
+
+    [Fact]
+    public void Windows_powershell_loads_profiles_only_under_remote_signed_or_looser()
+    {
+        Assert.True(PowerShellPolicy.LoadsProfiles("RemoteSigned"));
+        Assert.True(PowerShellPolicy.LoadsProfiles("unrestricted"));
+        Assert.False(PowerShellPolicy.LoadsProfiles("Restricted"));
+        Assert.False(PowerShellPolicy.LoadsProfiles("AllSigned"));
     }
 }

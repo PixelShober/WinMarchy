@@ -93,7 +93,12 @@
     "removed": "{tool} entfernt",
     "glazeStopping": "GlazeWM wird für den Austausch beendet, die Fenster bleiben offen …",
     "glazeFallback": "Der WinMarchy-Build von GlazeWM war nicht zu bekommen, WinMarchy installiert das offizielle Release: {detail}",
-    "removeLater": "{tool} ist noch in Gebrauch und wird beim nächsten Start gelöscht: {path}"
+    "removeLater": "{tool} ist noch in Gebrauch und wird beim nächsten Start gelöscht: {path}",
+    "upToDate": "{tool} ist aktuell ({version}).",
+    "updateFailed": "{tool} ließ sich nicht aktualisieren: {detail}",
+    "updateInUse": "{tool} ist eingeschaltet und von Explorer geladen. Zum Aktualisieren unter Einstellungen ausschalten, abmelden und wieder einschalten.",
+    "updateOtherBuild": "Hier läuft nicht der GlazeWM-Build, der unter Einstellungen → GlazeWM gewählt ist. Der Wechsel dort installiert ihn.",
+    "updateRunning": "{tool} läuft gerade und bleibt, wie es ist. Schließe es und aktualisiere noch einmal."
   },
 
   "setup": {
@@ -111,8 +116,8 @@
       "pi": "Der Coding-Agent Pi im Terminal, Win+Alt+Eingabe.",
       "greenshot": "Bildschirmfotos mit Editor, falls dir das Snipping Tool nicht reicht. Umschalten unter Einstellungen.",
       "yasb": "Die Leiste oben: Workspaces, Uhr mit Kalender, Ton, WLAN und Akku. Kleine Menüs klappen von oben auf; eigene Einträge legst du unter Tiling an.",
-      "starship": "Omarchys Eingabezeile für PowerShell 7: Ordner, Git-Zweig und Status, in den Farben des Themes.",
-      "fastfetch": "Zeigt im Terminal, was in deinem Rechner steckt, wie „Über“ in Omarchy. Im Logo-Menü der Leiste und als Aktion do:about.",
+      "starship": "Omarchys Eingabezeile für PowerShell: Ordner, Git-Zweig und Status, in den Farben des Themes. Lädt Windows PowerShell hier keine Profile, hakt WinMarchy PowerShell 7 mit an.",
+      "fastfetch": "Zeigt in jedem neuen Terminal-Tab, was in deinem Rechner steckt, mit IP- und MAC-Adresse, wie „Über“ in Omarchy. Auch im Logo-Menü der Leiste und unter Info im WinMarchy-Menü.",
       "explorerblurmica": "Unschärfe hinter Explorer in der Farbe des Themes. Nur für dein Konto eingetragen; ausschalten unter Einstellungen.",
       "lunatask": "Aufgaben, Notizen und Gewohnheiten an einem Ort. Der Hersteller veröffentlicht keine Prüfsumme, darum lädt WinMarchy es nicht selbst: Installiere es von lunatask.app, danach startet die Aktion app:lunatask es. Es gelten die Nutzungsbedingungen des Herstellers."
     },
@@ -376,7 +381,8 @@
     "to-workspace": "Fenster auf Workspace (1 bis 10)",
     "screenshot": "Bildschirmfoto (region, window, screen)",
     "about": "Über dieses System (Fastfetch)",
-    "bar-shortcut": "Eigener Eintrag der Leiste"
+    "bar-shortcut": "Eigener Eintrag der Leiste",
+    "bar-menu": "Menü der Leiste öffnen (calendar, audio, network …)"
   },
 
   "tiling": {
@@ -442,7 +448,9 @@
     "shortcutRemove": "Entfernen",
     "shortcutAdd": "Eintrag hinzufügen",
     "shortcutNoTitle": "Der Eintrag mit der Aktion {action} braucht einen Namen.",
-    "yasbOnly": "Nur mit YASB"
+    "yasbOnly": "Nur mit YASB",
+    "newWindowEndsFullscreen": "Neues Fenster beendet Vollbild",
+    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland."
   },
 
   "layouts": {
@@ -592,7 +600,11 @@
     "explorerBlurOnHint": "Eingeschaltet. Der Farbton folgt dem Theme; neue Explorer-Fenster zeigen ihn.",
     "explorerBlurOffHint": "Aus. Beim Einschalten lädt WinMarchy ExplorerBlurMica, falls es noch fehlt.",
     "explorerBlurOn": "ExplorerBlurMica ist an. Öffne ein neues Explorer-Fenster.",
-    "explorerBlurOff": "ExplorerBlurMica ist aus. Ganz weg ist es nach der nächsten Anmeldung."
+    "explorerBlurOff": "ExplorerBlurMica ist aus. Ganz weg ist es nach der nächsten Anmeldung.",
+    "toolUpdates": "Programme aktualisieren",
+    "toolUpdatesHint": "GlazeWM, YASB, AutoHotkey und die Extras, die WinMarchy installiert hat, kommen in der neuesten Version vom Hersteller. Laufende Programme werden dafür kurz beendet. Flow Launcher aktualisiert sich selbst.",
+    "toolUpdatesNone": "WinMarchy hat noch keine Programme installiert.",
+    "toolUpdatesDone": "Programme sind auf dem neuesten Stand."
   },
 
   "log": {
@@ -660,7 +672,8 @@
     "bar": "Leiste: {tool}",
     "zebarRemove": "Zebar entfernen",
     "explorerBlurOn": "ExplorerBlurMica einschalten",
-    "explorerBlurOff": "ExplorerBlurMica ausschalten"
+    "explorerBlurOff": "ExplorerBlurMica ausschalten",
+    "toolUpdates": "Programme aktualisieren"
   },
 
   "steps": {
@@ -705,7 +718,8 @@
     "fastfetch": "Fastfetch einfärben",
     "shellTheme": "Starship und Fastfetch einfärben",
     "notSetUp": "nicht eingerichtet",
-    "zebarRemove": "Zebar entfernen"
+    "zebarRemove": "Zebar entfernen",
+    "update": "{tool} aktualisieren"
   },
 
   "integrations": {
@@ -717,8 +731,9 @@
       "notFound": "Windows Terminal ist nicht installiert."
     },
     "powershell": {
-      "done": "Farben im Profil gesetzt: {path}",
-      "blocked": "Die Ausführungsrichtlinie ({policy}) lässt keine Profile zu. WinMarchy umgeht sie nicht, PowerShell bleibt in den Standardfarben."
+      "done": "PowerShell-Profil eingerichtet: {path}",
+      "blocked": "Die Ausführungsrichtlinie ({policy}) lässt keine Profile zu. WinMarchy umgeht sie nicht, PowerShell bleibt in den Standardfarben.",
+      "desktopBlocked": "Windows PowerShell lädt hier keine Profile (Ausführungsrichtlinie {policy}), WinMarchy umgeht das nicht. Farben, Starship und Fastfetch gibt es in PowerShell 7, zu finden unter Einrichtung → Extras."
     },
     "vscode": {
       "done": "Theme gesetzt: {path}",
@@ -761,10 +776,14 @@
       "off": "ExplorerBlurMica ist ausgetragen. Nach der nächsten Anmeldung lädt Explorer es nicht mehr."
     },
     "starship": {
-      "done": "Starship ist in PowerShell 7 eingerichtet und zeigt sich im nächsten Terminal-Tab."
+
     },
     "fastfetch": {
-      "done": "Fastfetch hat die Farben des Themes."
+
+    },
+    "shell": {
+      "done": "Fastfetch und Starship starten mit jedem neuen PowerShell-Tab: {path}",
+      "noProfile": "Keine PowerShell auf diesem Rechner lädt ein Profil. Starship und Fastfetch zeigen sich, sobald PowerShell 7 installiert ist (Einrichtung → Extras). Fastfetch allein startet aus dem WinMarchy-Menü unter Info."
     }
   },
 
@@ -845,7 +864,10 @@
     "batteryLeft": "Akku: {percent} %, noch {hours} h {minutes} min",
     "noneMinimized": "Kein Fenster ist minimiert.",
     "restoredMinimized": "{count} Fenster zurückgeholt.",
-    "fastfetchMissing": "Fastfetch ist nicht installiert. Du findest es unter Einrichtung → Extras."
+    "fastfetchMissing": "Fastfetch ist nicht installiert. Du findest es unter Einrichtung → Extras.",
+    "barMenuNoYasb": "Die Menüs der Leiste gibt es nur mit YASB, und YASB muss laufen.",
+    "barMenuOff": "„{entry}“ ist in der Leiste ausgeschaltet. Einschalten unter Tiling → Die Leiste zeigt.",
+    "barMenuUnknown": "Die Leiste hat kein Menü „{menu}“. Möglich sind logo, calendar, audio, network, media, cpu und memory."
   },
 
   "agent": {
@@ -1133,6 +1155,7 @@
     "memory": "Arbeitsspeicher",
     "disk": "Datenträger",
     "battery": "Akku",
-    "locale": "Sprache"
+    "locale": "Sprache",
+    "localip": "IP und MAC"
   }
 }

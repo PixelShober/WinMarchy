@@ -19,6 +19,8 @@ public static class KeySender
         ["Enter"] = 0x0D, ["Space"] = 0x20, ["Tab"] = 0x09, ["Escape"] = 0x1B, ["Backspace"] = 0x08, ["Delete"] = 0x2E,
         ["Insert"] = 0x2D, ["Home"] = 0x24, ["End"] = 0x23, ["PageUp"] = 0x21, ["PageDown"] = 0x22, ["Left"] = 0x25,
         ["Up"] = 0x26, ["Right"] = 0x27, ["Down"] = 0x28, ["PrintScreen"] = 0x2C, ["NumpadAdd"] = 0x6B, ["NumpadSub"] = 0x6D,
+        ["VolumeMute"] = 0xAD, ["VolumeDown"] = 0xAE, ["VolumeUp"] = 0xAF, ["MediaNext"] = 0xB0, ["MediaPrev"] = 0xB1,
+        ["MediaStop"] = 0xB2, ["MediaPlayPause"] = 0xB3,
     };
 
     public static void Send(KeyCombo combo)
@@ -80,7 +82,7 @@ public static class KeySender
         return 0;
     }
 
-    static bool Extended(ushort vk) => vk is 0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2D or 0x2E;
+    static bool Extended(ushort vk) => vk is 0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2D or 0x2E or (>= 0xAD and <= 0xB3);
 
     static INPUT Key(ushort vk, bool up, bool extended = false) => new()
     {

@@ -79,6 +79,8 @@ public sealed class Locations
 
     // PowerShell 7 profile and the colour file it loads
     public string PowerShellProfile => Path.Combine(Documents, "PowerShell", "Microsoft.PowerShell_profile.ps1");
+    // Windows PowerShell 5.1, which the terminal opens when PowerShell 7 is not installed
+    public string WindowsPowerShellProfile => Path.Combine(Documents, "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1");
 
     // Startup folder entries WinMarchy owns
     public string AutostartShortcut => Path.Combine(Startup, "WinMarchy.lnk");

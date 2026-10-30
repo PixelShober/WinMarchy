@@ -100,3 +100,12 @@ Das Drei-Finger-Wischen auf dem Touchpad legst du unter **Einstellungen → Blue
 ## Minimieren
 
 Omarchy minimiert nicht; was aus dem Weg soll, kommt auf einen anderen Workspace oder ins Scratchpad. WinMarchy hält es genauso: Minimiert ein Fenster, das GlazeWM verwaltet, kommt es nach einer Viertelsekunde in seine Kachel zurück. Programme, die sich in den Infobereich verabschieden, bleiben dort. Falls doch etwas minimiert bleibt, holt `Win+M` alles zurück. Der Schalter „Minimieren verhindern“ unter **Tiling** stellt das Verhalten von Windows wieder her.
+
+## Vollbild und neue Fenster
+
+Öffnet sich auf einem Workspace ein neues Fenster, während dort eines im Vollbild ist, geht das Vollbild-Fenster zurück an seinen Platz (in seine Kachel oder schwebend), wie bei Hyprlands `new_window_takes_over_fullscreen`. So liegt das neue Fenster weder versteckt dahinter noch darüber. Abschalten lässt sich das unter **Tiling → Neues Fenster beendet Vollbild**. Dialoge, die schwebend aufgehen, beenden das Vollbild nicht.
+
+## Win+Strg+D und das Scrolling-Layout
+
+Win+Strg+D startet die Programme der Bildschirme nacheinander. Vor jedem Start bekommt der neue Workspace den Fokus, damit das Fenster gleich dort aufgeht. Solange WinMarchy auf die Fenster wartet, lassen die Layouts neue Fenster in Ruhe, und jedes wird erst angeordnet, wenn es auf seinem Workspace liegt. Vorher konnte das Scrolling-Layout ein Fenster auf dem Workspace festhalten, den es gerade verlassen sollte.
+

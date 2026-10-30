@@ -83,6 +83,9 @@ public sealed class UserSettings
     /// </summary>
     public bool BlockMinimize { get; set; } = true;
 
+    /// <summary>A window that opens next to one in full screen ends the full screen, as in Hyprland.</summary>
+    public bool NewWindowEndsFullscreen { get; set; } = true;
+
     /// <summary>How many columns the scrolling layout shows side by side (1 to 3).</summary>
     public int ScrollingColumns { get; set; } = 2;
 

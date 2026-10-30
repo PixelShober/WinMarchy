@@ -159,7 +159,11 @@ public static class Diagnostics
         });
         Guard("Shell and Explorer extras", () =>
         {
-            Line($"Starship prompt: {(File.Exists(Paths.PromptScript) ? Paths.PromptScript : "not set up")} · Fastfetch config: {(File.Exists(Paths.FastfetchConfig) ? "yes" : "no")}");
+            Line($"shell start script: {(File.Exists(Paths.ShellScript) ? Paths.ShellScript : "not set up")} · Fastfetch config: {(File.Exists(Paths.FastfetchConfig) ? "yes" : "no")}");
+            Line($"execution policy: Windows PowerShell {Integrations.PowerShellPolicy.WindowsPowerShell()}, PowerShell 7 {Integrations.PowerShellPolicy.BlocksProfiles() ?? "RemoteSigned (default)"}");
+            foreach (var profile in new[] { loc.PowerShellProfile, loc.WindowsPowerShellProfile })
+                Line($"{profile}: {(File.Exists(profile) && FileSafety.ReadShared(profile).Contains("WINMARCHY", StringComparison.Ordinal) ? "WinMarchy block" : File.Exists(profile) ? "no WinMarchy block" : "missing")}");
+            Line($"location for desktop apps (Wi-Fi list): {(LocationAccess.DesktopAppsAllowed() ? "allowed" : "off")}");
             if (OperatingSystem.IsWindows())
                 Line("ExplorerBlurMica: " + (Integrations.ExplorerBlur.RegisteredDll(new WindowsUserRegistry()) ?? "not registered for this user"));
         });

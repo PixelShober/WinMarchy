@@ -13,10 +13,42 @@ namespace WinMarchy.Core.Integrations;
 /// changes. The look is Omarchy's Waybar: square, one accent, small menus that drop down from the
 /// bar. Icons come from Segoe Fluent Icons, which Windows 11 brings along.
 /// </summary>
+/// <summary>What the bar's config depends on besides the settings.</summary>
+/// <param name="Fastfetch">Fastfetch is installed: the logo menu offers the system information.</param>
+/// <param name="WifiMenu">
+/// Windows lets desktop apps see the location. Without it Windows 11 hands out no Wi-Fi list, so a
+/// click on the network opens Windows' own list instead of YASB's.
+/// </param>
+public sealed record YasbOptions(bool Fastfetch = false, bool WifiMenu = true);
+
 public static class YasbBar
 {
     public const string BarName = "winmarchy";
     const string Marker = "# Written by WinMarchy.";
+
+    /// <summary>
+    /// The menus a shortcut can open (do:bar-menu …). YASB listens for a key combination nobody
+    /// presses by hand and WinMarchy sends it; YASB has no other way in from outside.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, (string Module, string Keys, string Action)> Menus = new Dictionary<string, (string, string, string)>
+    {
+        ["logo"] = ("logo", "Ctrl+Alt+Shift+F13", "toggle_menu"),
+        ["calendar"] = ("clock", "Ctrl+Alt+Shift+F14", "toggle_calendar"),
+        ["audio"] = ("audio", "Ctrl+Alt+Shift+F15", "toggle_volume_menu"),
+        ["network"] = ("network", "Ctrl+Alt+Shift+F16", "toggle_menu"),
+        ["media"] = ("media", "Ctrl+Alt+Shift+F17", "toggle_media_menu"),
+        ["cpu"] = ("cpu", "Ctrl+Alt+Shift+F18", "toggle_menu"),
+        ["memory"] = ("memory", "Ctrl+Alt+Shift+F19", "toggle_menu"),
+    };
+
+    /// <summary>The menu's hidden key combination, as YASB writes it, for the module's "keybindings".</summary>
+    static JsonArray Keybinding(string module)
+    {
+        var list = new JsonArray();
+        foreach (var (_, (_, keys, action)) in Menus.Where(m => m.Value.Module == module))
+            list.Add(new JsonObject { ["keys"] = keys.ToLowerInvariant(), ["action"] = action, ["screen"] = "active" });
+        return list;
+    }
 
     /// <summary>The classes YASB gives a workspace button.</summary>
     static readonly string[] WorkspaceStates = { "populated", "empty", "active_populated", "active_empty", "focused_populated", "focused_empty" };
@@ -31,9 +63,9 @@ public static class YasbBar
     /// The whole config.yaml. It is written as JSON, which YAML reads as well; that way every string
     /// is escaped correctly, whatever the user calls a shortcut.
     /// </summary>
-    /// <param name="fastfetch">Fastfetch is installed: the logo menu offers the system information.</param>
-    public static string Config(string winMarchyExe, UserSettings s, bool fastfetch = false)
+    public static string Config(string winMarchyExe, UserSettings s, YasbOptions? options = null)
     {
+        var o = options ?? new YasbOptions();
         var widgets = new JsonObject();
         var left = new JsonArray();
         var center = new JsonArray();
@@ -45,7 +77,7 @@ public static class YasbBar
             side.Add(name);
         }
 
-        if (On("logo")) Add(left, "logo", Logo(winMarchyExe, s, fastfetch));
+        if (On("logo")) Add(left, "logo", Logo(winMarchyExe, s, o.Fastfetch));
         if (On("workspaces")) Add(left, "workspaces", Workspaces());
         if (On("direction")) Add(left, "direction", Widget("glazewm.tiling_direction.GlazewmTilingDirectionWidget", new JsonObject
         {
@@ -86,7 +118,7 @@ public static class YasbBar
             ["show_unpinned_button"] = true,
             ["tooltip"] = true,
         }));
-        if (On("network")) Add(right, "network", Network(winMarchyExe));
+        if (On("network")) Add(right, "network", Network(winMarchyExe, o.WifiMenu));
         if (On("audio")) Add(right, "audio", Audio(winMarchyExe));
         if (On("cpu")) Add(right, "cpu", Widget("yasb.cpu.CpuWidget", new JsonObject
         {
@@ -96,6 +128,7 @@ public static class YasbBar
             ["hide_decimal"] = true,
             ["callbacks"] = Callbacks("toggle_menu", "do_nothing", Exec(winMarchyExe, "app:taskmanager")),
             ["menu"] = Popup(new JsonObject { ["enabled"] = true, ["show_graph"] = true }),
+            ["keybindings"] = Keybinding("cpu"),
         }));
         if (On("memory")) Add(right, "memory", Widget("yasb.memory.MemoryWidget", new JsonObject
         {
@@ -105,6 +138,7 @@ public static class YasbBar
             ["hide_decimal"] = true,
             ["callbacks"] = Callbacks("toggle_menu", "do_nothing", Exec(winMarchyExe, "app:taskmanager")),
             ["menu"] = Popup(new JsonObject { ["enabled"] = true, ["show_graph"] = true }),
+            ["keybindings"] = Keybinding("memory"),
         }));
         if (On("battery")) Add(right, "battery", Battery(winMarchyExe));
 
@@ -188,6 +222,7 @@ public static class YasbBar
                 ["task_manager"] = L.T("bar.power.taskManager"),
             },
             ["callbacks"] = Callbacks("toggle_menu", "do_nothing", Exec(exe, "do:menu")),
+            ["keybindings"] = Keybinding("logo"),
         });
     }
 
@@ -229,6 +264,7 @@ public static class YasbBar
             ["tooltip"] = false,
             ["calendar"] = calendar,
             ["callbacks"] = Callbacks("toggle_calendar", "toggle_label", Exec(exe, "app:calendar")),
+            ["keybindings"] = Keybinding("clock"),
         });
     }
 
@@ -257,10 +293,14 @@ public static class YasbBar
         ["max_field_size"] = new JsonObject { ["label"] = 24, ["label_alt"] = 40, ["truncate_whole_label"] = false },
         ["media_menu"] = Popup(new JsonObject { ["show_source"] = true }),
         ["callbacks"] = Callbacks("toggle_media_menu", "toggle_play_pause", "toggle_label"),
+        ["keybindings"] = Keybinding("media"),
     });
 
-    /// <summary>Wi-Fi strength or the network cable; a click lists the networks, right click opens the settings.</summary>
-    static JsonObject Network(string exe) => Widget("yasb.wifi.WifiWidget", new JsonObject
+    /// <summary>
+    /// Wi-Fi strength or the network cable; a click lists the networks (YASB's list, or Windows' own
+    /// when Windows keeps the location from desktop apps), right click opens the settings.
+    /// </summary>
+    static JsonObject Network(string exe, bool wifiMenu) => Widget("yasb.wifi.WifiWidget", new JsonObject
     {
         ["label"] = "<span>{wifi_icon}</span>",
         ["label_alt"] = "<span>{wifi_icon}</span> {wifi_name}",
@@ -269,9 +309,13 @@ public static class YasbBar
         ["ethernet_label"] = "<span>{wifi_icon}</span>",
         ["ethernet_label_alt"] = "<span>{wifi_icon}</span> {ip_addr}",
         ["ethernet_icon"] = "",
-        ["callbacks"] = Callbacks("toggle_menu", "toggle_label", Exec(exe, "open:ms-settings:network")),
+        ["callbacks"] = Callbacks(wifiMenu ? "toggle_menu" : Exec(exe, NetworkListAction), "toggle_label", Exec(exe, "open:ms-settings:network")),
         ["menu_config"] = Popup(new JsonObject()),
+        ["keybindings"] = wifiMenu ? Keybinding("network") : new JsonArray(),
     });
+
+    /// <summary>Windows' own list of Wi-Fi networks.</summary>
+    public const string NetworkListAction = "open:ms-availablenetworks:";
 
     /// <summary>Volume with a slider and the output devices; right click mutes, the wheel turns it up or down.</summary>
     static JsonObject Audio(string exe) => Widget("yasb.volume.VolumeWidget", new JsonObject
@@ -285,6 +329,7 @@ public static class YasbBar
         ["icons"] = new JsonObject { ["muted"] = "", ["10"] = "", ["30"] = "", ["60"] = "", ["100"] = "" },
         ["audio_menu"] = Popup(new JsonObject { ["show_apps"] = true, ["show_app_labels"] = false }),
         ["callbacks"] = Callbacks("toggle_volume_menu", Exec(exe, "open:ms-settings:sound"), "toggle_mute"),
+        ["keybindings"] = Keybinding("audio"),
     });
 
     static JsonObject Battery(string exe) => Widget("yasb.battery.BatteryWidget", new JsonObject
@@ -451,18 +496,18 @@ public static class YasbBar
 
     // ------------------------------------------------------------------ files
 
-    public static void Install(IntegrationContext ctx, Palette palette, string winMarchyExe, bool fastfetch)
+    public static void Install(IntegrationContext ctx, Palette palette, string winMarchyExe, YasbOptions options)
     {
-        ctx.WriteFile(ctx.Loc.YasbConfig, Config(winMarchyExe, ctx.Settings, fastfetch));
+        ctx.WriteFile(ctx.Loc.YasbConfig, Config(winMarchyExe, ctx.Settings, options));
         ctx.WriteFile(ctx.Loc.YasbStyles, Styles(palette));
         ctx.Report(L.T("integrations.yasb.done", ("path", ctx.Loc.YasbDir)));
     }
 
     /// <summary>The entries changed (Tiling page). YASB reloads the file by itself. False if WinMarchy's bar is not set up.</summary>
-    public static bool WriteConfig(IntegrationContext ctx, string winMarchyExe, bool fastfetch)
+    public static bool WriteConfig(IntegrationContext ctx, string winMarchyExe, YasbOptions options)
     {
         if (!IsInstalled(ctx.Loc)) return false;
-        ctx.WriteFile(ctx.Loc.YasbConfig, Config(winMarchyExe, ctx.Settings, fastfetch));
+        ctx.WriteFile(ctx.Loc.YasbConfig, Config(winMarchyExe, ctx.Settings, options));
         return true;
     }
 

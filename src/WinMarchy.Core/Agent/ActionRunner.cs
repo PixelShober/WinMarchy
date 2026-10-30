@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using WinMarchy.Core.GlazeWm;
 using WinMarchy.Core.Hotkeys;
+using WinMarchy.Core.Integrations;
 using WinMarchy.Core.Platform;
 using WinMarchy.Core.Tools;
 
@@ -160,6 +161,35 @@ public sealed class ActionRunner
     }
 
     /// <summary>
+    /// One of the bar's drop-down menus (YASB). YASB listens for a key combination nobody presses by
+    /// hand, and WinMarchy sends it. Without the location for desktop apps, Windows' own Wi-Fi list.
+    /// </summary>
+    void BarMenu(string name)
+    {
+        if (!YasbBar.Menus.TryGetValue(name, out var menu))
+        {
+            _host.Notify(L.T("actions.barMenuUnknown", ("menu", name)));
+            return;
+        }
+        if (name == "network" && !LocationAccess.DesktopAppsAllowed())
+        {
+            AppLauncher.Open(YasbBar.NetworkListAction["open:".Length..]);
+            return;
+        }
+        if (Bars.Chosen(_host.Settings, Locations.Current) != Bars.Yasb || Process.GetProcessesByName("yasb").Length == 0)
+        {
+            _host.Notify(L.T("actions.barMenuNoYasb"));
+            return;
+        }
+        if (!Bars.IsOn(_host.Settings, menu.Module))
+        {
+            _host.Notify(L.T("actions.barMenuOff", ("entry", L.T("bar.modules." + menu.Module))));
+            return;
+        }
+        KeySender.Send(KeyCombo.Parse(menu.Keys));
+    }
+
+    /// <summary>
     /// A button of the user's own in the bar (YASB): it calls by number, so the action itself never
     /// passes through cmd.exe. The action is checked like any other.
     /// </summary>
@@ -197,6 +227,7 @@ public sealed class ActionRunner
             case "screenshot": await Screenshots.TakeAsync(_host.Settings, arg, _host.Notify, ct); break;
             case "about": About(); break;
             case "bar-shortcut": await BarShortcutAsync(arg, ct); break;
+            case "bar-menu": BarMenu(arg ?? "logo"); break;
             case "scale-up":
             case "scale-down":
                 var scale = DisplayScale.Step(command == "scale-up" ? 1 : -1);
@@ -263,14 +294,19 @@ public sealed class ActionRunner
         var opened = await windows.NewDesktopAsync(GlazeConfig.WorkspaceCount, s.WorkspaceMonitors, ct);
         Log.Trace("desktop-new: opened " + string.Join(", ", opened.Select(o => $"monitor {o.Monitor} → {o.Workspace}")) +
                   "; apps " + string.Join(", ", s.DesktopApps.Select(p => $"{p.Key}={p.Value}")), "desktop");
+        // Each app starts with its workspace in focus; afterwards the focus goes back to the screen the user was on.
+        var home = await windows.FocusedWorkspaceAsync(ct);
+        bool started = false;
         foreach (var (monitor, workspace) in opened)
         {
             if (!s.DesktopApps.TryGetValue(monitor.ToString(), out var action) || !HotkeyAction.TryParse(action, out var a, out _) ||
                 a.Kind is not (ActionKind.App or ActionKind.Web)) continue;
             Log.Trace($"desktop-new: starting {action} for workspace {workspace}", "desktop");
+            started = true;
             if (!await windows.CatchNextWindowAsync(workspace, () => _ = RunAsync(action, ct), TimeSpan.FromSeconds(12), ct))
                 Log.Info(L.T("tiling.desktopAppLate", ("action", action), ("workspace", workspace)));
         }
+        if (started && home != null) await windows.FocusWorkspaceAsync(home, ct);
     }
 
     static bool ForegroundIsTerminal()

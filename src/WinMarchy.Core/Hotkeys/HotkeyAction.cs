@@ -47,7 +47,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "gaps-toggle",
         "transparency-toggle", "move-window-monitor", "restore-minimized", "copy", "paste", "reload",
         "toggle-split", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
-        "focus", "swap", "to-workspace", "screenshot", "about", "bar-shortcut",
+        "focus", "swap", "to-workspace", "screenshot", "about", "bar-shortcut", "bar-menu",
     };
 
     /// <summary>Commands WinMarchy uses itself (the bar's own buttons) and the shortcut editor does not offer.</summary>

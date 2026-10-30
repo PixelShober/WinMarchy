@@ -222,12 +222,24 @@ public sealed class Components
         }
     }
 
+    /// <summary>
+    /// Starts the hotkey script or swaps it for the newly written one. The script has "#SingleInstance
+    /// Force": the new instance takes over from the running one by itself, so there is no moment in
+    /// which Windows gets the Win key and opens the Start menu. Other scripts that hook LWin go first.
+    /// </summary>
     public bool StartAhk()
     {
         if (AhkExe is not { } ahk || !File.Exists(Paths.AhkScript)) return false;
-        StopAhk();
+        var titles = AhkWindowTitles();
+        foreach (var p in OurAhkProcesses().Where(p => !IsOwnScript(p, titles)))
+        {
+            try { p.Kill(); p.WaitForExit(3000); } catch { }
+        }
         return Platform.AppLauncher.Start(ahk, $"\"{Paths.AhkScript}\"");
     }
+
+    static bool IsOwnScript(Process p, IReadOnlyDictionary<int, string>? titles = null) =>
+        (ScriptOf(p, titles) ?? "").Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The command line of another process (via WMI, late-bound).</summary>
     static string? CommandLine(Process p)
@@ -264,7 +276,7 @@ public sealed class Components
     public IReadOnlyList<string> RetireLegacy(BackupStore backups, RestorePoint point)
     {
         var done = new List<string>();
-        foreach (var p in OurAhkProcesses().Where(p => !(ScriptOf(p) ?? "").Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase)))
+        foreach (var p in OurAhkProcesses().Where(p => !IsOwnScript(p)))
         {
             try { p.Kill(); done.Add(L.T("legacy.stoppedScript", ("pid", p.Id))); } catch { }
         }

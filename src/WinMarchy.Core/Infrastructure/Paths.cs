@@ -47,8 +47,8 @@ public static class Paths
     public static string AhkScript => Path.Combine(RuntimeDir, "winmarchy-hotkeys.ahk");
     /// <summary>Starship's settings for the prompt WinMarchy sets up (STARSHIP_CONFIG points here, the user's own file stays untouched).</summary>
     public static string StarshipConfig => Path.Combine(RuntimeDir, "starship.toml");
-    /// <summary>Loads Starship in PowerShell 7; the profile hook runs it.</summary>
-    public static string PromptScript => Path.Combine(RuntimeDir, "starship-prompt.ps1");
+    /// <summary>What a new PowerShell tab starts with (Fastfetch, Starship's prompt); the profile hook runs it.</summary>
+    public static string ShellScript => Path.Combine(RuntimeDir, "shell-start.ps1");
     public static string FastfetchConfig => Path.Combine(RuntimeDir, "fastfetch.jsonc");
 
     public static string Ensure(string dir)

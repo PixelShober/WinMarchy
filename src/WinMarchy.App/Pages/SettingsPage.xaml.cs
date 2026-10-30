@@ -319,6 +319,26 @@ public partial class SettingsPage : UserControl, IPage
         if (u.Error == null) Toasts.Show(ToastKind.Ok, u.Available ? L.T("settings.updateAvailable", ("version", u.Latest)) : L.T("settings.upToDate"));
     }
 
+    /// <summary>The programs WinMarchy installed, each from its vendor's latest release if that is newer.</summary>
+    void OnToolUpdates(object sender, RoutedEventArgs e)
+    {
+        var steps = AppModel.Engine.ToolUpdateSteps();
+        if (steps.Count == 0)
+        {
+            Toasts.Show(ToastKind.Ok, L.T("settings.toolUpdatesNone"));
+            return;
+        }
+        var job = AppModel.Run("tool-updates", "setup", L.T("jobs.toolUpdates"), steps, async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error, j.State == JobState.Done ? L.T("settings.toolUpdatesDone") : j.Status);
+                OnShown();
+            });
+        });
+        if (job != null) ToolsJob.Follow(job.Id);
+    }
+
     void OnAutoUpdate(object sender, RoutedEventArgs e) => AppModel.Update(s => s.AutoUpdate = AutoUpdate.IsChecked == true);
 
     void OnPathsChanged(object sender, RoutedEventArgs e)

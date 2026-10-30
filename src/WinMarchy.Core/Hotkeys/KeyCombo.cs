@@ -36,7 +36,16 @@ public sealed record KeyCombo(Mods Mods, string Key)
         ["PrintScreen"] = ("PrintScreen", "print_screen"),
         ["NumpadAdd"] = ("NumpadAdd", "add"), ["NumpadSub"] = ("NumpadSub", "subtract"),
         ["WheelUp"] = ("WheelUp", ""), ["WheelDown"] = ("WheelDown", ""),
+        // Media keys: mostly sent (send:MediaPlayPause), but they may also start a shortcut on their own.
+        ["MediaPlayPause"] = ("Media_Play_Pause", "media_play_pause"), ["MediaNext"] = ("Media_Next", "media_next_track"),
+        ["MediaPrev"] = ("Media_Prev", "media_prev_track"), ["MediaStop"] = ("Media_Stop", "media_stop"),
+        ["VolumeMute"] = ("Volume_Mute", "volume_mute"), ["VolumeUp"] = ("Volume_Up", "volume_up"), ["VolumeDown"] = ("Volume_Down", "volume_down"),
     };
+
+    /// <summary>Keys that work without a modifier: Print, F13 to F24 and the media keys.</summary>
+    static bool StandsAlone(string key) =>
+        key == "PrintScreen" || key.StartsWith("Media", StringComparison.Ordinal) || key.StartsWith("Volume", StringComparison.Ordinal) ||
+        (key.StartsWith('F') && int.TryParse(key[1..], out var f) && f >= 13);
 
     static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -111,7 +120,7 @@ public sealed record KeyCombo(Mods Mods, string Key)
             error = L.T("hotkeys.errors.unknownKey", ("key", parts[^1]), ("combo", raw));
             return false;
         }
-        if (mods == Mods.None && !(key == "PrintScreen" || (key.StartsWith('F') && int.TryParse(key[1..], out var f) && f >= 13)))
+        if (mods == Mods.None && !StandsAlone(key))
         {
             error = L.T("hotkeys.errors.needsModifier", ("combo", raw));
             return false;

@@ -84,7 +84,16 @@ public partial class SetupPage : UserControl, IPage
             Margin = new Thickness(0, 0, 0, 14),
         };
         if (status.Installed) box.ToolTip = status.Path;
-        box.Click += (_, _) => UpdateExtrasButton();
+        box.Click += (_, _) =>
+        {
+            // Starship and Fastfetch start from the PowerShell profile. Where Windows PowerShell loads
+            // none (Restricted, the default), they need PowerShell 7.
+            if (box.IsChecked == true && (tool == ToolCatalog.Starship || tool == ToolCatalog.Fastfetch) &&
+                !PowerShellPolicy.LoadsProfiles(PowerShellPolicy.WindowsPowerShell()) &&
+                _tools.TryGetValue(ToolCatalog.PowerShell.Id, out var pwsh) && pwsh.IsEnabled)
+                pwsh.IsChecked = true;
+            UpdateExtrasButton();
+        };
         _tools[tool.Id] = box;
         return box;
     }

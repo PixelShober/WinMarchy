@@ -20,7 +20,7 @@ public partial class TilingPage : UserControl, IPage
         "calculator", "taskmanager",
     };
     readonly Dictionary<string, RadioButton> _layouts = new();
-    readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _minimize;
+    readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _minimize, _fullscreen;
     readonly List<(TextBox Workspaces, ComboBox App)> _monitorRows = new();
     readonly Dictionary<string, CheckBox> _barModules = new();
     readonly TextBox _trayPinned = new();
@@ -60,7 +60,8 @@ public partial class TilingPage : UserControl, IPage
         _titleBars = UiKit.Switch(L.T("tiling.titleBars"), s.HideTitleBars, L.T("tiling.titleBarsHint"));
         _dim = UiKit.Switch(L.T("tiling.dim"), s.DimInactive, L.T("tiling.dimHint"));
         _focusFollows = UiKit.Switch(L.T("tiling.focusFollows"), s.FocusFollowsCursor, null);
-        foreach (var c in new[] { _square, _titleBars, _dim, _focusFollows }) Look.Children.Add(c);
+        _fullscreen = UiKit.Switch(L.T("tiling.newWindowEndsFullscreen"), s.NewWindowEndsFullscreen, L.T("tiling.newWindowEndsFullscreenHint"));
+        foreach (var c in new[] { _square, _titleBars, _dim, _focusFollows, _fullscreen }) Look.Children.Add(c);
         _taskbar = UiKit.Switch(L.T("setup.taskbar"), s.HideTaskbar, L.T("tiling.taskbarHint"));
         _bar = UiKit.Switch(L.T("setup.bar"), s.ShowBar, L.T("setup.barHint"));
         _minimize = UiKit.Switch(L.T("tiling.blockMinimize"), s.BlockMinimize, L.T("tiling.blockMinimizeHint"));
@@ -437,6 +438,7 @@ public partial class TilingPage : UserControl, IPage
             s.HideTitleBars = _titleBars.IsChecked == true;
             s.DimInactive = _dim.IsChecked == true;
             s.FocusFollowsCursor = _focusFollows.IsChecked == true;
+            s.NewWindowEndsFullscreen = _fullscreen.IsChecked == true;
             s.HideTaskbar = _taskbar.IsChecked == true;
             s.ShowBar = _bar.IsChecked == true;
             s.BlockMinimize = _minimize.IsChecked == true;

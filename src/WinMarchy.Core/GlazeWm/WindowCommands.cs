@@ -555,14 +555,17 @@ public sealed class WindowCommands
     }, ct);
 
     /// <summary>
-    /// Waits for the next window GlazeWM takes on (an app that was just started) and moves it to the
-    /// given workspace if it opened elsewhere. Apps that allow only one window (Stackfield, Teams, …)
-    /// bring their open window to the front instead: when, shortly after the start, the focus jumps
-    /// to a window on another workspace, that one comes over. False if nothing came in time.
+    /// Starts an app on the given workspace: the workspace gets the focus first, so the window opens
+    /// there, and one that opens elsewhere anyway is moved over. Apps that allow only one window
+    /// (Stackfield, Teams, …) bring their open window to the front instead: when, shortly after the
+    /// start, the focus jumps to a window on another workspace, that one comes over. The layouts
+    /// leave new windows alone meanwhile and place this one once it is where it belongs. False if
+    /// nothing came in time.
     /// </summary>
     public async Task<bool> CatchNextWindowAsync(string workspace, Action start, TimeSpan timeout, CancellationToken ct)
     {
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await Cmd($"focus --workspace {workspace}", ct);
         string? before = null;
         try { before = await FocusedWindowAsync(ct) is { } f ? GlazeTree.Str(f, "id") : null; } catch (WinMarchyException) { }
         var started = DateTime.MinValue;
@@ -576,6 +579,7 @@ public sealed class WindowCommands
                      GlazeTree.Str(c, "id") is { } focused && focused != before)
                 tcs.TrySetResult(focused);
         }
+        var hold = _layouts?.HoldNewWindows();
         _ipc.Event += OnEvent;
         try
         {
@@ -583,20 +587,30 @@ public sealed class WindowCommands
             start();
             var done = await Task.WhenAny(tcs.Task, Task.Delay(timeout, ct));
             if (done != tcs.Task) return false;
+            var id = tcs.Task.Result;
             var data = await _ipc.QueryAsync("workspaces", ct);
-            if (GlazeTree.WorkspaceOf(data, tcs.Task.Result) is { } ws && GlazeTree.Str(ws, "name") is { } now && now != workspace)
+            if (GlazeTree.WorkspaceOf(data, id) is { } ws && GlazeTree.Str(ws, "name") is { } now && now != workspace)
             {
-                Log.Trace($"desktop-new: window {tcs.Task.Result} came up on workspace {now}, moving it to {workspace}", "desktop");
-                await Cmd($"move --workspace {workspace}", ct, tcs.Task.Result);
+                Log.Trace($"desktop-new: window {id} came up on workspace {now}, moving it to {workspace}", "desktop");
+                await Cmd($"move --workspace {workspace}", ct, id);
                 await Cmd($"focus --workspace {workspace}", ct);
             }
+            _ipc.Event -= OnEvent;
+            hold?.Dispose();
+            if (_layouts != null) await _layouts.AdoptAsync(id, ct);
             return true;
         }
         finally
         {
             _ipc.Event -= OnEvent;
+            hold?.Dispose();
         }
     }
+
+    /// <summary>The regular workspace that has the focus now, if any.</summary>
+    public async Task<string?> FocusedWorkspaceAsync(CancellationToken ct) => (await SnapshotAsync(ct)).Here;
+
+    public Task FocusWorkspaceAsync(string name, CancellationToken ct) => Cmd($"focus --workspace {name}", ct);
 
     /// <summary>
     /// Win+Ctrl+Left/Right: every monitor goes to its next (or previous) workspace at once, the way

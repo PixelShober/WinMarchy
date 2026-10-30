@@ -9,14 +9,18 @@ namespace WinMarchy.Core.Tools;
 /// </summary>
 public static class ToolInstaller
 {
-    public static async Task<string> InstallAsync(ToolDef tool, SetupStep step, CancellationToken ct)
+    /// <param name="release">The release to install, if the caller looked it up already (an update).</param>
+    public static async Task<string> InstallAsync(ToolDef tool, SetupStep step, CancellationToken ct, ReleaseInfo? release = null)
     {
         if (tool.Kind == InstallKind.None || tool.Repo == null || tool.Asset == null)
             throw new WinMarchyException("toolNotInstallable", ("tool", tool.Name));
 
         using var http = Net.CreateClient(TimeSpan.FromMinutes(15));
-        step.Report(L.T("tools.lookup", ("tool", tool.Name)));
-        var release = await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+        if (release == null)
+        {
+            step.Report(L.T("tools.lookup", ("tool", tool.Name)));
+            release = await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+        }
         var asset = release.Assets.Keys.FirstOrDefault(n => tool.Asset.IsMatch(n))
             ?? throw new WinMarchyException("toolAssetMissing", ("tool", tool.Name), ("tag", release.Tag));
         if (!release.Sha256.TryGetValue(asset, out var sha))
@@ -50,7 +54,12 @@ public static class ToolInstaller
                 break;
         }
         try { File.Delete(file); } catch { }
-        AppState.Update(s => { if (!s.InstalledTools.Contains(tool.Id)) s.InstalledTools.Add(tool.Id); });
+        var tag = release.Tag;
+        AppState.Update(s =>
+        {
+            if (!s.InstalledTools.Contains(tool.Id)) s.InstalledTools.Add(tool.Id);
+            s.ToolTags[tool.Id] = tag;
+        });
         step.Report(L.T("tools.installed", ("tool", tool.Name), ("path", exe)));
         return exe;
     }
@@ -159,6 +168,26 @@ public static class ToolInstaller
         }
         Directory.Move(staging, tool.ToolDir);
         return Path.Combine(tool.ToolDir, relative);
+    }
+
+    /// <summary>
+    /// The vendor's latest release if it is not the one installed, else null. The installed one is
+    /// known by the tag WinMarchy noted when it installed it; for older installs by the program's
+    /// version.
+    /// </summary>
+    public static async Task<ReleaseInfo?> NewerReleaseAsync(ToolDef tool, string? installedVersion, CancellationToken ct)
+    {
+        if (tool.Repo == null) return null;
+        using var http = Net.CreateClient(TimeSpan.FromMinutes(2));
+        var release = await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+        return IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), installedVersion) ? null : release;
+    }
+
+    internal static bool IsCurrent(string latestTag, string? installedTag, string? installedVersion)
+    {
+        if (installedTag != null) return string.Equals(installedTag, latestTag, StringComparison.OrdinalIgnoreCase);
+        static string Plain(string v) => v.Trim().TrimStart('v', 'V');
+        return installedVersion != null && string.Equals(Plain(installedVersion), Plain(latestTag), StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Deletes what <see cref="Remove"/> could not delete while it was in use.</summary>

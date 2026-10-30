@@ -93,7 +93,12 @@
     "removed": "{tool} removed",
     "glazeStopping": "Ending GlazeWM for the swap, the windows stay open …",
     "glazeFallback": "WinMarchy's build of GlazeWM was not available, installing the official release: {detail}",
-    "removeLater": "{tool} is still in use and is deleted at the next start: {path}"
+    "removeLater": "{tool} is still in use and is deleted at the next start: {path}",
+    "upToDate": "{tool} is up to date ({version}).",
+    "updateFailed": "{tool} could not be updated: {detail}",
+    "updateInUse": "{tool} is on and loaded by Explorer. To update it, switch it off under Settings, sign out and switch it on again.",
+    "updateOtherBuild": "The GlazeWM build running here is not the one chosen under Settings → GlazeWM. Switching there installs it.",
+    "updateRunning": "{tool} is running and stays as it is. Close it and update again."
   },
 
   "setup": {
@@ -111,8 +116,8 @@
       "pi": "The Pi coding agent in the terminal, Win+Alt+Enter.",
       "greenshot": "Screenshots with an editor, if Snipping Tool is not enough for you. Switch in the settings.",
       "yasb": "The bar at the top: workspaces, a clock with calendar, sound, Wi-Fi and battery. Small menus drop down from it; you add entries of your own on the Tiling page.",
-      "starship": "Omarchy's prompt for PowerShell 7: folder, Git branch and status, in the theme's colours.",
-      "fastfetch": "Shows in the terminal what is inside your computer, like Omarchy's About. In the bar's logo menu and as the action do:about.",
+      "starship": "Omarchy's prompt for PowerShell: folder, Git branch and status, in the theme's colours. Where Windows PowerShell loads no profiles, WinMarchy ticks PowerShell 7 as well.",
+      "fastfetch": "Shows in every new terminal tab what is inside your computer, with IP and MAC address, like Omarchy's About. Also in the bar's logo menu and under About in the WinMarchy menu.",
       "explorerblurmica": "Blur behind Explorer in the theme's colour. Registered for your account only; switch it off under Settings.",
       "lunatask": "Tasks, notes and habits in one place. Its vendor publishes no checksum, so WinMarchy does not download it: install it from lunatask.app, then the action app:lunatask starts it. The vendor's terms of use apply."
     },
@@ -376,7 +381,8 @@
     "to-workspace": "Window to workspace (1 to 10)",
     "screenshot": "Screenshot (region, window, screen)",
     "about": "About this system (Fastfetch)",
-    "bar-shortcut": "Own bar entry"
+    "bar-shortcut": "Own bar entry",
+    "bar-menu": "Open a menu of the bar (calendar, audio, network …)"
   },
 
   "tiling": {
@@ -442,7 +448,9 @@
     "shortcutRemove": "Remove",
     "shortcutAdd": "Add entry",
     "shortcutNoTitle": "The entry with the action {action} needs a name.",
-    "yasbOnly": "YASB only"
+    "yasbOnly": "YASB only",
+    "newWindowEndsFullscreen": "A new window ends full screen",
+    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, the full-screen window goes back into its tile, as in Hyprland."
   },
 
   "layouts": {
@@ -592,7 +600,11 @@
     "explorerBlurOnHint": "On. The tint follows the theme; new Explorer windows show it.",
     "explorerBlurOffHint": "Off. Switching it on downloads ExplorerBlurMica if it is missing.",
     "explorerBlurOn": "ExplorerBlurMica is on. Open a new Explorer window.",
-    "explorerBlurOff": "ExplorerBlurMica is off. It is fully gone after the next sign-in."
+    "explorerBlurOff": "ExplorerBlurMica is off. It is fully gone after the next sign-in.",
+    "toolUpdates": "Update programs",
+    "toolUpdatesHint": "GlazeWM, YASB, AutoHotkey and the extras WinMarchy installed come in their latest version from the vendor. Running programs are ended for a moment. Flow Launcher updates itself.",
+    "toolUpdatesNone": "WinMarchy has not installed any programs yet.",
+    "toolUpdatesDone": "Programs are up to date."
   },
 
   "log": {
@@ -660,7 +672,8 @@
     "bar": "Bar: {tool}",
     "zebarRemove": "Remove Zebar",
     "explorerBlurOn": "Switch ExplorerBlurMica on",
-    "explorerBlurOff": "Switch ExplorerBlurMica off"
+    "explorerBlurOff": "Switch ExplorerBlurMica off",
+    "toolUpdates": "Update programs"
   },
 
   "steps": {
@@ -705,7 +718,8 @@
     "fastfetch": "Colour Fastfetch",
     "shellTheme": "Colour Starship and Fastfetch",
     "notSetUp": "not set up",
-    "zebarRemove": "Remove Zebar"
+    "zebarRemove": "Remove Zebar",
+    "update": "Update {tool}"
   },
 
   "integrations": {
@@ -717,8 +731,9 @@
       "notFound": "Windows Terminal is not installed."
     },
     "powershell": {
-      "done": "Colours set in the profile: {path}",
-      "blocked": "The execution policy ({policy}) does not allow profiles. WinMarchy does not bypass it, PowerShell keeps its default colours."
+      "done": "PowerShell profile set up: {path}",
+      "blocked": "The execution policy ({policy}) does not allow profiles. WinMarchy does not bypass it, PowerShell keeps its default colours.",
+      "desktopBlocked": "Windows PowerShell loads no profiles here (execution policy {policy}), and WinMarchy does not work around that. Colours, Starship and Fastfetch are there in PowerShell 7, under Setup → Extras."
     },
     "vscode": {
       "done": "Theme set: {path}",
@@ -761,10 +776,14 @@
       "off": "ExplorerBlurMica is unregistered. Explorer stops loading it after the next sign-in."
     },
     "starship": {
-      "done": "Starship is set up in PowerShell 7 and shows in the next terminal tab."
+
     },
     "fastfetch": {
-      "done": "Fastfetch has the theme's colours."
+
+    },
+    "shell": {
+      "done": "Fastfetch and Starship start with every new PowerShell tab: {path}",
+      "noProfile": "No PowerShell on this computer loads a profile. Starship and Fastfetch show once PowerShell 7 is installed (Setup → Extras). Fastfetch alone starts from the WinMarchy menu under About."
     }
   },
 
@@ -845,7 +864,10 @@
     "batteryLeft": "Battery: {percent} %, {hours} h {minutes} min left",
     "noneMinimized": "No window is minimized.",
     "restoredMinimized": "Windows brought back: {count}.",
-    "fastfetchMissing": "Fastfetch is not installed. You find it under Setup → Extras."
+    "fastfetchMissing": "Fastfetch is not installed. You find it under Setup → Extras.",
+    "barMenuNoYasb": "The bar's menus need YASB, and YASB has to be running.",
+    "barMenuOff": "“{entry}” is off in the bar. Switch it on under Tiling → The bar shows.",
+    "barMenuUnknown": "The bar has no menu “{menu}”. There are logo, calendar, audio, network, media, cpu and memory."
   },
 
   "agent": {
@@ -1133,6 +1155,7 @@
     "memory": "Memory",
     "disk": "Disk",
     "battery": "Battery",
-    "locale": "Locale"
+    "locale": "Locale",
+    "localip": "IP and MAC"
   }
 }

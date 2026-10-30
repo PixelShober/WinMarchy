@@ -73,11 +73,12 @@ static class SelfTest
         // YASB's bar with a shortcut of the user's own in the menu and as a button.
         var yasb = settings.Clone();
         yasb.BarShortcuts.Add(new BarShortcut { Title = "Ticket & Co. {neu}", Action = "web:https://example.com/?a=1&b=2", InBar = true });
-        File.WriteAllText(Path.Combine(outDir, "yasb-config.yaml"), YasbBar.Config(exe, yasb, fastfetch: true));
+        File.WriteAllText(Path.Combine(outDir, "yasb-config.yaml"), YasbBar.Config(exe, yasb, new YasbOptions(Fastfetch: true)));
         File.WriteAllText(Path.Combine(outDir, "yasb-styles.css"), YasbBar.Styles(palette));
         File.WriteAllText(Path.Combine(outDir, "starship.toml"), ShellExtras.StarshipToml(palette));
         File.WriteAllText(Path.Combine(outDir, "fastfetch.jsonc"), ShellExtras.FastfetchConfig(palette));
-        File.WriteAllText(Path.Combine(outDir, "starship-prompt.ps1"), ShellExtras.PromptScript(@"C:\WinMarchy\Tools\starship\starship.exe", @"C:\WinMarchy\Runtime\starship.toml"), bom);
+        File.WriteAllText(Path.Combine(outDir, "shell-start.ps1"),
+            ShellExtras.ShellScript(@"C:\WinMarchy\Tools\starship\starship.exe", @"C:\WinMarchy\Tools\fastfetch\fastfetch.exe"), bom);
         // Greenshot owns the Print keys when it is chosen; the script must still validate.
         var greenshot = AhkScript.Generate(HotkeySet.Build(false, new CustomHotkeys(), "autohotkey"),
             new AhkContext(exe, cli, WinKeyOpensLauncher: true, LeaveAlone: WinMarchy.Core.Platform.Screenshots.GreenshotKeys.ToHashSet()));

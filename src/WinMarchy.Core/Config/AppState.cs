@@ -6,6 +6,9 @@ public sealed class AppState
     /// <summary>Programs WinMarchy installed itself (they can be removed again from "Undo").</summary>
     public List<string> InstalledTools { get; set; } = new();
 
+    /// <summary>The release tag each program was installed from (for "update programs").</summary>
+    public Dictionary<string, string> ToolTags { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Folders of removed programs that were still in use (a DLL Explorer had loaded); deleted at the next start.</summary>
     public List<string> LeftoverDirs { get; set; } = new();
 

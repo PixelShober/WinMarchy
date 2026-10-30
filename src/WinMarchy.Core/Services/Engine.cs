@@ -95,14 +95,15 @@ public sealed class Engine
         WriteBarConfig(ctx);
     }
 
-    bool FastfetchInstalled => Components.Status(ToolCatalog.Fastfetch).Installed;
+    /// <summary>What YASB's config depends on: Fastfetch for the logo menu, Windows' location switch for the Wi-Fi menu.</summary>
+    YasbOptions BarOptions => new(Components.Status(ToolCatalog.Fastfetch).Installed, Platform.LocationAccess.DesktopAppsAllowed());
 
     /// <summary>The bar's entries and shortcuts. YASB reads its config again by itself; Zebar reads config.js only when it starts.</summary>
     void WriteBarConfig(IntegrationContext ctx)
     {
         if (Components.Bar == Bars.Yasb)
         {
-            YasbBar.WriteConfig(ctx, Components.SelfExe, FastfetchInstalled);
+            YasbBar.WriteConfig(ctx, Components.SelfExe, BarOptions);
             return;
         }
         Backups.CaptureDirectory(ctx.Point, _loc.ZebarPackDir);
@@ -294,8 +295,8 @@ public sealed class Engine
                 () => targets.Files ? null : L.T("steps.off")),
             new(L.T("steps.windows"), (step, _) => { WindowsAppearance.Apply(Ctx(step), palette); return Task.CompletedTask; },
                 () => targets.Windows ? null : L.T("steps.off")),
-            new(L.T("steps.shellTheme"), (step, _) => { ShellExtras.ApplyTheme(Ctx(step), palette); return Task.CompletedTask; },
-                () => !targets.Shell ? L.T("steps.off") : File.Exists(Paths.StarshipConfig) || File.Exists(Paths.FastfetchConfig) ? null : L.T("steps.notSetUp")),
+            new(L.T("steps.shellTheme"), (step, _) => { ApplyShell(Ctx(step), palette); return Task.CompletedTask; },
+                () => !targets.Shell ? L.T("steps.off") : ShellToolPath(ToolCatalog.Starship) != null || ShellToolPath(ToolCatalog.Fastfetch) != null ? null : L.T("steps.notSetUp")),
             new(L.T("steps.explorerBlurTheme"), (step, _) => { ExplorerBlur.ApplyTheme(Ctx(step), palette); return Task.CompletedTask; },
                 () => !targets.ExplorerBlur ? L.T("steps.off") : ExplorerBlur.IsOn(Backups.Registry) ? null : L.T("steps.notSetUp")),
             new(L.T("steps.wallpaper"), (step, _) =>
@@ -415,7 +416,7 @@ public sealed class Engine
     SetupStep BarSetupStep(Func<RestorePoint> pointOf) => new(L.T("steps.barSetup"), (step, _) =>
     {
         var ctx = Context(pointOf(), step);
-        if (Components.Bar == Bars.Yasb) YasbBar.Install(ctx, CurrentTheme.Palette, Components.SelfExe, FastfetchInstalled);
+        if (Components.Bar == Bars.Yasb) YasbBar.Install(ctx, CurrentTheme.Palette, Components.SelfExe, BarOptions);
         else ZebarPack.Install(ctx, CurrentTheme.Palette, Components.SelfExe);
         return Task.CompletedTask;
     }, () => Components.BarExe == null ? L.T("steps.barMissing", ("tool", Bars.Tool(Components.Bar).Name)) : null);
@@ -488,22 +489,23 @@ public sealed class Engine
 
     // ------------------------------------------------------------------ extras
 
+    /// <summary>Starship or Fastfetch as installed by WinMarchy (one found elsewhere is the user's own and stays untouched).</summary>
+    string? ShellToolPath(ToolDef tool) => Components.Status(tool) is { InstalledByWinMarchy: true, Path: { } p } ? p : null;
+
+    void ApplyShell(IntegrationContext ctx, Palette palette) =>
+        ShellExtras.Apply(ctx, palette, ShellToolPath(ToolCatalog.Starship), ShellToolPath(ToolCatalog.Fastfetch));
+
     /// <summary>What an extra needs besides its files: Starship's prompt, Fastfetch's colours, ExplorerBlurMica's registration.</summary>
     SetupStep? ExtraSetup(ToolDef tool, Func<RestorePoint> pointOf)
     {
         string? Exe() => Components.Status(tool).Path;
-        if (tool == ToolCatalog.Starship)
-            return new SetupStep(L.T("steps.starship"), (step, _) =>
+        if (tool == ToolCatalog.Starship || tool == ToolCatalog.Fastfetch)
+            return new SetupStep(L.T(tool == ToolCatalog.Starship ? "steps.starship" : "steps.fastfetch"), (step, _) =>
             {
-                ShellExtras.ApplyStarship(Context(pointOf(), step), CurrentTheme.Palette, Exe() ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)));
-                return Task.CompletedTask;
-            });
-        if (tool == ToolCatalog.Fastfetch)
-            return new SetupStep(L.T("steps.fastfetch"), (step, _) =>
-            {
-                ShellExtras.ApplyFastfetch(Context(pointOf(), step), CurrentTheme.Palette);
-                // The logo menu offers the system information from now on.
-                if (Components.Bar == Bars.Yasb) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, fastfetch: true);
+                if (Exe() == null) throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name));
+                ApplyShell(Context(pointOf(), step), CurrentTheme.Palette);
+                // With Fastfetch the logo menu offers the system information.
+                if (tool == ToolCatalog.Fastfetch && Components.Bar == Bars.Yasb) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, BarOptions);
                 return Task.CompletedTask;
             });
         if (tool == ToolCatalog.ExplorerBlurMica)
@@ -550,6 +552,102 @@ public sealed class Engine
             }));
         }
         return steps;
+    }
+
+    // ------------------------------------------------------------------ program updates
+
+    /// <summary>
+    /// Settings → Updates → Update programs: every program WinMarchy installed itself, from its
+    /// vendor's latest release, if that is newer. Programs that run are ended for the swap and
+    /// started again; a terminal or agent that is open keeps its program until it is closed. Flow
+    /// Launcher updates itself. Only C:\WinMarchy\Tools changes, so no restore point.
+    /// </summary>
+    public List<SetupStep> ToolUpdateSteps()
+    {
+        var installed = AppState.Load().InstalledTools;
+        return ToolCatalog.All
+            .Where(t => installed.Contains(t.Id) && t.Kind is InstallKind.Zip or InstallKind.MsiExtract)
+            .Select(t => new SetupStep(L.T("steps.update", ("tool", t.Name)), (step, ct) => UpdateToolAsync(t, step, ct)))
+            .ToList();
+    }
+
+    async Task UpdateToolAsync(ToolDef tool, SetupStep step, CancellationToken ct)
+    {
+        var source = tool.Id == ToolCatalog.GlazeWm.Id ? ToolCatalog.GlazeSource(S) : tool;
+        var status = Components.Status(tool);
+        try
+        {
+            step.Report(L.T("tools.lookup", ("tool", tool.Name)));
+            // The fork's build is only the wanted one if it is the one installed; a switch goes through Settings → GlazeWM.
+            if (tool.Id == ToolCatalog.GlazeWm.Id && !ToolCatalog.IsWantedGlaze(status.Path, S))
+            {
+                step.Report(L.T("tools.updateOtherBuild"));
+                return;
+            }
+            if (await ToolInstaller.NewerReleaseAsync(source, status.Version, ct) is not { } release)
+            {
+                step.Report(L.T("tools.upToDate", ("tool", tool.Name), ("version", status.Version ?? "?")));
+                return;
+            }
+            if (tool == ToolCatalog.ExplorerBlurMica && ExplorerBlurIsOn)
+            {
+                step.Report(L.T("tools.updateInUse", ("tool", tool.Name)));
+                return;
+            }
+            var process = Path.GetFileNameWithoutExtension(tool.Exe);
+            bool wasRunning = Components.IsRunning(process);
+            switch (tool.Id)
+            {
+                case "glazewm":
+                    break;      // the installer ends GlazeWM itself, so its hidden windows come back
+                case "yasb":
+                case "zebar":
+                    Components.StopBar();
+                    break;
+                case "autohotkey":
+                    Components.StopAhk();
+                    break;
+                case "greenshot":
+                    foreach (var p in Process.GetProcessesByName(process)) using (p) { try { p.Kill(); p.WaitForExit(3000); } catch { } }
+                    break;
+                default:
+                    if (wasRunning)
+                    {
+                        step.Report(L.T("tools.updateRunning", ("tool", tool.Name)));
+                        return;
+                    }
+                    break;
+            }
+            try
+            {
+                await ToolInstaller.InstallAsync(source, step, ct, release);
+            }
+            finally
+            {
+                // Whatever happened, what ran before runs again.
+                switch (tool.Id)
+                {
+                    case "glazewm":
+                        Components.StartGlaze();
+                        break;
+                    case "yasb" or "zebar" when S.ShowBar && wasRunning:
+                        Components.StartBar();
+                        break;
+                    case "autohotkey" when S.HotkeyEngine == "autohotkey":
+                        Components.StartAhk();
+                        break;
+                    case "greenshot" when wasRunning && Components.Status(tool).Path is { } exe:
+                        Platform.AppLauncher.Start(exe);
+                        break;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // One program that cannot be had does not hold up the others.
+            step.Report(L.T("tools.updateFailed", ("tool", tool.Name), ("detail", Net.Describe(ex))));
+            Log.Warn(L.T("tools.updateFailed", ("tool", tool.Name), ("detail", Net.Describe(ex))));
+        }
     }
 
     // ------------------------------------------------------------------ full setup
