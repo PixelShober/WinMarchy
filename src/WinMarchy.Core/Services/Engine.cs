@@ -8,7 +8,7 @@ using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Services;
 
-/// <summary>Which programs the full setup installs if they are missing. The bar is YASB unless Zebar was chosen.</summary>
+/// <summary>Which programs the full setup installs if they are missing.</summary>
 public sealed record SetupOptions(bool InstallGlazeWm, bool InstallBar, bool InstallAutoHotkey, bool InstallFlow, bool DownloadWallpapers)
 {
     /// <summary>Ticked extras: PowerShell 7, Starship, Fastfetch, Herdr, Pi … (tool ids).</summary>
@@ -70,11 +70,6 @@ public sealed class Engine
             options.InnerGap = 0;
             options.OuterGap = 0;
         }
-        if (s.HotkeyEngine == "glazewm")
-        {
-            var set = HotkeySet.Build(s.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), "glazewm");
-            options.Keybindings = GlazeConfig.Keybindings(set, KeyboardLayouts.Current, Components.SelfExe, LeaveAlone(s), Extra(s));
-        }
         return GlazeConfig.Generate(options);
     }
 
@@ -98,21 +93,8 @@ public sealed class Engine
     /// <summary>What YASB's config depends on: Fastfetch for the logo menu, Windows' location switch for the Wi-Fi menu.</summary>
     YasbOptions BarOptions => new(Components.Status(ToolCatalog.Fastfetch).Installed, Platform.LocationAccess.DesktopAppsAllowed());
 
-    /// <summary>The bar's entries and shortcuts. YASB reads its config again by itself; Zebar reads config.js only when it starts.</summary>
-    void WriteBarConfig(IntegrationContext ctx)
-    {
-        if (Components.Bar == Bars.Yasb)
-        {
-            YasbBar.WriteConfig(ctx, Components.SelfExe, BarOptions);
-            return;
-        }
-        Backups.CaptureDirectory(ctx.Point, _loc.ZebarPackDir);
-        if (ZebarPack.WriteConfig(_loc, Components.SelfExe, S) && Components.IsRunning("zebar"))
-        {
-            Components.StopBar();
-            if (S.ShowBar) Components.StartBar();
-        }
-    }
+    /// <summary>The bar's entries and shortcuts. YASB reads its config again by itself.</summary>
+    void WriteBarConfig(IntegrationContext ctx) => YasbBar.WriteConfig(ctx, Components.SelfExe, BarOptions);
 
     /// <summary>
     /// Omarchy's "window gaps" toggle: gaps off until it is pressed again. No restore point of its own;
@@ -138,7 +120,7 @@ public sealed class Engine
     static IReadOnlyCollection<string>? LeaveAlone(UserSettings s) =>
         s.ScreenshotTool == Platform.Screenshots.Greenshot ? Platform.Screenshots.GreenshotKeys.ToHashSet() : null;
 
-    public HotkeySet CurrentHotkeys() => HotkeySet.Build(S.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile), S.HotkeyEngine);
+    public HotkeySet CurrentHotkeys() => HotkeySet.Build(S.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile));
 
     async Task ApplyHotkeysAsync(IntegrationContext ctx, SetupStep step, CancellationToken ct)
     {
@@ -147,7 +129,7 @@ public sealed class Engine
         if (set.HasBlockingProblems)
             throw new WinMarchyException("hotkeysInvalid", ("detail", string.Join("; ", set.Problems.Where(p => p.Blocking).Select(p => $"{p.Keys}: {p.Message}"))));
 
-        if (s.HotkeyEngine == "autohotkey" && Components.AhkExe != null)
+        if (Components.AhkExe != null)
         {
             var glazeCli = ToolCatalog.GlazeCli(Components.GlazeExe) ?? "";
             var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s), Extra: Extra(s)));
@@ -162,11 +144,12 @@ public sealed class Engine
         }
         else
         {
-            if (s.HotkeyEngine == "autohotkey") step.Report(L.T("hotkeys.ahkMissingFallback"));
+            // Only AutoHotkey catches the keys; without it no shortcut works until it is installed.
             Components.StopAhk();
             WriteGlazeConfig(ctx, CurrentTheme.Palette);
             await Components.ReloadGlazeAsync(Glaze(), ct);
-            step.Report(L.T("hotkeys.activeGlaze", ("count", set.Active.Count)));
+            step.Report(L.T("hotkeys.ahkMissing"));
+            Log.Warn(L.T("hotkeys.ahkMissing"));
         }
     }
 
@@ -183,11 +166,12 @@ public sealed class Engine
     // ------------------------------------------------------------------ screenshots
 
     /// <summary>
-    /// Switches between Snipping Tool and Greenshot: Greenshot comes from its vendor if it is missing,
-    /// Windows' own Print → Snipping Tool is switched off (it would take the key first), and the hotkey
-    /// script leaves Greenshot's keys alone. Back to Windows, the script takes Print again.
+    /// Switches between Snipping Tool and Greenshot: Greenshot comes from its vendor if it is missing
+    /// and is set up (<see cref="GreenshotStep"/>); back to Windows, Greenshot's captures no longer go
+    /// to the clipboard by force and the hotkey script takes Print again.
     /// </summary>
-    public List<SetupStep> ScreenshotToolSteps(string tool)
+    /// <param name="byUser">Chosen in the settings: WinMarchy no longer picks Greenshot by itself.</param>
+    public List<SetupStep> ScreenshotToolSteps(string tool, bool byUser)
     {
         RestorePoint? point = null;
         var greenshot = tool == Platform.Screenshots.Greenshot;
@@ -195,23 +179,68 @@ public sealed class Engine
         if (greenshot)
         {
             steps.AddRange(InstallSteps(new[] { ToolCatalog.Greenshot }));
-            steps.Add(new SetupStep(L.T("steps.printKey"), (step, _) =>
+            steps.Add(GreenshotStep(() => point!));
+        }
+        else
+        {
+            steps.Add(new SetupStep(L.T("steps.greenshotFixed"), (step, _) =>
             {
-                Context(point!, step).WriteRegistry(@"Control Panel\Keyboard", "PrintScreenKeyForSnippingEnabled", RegistryData.Dword(0));
-                step.Report(L.T("screenshot.printKeyFreed"));
-                if (!Components.IsRunning("Greenshot") && Components.Status(ToolCatalog.Greenshot).Path is { } exe) Platform.AppLauncher.Start(exe);
+                if (Components.Status(ToolCatalog.Greenshot).Path is { } exe) WriteGreenshotFixed(Context(point!, step), exe, clipboard: false);
                 return Task.CompletedTask;
-            }));
+            }, () => Components.Status(ToolCatalog.Greenshot).Installed ? null : L.T("steps.notInstalled", ("tool", ToolCatalog.Greenshot.Name))));
         }
         steps.Add(new SetupStep(L.T("steps.saveChoice"), (step, _) =>
         {
             var s = S.Clone();
             s.ScreenshotTool = greenshot ? Platform.Screenshots.Greenshot : Platform.Screenshots.Windows;
+            if (byUser) s.ScreenshotToolChosen = true;
             _save(s);
             return Task.CompletedTask;
         }));
         steps.Add(new SetupStep(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)));
         return steps;
+    }
+
+    /// <summary>
+    /// Greenshot as the screenshot tool: Windows' own Print → Snipping Tool is switched off (it would
+    /// take the key first), every capture goes straight to the clipboard (WinMarchy then offers to save
+    /// it), and Greenshot is started again so it reads that. Unless the user chose Snipping Tool on
+    /// purpose, Greenshot becomes the choice. The hotkey script, applied after this, leaves its keys alone.
+    /// </summary>
+    SetupStep GreenshotStep(Func<RestorePoint> pointOf) => new(L.T("steps.greenshot"), (step, _) =>
+    {
+        var exe = Components.Status(ToolCatalog.Greenshot).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", ToolCatalog.Greenshot.Name));
+        var ctx = Context(pointOf(), step);
+        ctx.WriteRegistry(@"Control Panel\Keyboard", "PrintScreenKeyForSnippingEnabled", RegistryData.Dword(0));
+        step.Report(L.T("screenshot.printKeyFreed"));
+        WriteGreenshotFixed(ctx, exe, clipboard: true);
+        if (!S.ScreenshotToolChosen || S.ScreenshotTool == Platform.Screenshots.Greenshot)
+        {
+            var s = S.Clone();
+            s.ScreenshotTool = Platform.Screenshots.Greenshot;
+            _save(s);
+        }
+        return Task.CompletedTask;
+    });
+
+    /// <summary>Greenshot-fixed.ini with or without "every capture to the clipboard"; Greenshot reads it when it starts.</summary>
+    void WriteGreenshotFixed(IntegrationContext ctx, string exe, bool clipboard)
+    {
+        var path = Platform.Screenshots.GreenshotFixedIni(exe, _loc);
+        var original = File.Exists(path) ? FileSafety.ReadShared(path) : null;
+        var text = Platform.Screenshots.GreenshotFixed(original, clipboard);
+        if (text == original) return;
+        if (text != null) ctx.WriteFile(path, text);
+        else if (original != null)
+        {
+            Backups.CaptureFile(ctx.Point, path);
+            File.Delete(path);
+        }
+        ctx.Report(L.T(clipboard ? "screenshot.toClipboard" : "screenshot.notToClipboard", ("path", path)));
+        // Greenshot reads its settings when it starts.
+        bool running = Components.IsRunning("Greenshot");
+        foreach (var p in Process.GetProcessesByName("Greenshot")) using (p) { try { p.Kill(); p.WaitForExit(3000); } catch { } }
+        if (running || clipboard) Platform.AppLauncher.Start(exe);
     }
 
     // ------------------------------------------------------------------ themes
@@ -278,9 +307,7 @@ public sealed class Engine
             }, () => targets.GlazeWm ? null : L.T("steps.off")),
             new(L.T("steps.barTheme"), (step, _) =>
             {
-                // Whichever bar is set up; the other one is not there and is skipped.
                 YasbBar.ApplyTheme(Ctx(step), palette);
-                ZebarPack.ApplyTheme(Ctx(step), palette);
                 return Task.CompletedTask;
             }, () => targets.Bar ? null : L.T("steps.off")),
             new(L.T("steps.terminal"), (step, _) => { TerminalTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
@@ -355,44 +382,23 @@ public sealed class Engine
         }
     }, () => Wallpapers.AllMissingBytes() == 0 ? L.T("themes.allThere") : null);
 
-    // ------------------------------------------------------------------ GlazeWM build
+    // ------------------------------------------------------------------ GlazeWM
+
+    /// <summary>WinMarchy's build of GlazeWM. There is nothing to fall back to: an official release lacks what WinMarchy needs.</summary>
+    Task InstallGlazeAsync(SetupStep step, CancellationToken ct) => ToolInstaller.InstallAsync(ToolCatalog.GlazeWm, step, ct);
 
     /// <summary>
-    /// Installs the GlazeWM the settings ask for. If WinMarchy's build cannot be had (no release yet,
-    /// GitHub unreachable for that repository), the official one keeps the desktop working.
+    /// Settings → GlazeWM: WinMarchy's build in place of an official release found on the computer,
+    /// started with WinMarchy's configuration. The official one stays where it is but no longer runs.
     /// </summary>
-    async Task InstallGlazeAsync(SetupStep step, CancellationToken ct)
-    {
-        var source = ToolCatalog.GlazeSource(S);
-        try
-        {
-            await ToolInstaller.InstallAsync(source, step, ct);
-        }
-        catch (Exception ex) when (source == ToolCatalog.GlazeWm &&
-                                   (ex is WinMarchyException { Code: "toolAssetMissing" or "releaseTagUnknown" or "toolNoChecksum" } ||
-                                    ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound }))
-        {
-            Log.Warn(L.T("tools.glazeFallback", ("detail", ex.Message)));
-            await ToolInstaller.InstallAsync(ToolCatalog.GlazeWmOfficial, step, ct);
-        }
-    }
-
-    /// <summary>Settings → GlazeWM: install the other build and start it with WinMarchy's configuration.</summary>
-    public List<SetupStep> GlazeBuildSteps(string build)
+    public List<SetupStep> GlazeForkSteps()
     {
         RestorePoint? point = null;
         return new List<SetupStep>
         {
             BeginStep("glazewm", L.T("jobs.glazeBuild"), p => point = p),
-            new(L.T("steps.saveChoice"), (_, _) =>
-            {
-                var s = S.Clone();
-                s.GlazeBuild = build == GlazeBuilds.Official ? GlazeBuilds.Official : GlazeBuilds.WinMarchy;
-                _save(s);
-                return Task.CompletedTask;
-            }),
             new(L.T("steps.install", ("tool", ToolCatalog.GlazeWm.Name)), (step, ct) => InstallGlazeAsync(step, ct),
-                () => ToolCatalog.IsWantedGlaze(Components.GlazeExe, S) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null),
+                () => ToolCatalog.IsWinMarchyBuild(Components.GlazeExe) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null),
             new(L.T("steps.glazeStart"), async (step, ct) =>
             {
                 WriteGlazeConfig(Context(point!, step), CurrentTheme.Palette);
@@ -404,49 +410,15 @@ public sealed class Engine
 
     // ------------------------------------------------------------------ bar
 
-    SetupStep SaveBarChoice(string bar) => new(L.T("steps.saveChoice"), (_, _) =>
-    {
-        var s = S.Clone();
-        s.Bar = bar == Bars.Zebar ? Bars.Zebar : Bars.Yasb;
-        _save(s);
-        return Task.CompletedTask;
-    });
-
-    /// <summary>The chosen bar's files: YASB's config.yaml and styles.css, or Zebar's widget pack.</summary>
+    /// <summary>YASB's config.yaml and styles.css in the theme's colours.</summary>
     SetupStep BarSetupStep(Func<RestorePoint> pointOf) => new(L.T("steps.barSetup"), (step, _) =>
     {
-        var ctx = Context(pointOf(), step);
-        if (Components.Bar == Bars.Yasb) YasbBar.Install(ctx, CurrentTheme.Palette, Components.SelfExe, BarOptions);
-        else ZebarPack.Install(ctx, CurrentTheme.Palette, Components.SelfExe);
+        YasbBar.Install(Context(pointOf(), step), CurrentTheme.Palette, Components.SelfExe, BarOptions);
         return Task.CompletedTask;
-    }, () => Components.BarExe == null ? L.T("steps.barMissing", ("tool", Bars.Tool(Components.Bar).Name)) : null);
+    }, () => Components.BarExe == null ? L.T("steps.barMissing", ("tool", Bars.Tool.Name)) : null);
 
     /// <summary>
-    /// Settings → Bar: YASB or Zebar. The other bar is ended; its files stay (Zebar is removed with
-    /// its own button), so switching back needs no download.
-    /// </summary>
-    public List<SetupStep> BarSteps(string bar)
-    {
-        RestorePoint? point = null;
-        var tool = Bars.Tool(bar);
-        return new List<SetupStep>
-        {
-            BeginStep("bar", L.T("jobs.bar", ("tool", tool.Name)), p => point = p),
-            new(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); },
-                () => Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null),
-            SaveBarChoice(bar),
-            BarSetupStep(() => point!),
-            new(L.T("steps.bar"), (step, _) =>
-            {
-                Components.StopBar();
-                if (S.ShowBar && AppState.Load().SetupDone && !Components.StartBar()) throw new WinMarchyException("barMissing", ("tool", tool.Name));
-                return Task.CompletedTask;
-            }),
-        };
-    }
-
-    /// <summary>
-    /// Settings → Bar → Remove Zebar: it is ended, WinMarchy's widget pack and its startup entry go
+    /// Settings → Remove Zebar: it is ended, WinMarchy's widget pack and its startup entry go
     /// (both in the restore point), and the program goes if WinMarchy installed it. A Zebar installed
     /// some other way stays; the step says where it is.
     /// </summary>
@@ -476,12 +448,6 @@ public sealed class Engine
                 {
                     step.Report(L.T("bar.zebarElsewhere", ("path", status.Path)));
                 }
-                if (S.Bar != Bars.Yasb)
-                {
-                    var s = S.Clone();
-                    s.Bar = Bars.Yasb;
-                    _save(s);
-                }
                 return Task.CompletedTask;
             }),
         };
@@ -505,9 +471,11 @@ public sealed class Engine
                 if (Exe() == null) throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name));
                 ApplyShell(Context(pointOf(), step), CurrentTheme.Palette);
                 // With Fastfetch the logo menu offers the system information.
-                if (tool == ToolCatalog.Fastfetch && Components.Bar == Bars.Yasb) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, BarOptions);
+                if (tool == ToolCatalog.Fastfetch) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, BarOptions);
                 return Task.CompletedTask;
             });
+        // Installed, Greenshot takes over the screenshots (unless Snipping Tool was chosen on purpose).
+        if (tool == ToolCatalog.Greenshot) return GreenshotStep(pointOf);
         if (tool == ToolCatalog.ExplorerBlurMica)
             return new SetupStep(L.T("steps.explorerBlur"), (step, _) =>
             {
@@ -528,6 +496,8 @@ public sealed class Engine
             steps.AddRange(InstallSteps(new[] { tool }));
             if (ExtraSetup(tool, () => point!) is { } setup) steps.Add(setup);
         }
+        // Greenshot's keys leave the hotkey script.
+        if (list.Contains(ToolCatalog.Greenshot)) steps.Add(new SetupStep(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)));
         return steps;
     }
 
@@ -573,18 +543,13 @@ public sealed class Engine
 
     async Task UpdateToolAsync(ToolDef tool, SetupStep step, CancellationToken ct)
     {
-        var source = tool.Id == ToolCatalog.GlazeWm.Id ? ToolCatalog.GlazeSource(S) : tool;
         var status = Components.Status(tool);
         try
         {
             step.Report(L.T("tools.lookup", ("tool", tool.Name)));
-            // The fork's build is only the wanted one if it is the one installed; a switch goes through Settings → GlazeWM.
-            if (tool.Id == ToolCatalog.GlazeWm.Id && !ToolCatalog.IsWantedGlaze(status.Path, S))
-            {
-                step.Report(L.T("tools.updateOtherBuild"));
-                return;
-            }
-            if (await ToolInstaller.NewerReleaseAsync(source, status.Version, ct) is not { } release)
+            // An official GlazeWM in WinMarchy's folder (from older versions) is replaced by WinMarchy's build, whatever its version.
+            bool replace = tool == ToolCatalog.GlazeWm && !ToolCatalog.IsWinMarchyBuild(status.Path);
+            if ((replace ? await ToolInstaller.LatestReleaseAsync(tool, ct) : await ToolInstaller.NewerReleaseAsync(tool, status.Version, ct)) is not { } release)
             {
                 step.Report(L.T("tools.upToDate", ("tool", tool.Name), ("version", status.Version ?? "?")));
                 return;
@@ -601,7 +566,6 @@ public sealed class Engine
                 case "glazewm":
                     break;      // the installer ends GlazeWM itself, so its hidden windows come back
                 case "yasb":
-                case "zebar":
                     Components.StopBar();
                     break;
                 case "autohotkey":
@@ -620,7 +584,7 @@ public sealed class Engine
             }
             try
             {
-                await ToolInstaller.InstallAsync(source, step, ct, release);
+                await ToolInstaller.InstallAsync(tool, step, ct, release);
             }
             finally
             {
@@ -630,10 +594,10 @@ public sealed class Engine
                     case "glazewm":
                         Components.StartGlaze();
                         break;
-                    case "yasb" or "zebar" when S.ShowBar && wasRunning:
+                    case "yasb" when S.ShowBar && wasRunning:
                         Components.StartBar();
                         break;
-                    case "autohotkey" when S.HotkeyEngine == "autohotkey":
+                    case "autohotkey":
                         Components.StartAhk();
                         break;
                     case "greenshot" when wasRunning && Components.Status(tool).Path is { } exe:
@@ -671,12 +635,11 @@ public sealed class Engine
         steps.Add(new SetupStep(L.T("steps.install", ("tool", ToolCatalog.GlazeWm.Name)),
             (step, ct) => InstallGlazeAsync(step, ct),
             () => !o.InstallGlazeWm ? L.T("steps.notChosen")
-                : ToolCatalog.IsWantedGlaze(Components.GlazeExe, S) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null));
-        var bar = Bars.ForSetup(S);
-        Install(Bars.Tool(bar), o.InstallBar);
+                : ToolCatalog.IsWinMarchyBuild(Components.GlazeExe) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null));
+        Install(Bars.Tool, o.InstallBar);
         Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
         Install(ToolCatalog.Flow, o.InstallFlow);
-        foreach (var extra in ToolCatalog.Extras.Where(t => t.Kind != InstallKind.None))
+        foreach (var extra in ToolCatalog.Extras)
         {
             Install(extra, o.Extras.Contains(extra.Id));
             if (o.Extras.Contains(extra.Id) && ExtraSetup(extra, () => point!) is { } setup) steps.Add(setup);
@@ -689,7 +652,6 @@ public sealed class Engine
             ImportLegacyThemes(step);
             return Task.CompletedTask;
         }));
-        steps.Add(SaveBarChoice(bar));
         steps.Add(BarSetupStep(() => point!));
         steps.Add(new SetupStep(L.T("steps.glazeStart"), async (step, ct) =>
         {
@@ -711,7 +673,7 @@ public sealed class Engine
         steps.AddRange(ThemeChanges(CurrentTheme, o.DownloadWallpapers, () => point!));
         steps.Add(new SetupStep(L.T("steps.bar"), (step, _) =>
         {
-            // A Zebar from before must not run next to YASB.
+            // A Zebar from older WinMarchy versions must not run next to YASB.
             Components.StopBar();
             if (S.ShowBar) Components.StartBar();
             AppState.Update(st => st.SetupDone = true);

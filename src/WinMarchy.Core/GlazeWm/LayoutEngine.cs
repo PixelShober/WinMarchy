@@ -1,47 +1,87 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace WinMarchy.Core.GlazeWm;
 
 /// <summary>
-/// Omarchy's workspace layouts as far as GlazeWM can follow. Win+Ctrl+J cycles Dwindle → Columns →
-/// Scrolling; Floating and Manual are set on the Tiling page.
+/// Omarchy's layouts as far as GlazeWM can follow. Each screen has one (Tiling page; Win+Ctrl+J
+/// cycles that of the screen with the focus), and every workspace shown on it follows. A work mode
+/// can give a workspace its own layout for as long as it is open. Single windows leave the layout
+/// with Win+T: they float above the tiles, and Win+T puts them back.
 /// <list type="bullet">
 /// <item>Dwindle: every focused window splits along its longer side, so the next window takes half of it.</item>
 /// <item>Columns: new windows line up side by side.</item>
 /// <item>Scrolling: a row of columns wider than the screen, as in Hyprland's scrolling layout. GlazeWM
 /// cannot tile wider than the screen, so WinMarchy places these windows itself (they float).</item>
-/// <item>Floating: every window of the workspace floats; leaving the mode tiles those it floated again.</item>
-/// <item>Manual: GlazeWM as it is; Win+J decides the split.</item>
 /// </list>
 /// </summary>
-public enum LayoutMode { Dwindle, Columns, Floating, Manual, Scrolling }
+public enum LayoutMode { Dwindle, Columns, Scrolling }
 
 public sealed class LayoutStore
 {
+    /// <summary>The layout each workspace's windows are arranged in now. Missing: as GlazeWM tiles them by itself.</summary>
     public Dictionary<string, LayoutMode> Workspaces { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Scrolling workspaces: their columns left to right, by window handle (survives a restart of WinMarchy).</summary>
     public Dictionary<string, List<long>> Columns { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Workspaces whose layout holds only while they are open (a work mode's shared screen), with the
-    /// layout chosen for them before (null: the default).
+    /// Workspaces with a layout of their own while they are open (a work mode's shared screen),
+    /// whatever their screen has.
     /// </summary>
-    public Dictionary<string, LayoutMode?> UntilClosed { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, LayoutMode> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Workspaces in the floating layout of older versions; that layout is gone, their windows are tiled once.</summary>
+    [JsonIgnore]
+    public HashSet<string> FormerlyFloating { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public static LayoutStore Load()
     {
         try
         {
-            if (File.Exists(Paths.LayoutsFile)) return Json.Deserialize<LayoutStore>(File.ReadAllText(Paths.LayoutsFile)) ?? new LayoutStore();
+            if (File.Exists(Paths.LayoutsFile)) return Parse(File.ReadAllText(Paths.LayoutsFile));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
             Log.Warn("layouts.json: " + ex.Message);
         }
         return new LayoutStore();
     }
+
+    /// <summary>
+    /// Reads layouts.json, also as older versions wrote it: with the floating and manual layouts, and
+    /// with "untilClosed" (the layout from before a work mode; the one it used is in "workspaces").
+    /// </summary>
+    public static LayoutStore Parse(string json)
+    {
+        var store = new LayoutStore();
+        if (JsonNode.Parse(json) is not JsonObject root) return store;
+        foreach (var (name, mode) in Modes(root["workspaces"]))
+        {
+            if (LayoutEngine.TryParse(mode, out var m)) store.Workspaces[name] = m;
+            else if (string.Equals(mode, "floating", StringComparison.OrdinalIgnoreCase)) store.FormerlyFloating.Add(name);
+        }
+        foreach (var (name, mode) in Modes(root["overrides"]))
+            if (LayoutEngine.TryParse(mode, out var m)) store.Overrides[name] = m;
+        if (root["untilClosed"] is JsonObject untilClosed)
+            foreach (var (name, _) in untilClosed)
+                store.Overrides[name] = store.Workspaces.TryGetValue(name, out var used) ? used : LayoutMode.Dwindle;
+        if (root["columns"] is JsonObject columns)
+        {
+            foreach (var (name, list) in columns)
+            {
+                if (list is not JsonArray handles) continue;
+                store.Columns[name] = handles.Select(h => h is JsonValue v && v.TryGetValue(out long l) ? l : 0).Where(l => l != 0).ToList();
+            }
+        }
+        return store;
+    }
+
+    static IEnumerable<(string Name, string? Mode)> Modes(JsonNode? node) =>
+        node is JsonObject o
+            ? o.Select(p => (p.Key, p.Value is JsonValue v && v.TryGetValue(out string? text) ? text : null))
+            : Enumerable.Empty<(string, string?)>();
 
     public void Save() => FileSafety.WriteText(Paths.LayoutsFile, Json.Serialize(this, indented: true));
 }
@@ -92,40 +132,57 @@ public sealed class LayoutEngine
     static readonly LayoutMode[] Cycle = { LayoutMode.Dwindle, LayoutMode.Columns, LayoutMode.Scrolling };
 
     readonly GlazeIpc _ipc;
-    readonly Func<LayoutMode> _default;
     readonly Action<string> _notify;
     readonly Func<UserSettings> _settings;
+    readonly Action<int, LayoutMode> _chooseScreen;
     readonly LayoutStore _store = LayoutStore.Load();
-    /// <summary>Windows the floating mode floated (and will tile again).</summary>
-    readonly ConcurrentDictionary<string, string> _floatedBy = new();
     /// <summary>Scrolling workspaces by name. Only touched while holding the gate.</summary>
     readonly Dictionary<string, ScrollStrip> _strips = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>The screen each workspace was on at the last look at the monitors.</summary>
+    Dictionary<string, int> _screenOf = new(StringComparer.OrdinalIgnoreCase);
     readonly SemaphoreSlim _busy;
 
-    public LayoutEngine(GlazeIpc ipc, Func<LayoutMode> defaultMode, Action<string> notify, SemaphoreSlim? gate = null, Func<UserSettings>? settings = null)
+    /// <param name="chooseScreen">Saves a screen's layout chosen with Win+Ctrl+J into the settings.</param>
+    public LayoutEngine(GlazeIpc ipc, Action<string> notify, SemaphoreSlim? gate = null, Func<UserSettings>? settings = null, Action<int, LayoutMode>? chooseScreen = null)
     {
         _ipc = ipc;
-        _default = defaultMode;
         _notify = notify;
         _busy = gate ?? new SemaphoreSlim(1, 1);
-        _settings = settings ?? (() => new UserSettings());
+        var own = new UserSettings();
+        _settings = settings ?? (() => own);
+        _chooseScreen = chooseScreen ?? ((screen, mode) => own.SetScreenLayout(screen, mode));
     }
 
     public static readonly string[] Events = { "focus_changed", "window_managed", "window_unmanaged", "workspace_deactivated" };
 
+    /// <summary>The layout a workspace should have: a work mode's while it is open, else its screen's.</summary>
     public LayoutMode ModeOf(string workspace) =>
-        _store.Workspaces.TryGetValue(workspace, out var m) ? m : _default();
+        _store.Overrides.TryGetValue(workspace, out var own) ? own : _settings().ScreenLayoutOf(_screenOf.TryGetValue(workspace, out var screen) ? screen : 0);
 
-    public static LayoutMode Parse(string? text) => text?.ToLowerInvariant() switch
+    /// <summary>The layout a workspace's windows are in now; null: as GlazeWM tiles them by itself.</summary>
+    LayoutMode? Arranged(string workspace) => _store.Workspaces.TryGetValue(workspace, out var m) ? m : null;
+
+    /// <summary>"dwindle", "columns" and "scrolling"; anything else (also the floating and manual layouts of older versions) is Dwindle.</summary>
+    public static LayoutMode Parse(string? text) => TryParse(text, out var mode) ? mode : LayoutMode.Dwindle;
+
+    public static bool TryParse(string? text, out LayoutMode mode)
     {
-        "columns" => LayoutMode.Columns,
-        "scrolling" => LayoutMode.Scrolling,
-        "floating" => LayoutMode.Floating,
-        "manual" => LayoutMode.Manual,
-        _ => LayoutMode.Dwindle,
-    };
+        switch (text?.Trim().ToLowerInvariant())
+        {
+            case "dwindle": mode = LayoutMode.Dwindle; return true;
+            case "columns": mode = LayoutMode.Columns; return true;
+            case "scrolling": mode = LayoutMode.Scrolling; return true;
+            default: mode = LayoutMode.Dwindle; return false;
+        }
+    }
 
-    public static string Name(LayoutMode m) => L.T("layouts." + m.ToString().ToLowerInvariant());
+    /// <summary>The layout's name in settings.json: "dwindle", "columns" or "scrolling".</summary>
+    public static string Id(LayoutMode mode) => mode.ToString().ToLowerInvariant();
+
+    public static string Name(LayoutMode m) => L.T("layouts." + Id(m));
+
+    /// <summary>The next layout of Win+Ctrl+J: Dwindle → Columns → Scrolling → Dwindle.</summary>
+    public static LayoutMode Next(LayoutMode mode) => Cycle[(Array.IndexOf(Cycle, mode) + 1) % Cycle.Length];
 
     int Visible => Math.Clamp(_settings().ScrollingColumns, 1, 3);
 
@@ -158,9 +215,9 @@ public sealed class LayoutEngine
         await _busy.WaitAsync(ct);
         try
         {
-            var workspaces = await _ipc.QueryAsync("workspaces", ct);
-            var window = GlazeTree.List(workspaces, "workspaces").SelectMany(GlazeTree.Windows).FirstOrDefault(w => GlazeTree.Str(w, "id") == id);
-            if (window.ValueKind == JsonValueKind.Object) await PlaceLockedAsync("window_managed", window, id, workspaces, ct);
+            var monitors = await _ipc.QueryAsync("monitors", ct);
+            var window = GlazeTree.Workspaces(monitors).SelectMany(GlazeTree.Windows).FirstOrDefault(w => GlazeTree.Str(w, "id") == id);
+            if (window.ValueKind == JsonValueKind.Object) await PlaceLockedAsync("window_managed", window, id, monitors, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -214,7 +271,7 @@ public sealed class LayoutEngine
             if (id == null) return;
             if (e.Type == "window_managed" && Volatile.Read(ref _holding) > 0) return;
 
-            await PlaceLockedAsync(e.Type, window, id, await _ipc.QueryAsync("workspaces", ct), ct);
+            await PlaceLockedAsync(e.Type, window, id, await _ipc.QueryAsync("monitors", ct), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -226,12 +283,18 @@ public sealed class LayoutEngine
         }
     }
 
-    /// <summary>What the layout of the window's workspace does with a window that opened, moved in or got the focus. Caller holds the gate.</summary>
-    async Task PlaceLockedAsync(string eventType, JsonElement window, string id, JsonElement workspaces, CancellationToken ct)
+    /// <summary>
+    /// What the layout of the window's workspace does with a window that opened, moved in or got the
+    /// focus. A workspace that is shown first gets the layout of its screen, if its windows are still
+    /// in another one (the screen's layout changed, or the workspace came from another screen).
+    /// Caller holds the gate.
+    /// </summary>
+    async Task PlaceLockedAsync(string eventType, JsonElement window, string id, JsonElement monitors, CancellationToken ct)
     {
-        var ws = GlazeTree.WorkspaceOf(workspaces, id);
+        var ws = GlazeTree.WorkspaceOf(monitors, id);
         var name = ws is { } w2 ? GlazeTree.Str(w2, "name") : null;
         if (name == null || !GlazeConfig.IsRegular(name)) return;
+        var mode = await ReconcileLockedAsync(name, monitors, ct);
 
         // A new window next to one in full screen: that one goes back to where it was (its tile, or
         // floating), so the new one is not hidden behind it or lying over it.
@@ -244,13 +307,10 @@ public sealed class LayoutEngine
             }
         }
 
-        switch (ModeOf(name))
+        switch (mode)
         {
             case LayoutMode.Dwindle when GlazeTree.WindowState(window) == "tiling":
-                var width = GlazeTree.Int(window, "width");
-                var height = GlazeTree.Int(window, "height");
-                if (width > 0 && height > 0)
-                    await _ipc.CommandAsync("set-tiling-direction " + (width >= height ? "horizontal" : "vertical"), ct, id);
+                await DwindleSplitAsync(window, ct);
                 break;
 
             case LayoutMode.Columns:
@@ -278,48 +338,183 @@ public sealed class LayoutEngine
                 }
                 await ArrangeLockedAsync(name, id, ct);
                 break;
-
-            case LayoutMode.Floating when eventType == "window_managed" && GlazeTree.WindowState(window) == "tiling":
-                await _ipc.CommandAsync("set-floating --centered", ct, id);
-                _floatedBy[id] = name;
-                break;
         }
     }
 
-    /// <summary>Win+Ctrl+J on the focused workspace: Dwindle → Columns → Scrolling → Dwindle.</summary>
-    public async Task CycleAsync(CancellationToken ct)
+    /// <summary>Dwindle: the window's split turns along its longer side, so the next window takes half of it.</summary>
+    async Task DwindleSplitAsync(JsonElement window, CancellationToken ct)
     {
-        var workspaces = await _ipc.QueryAsync("workspaces", ct);
-        if (GlazeTree.FocusedWorkspace(workspaces) is not { } ws || GlazeTree.Str(ws, "name") is not { } name) return;
-        int i = Array.IndexOf(Cycle, ModeOf(name));
-        await SetAsync(name, Cycle[(i + 1) % Cycle.Length], ct);
+        var width = GlazeTree.Int(window, "width");
+        var height = GlazeTree.Int(window, "height");
+        if (width > 0 && height > 0 && GlazeTree.Str(window, "id") is { } id)
+            await _ipc.CommandAsync("set-tiling-direction " + (width >= height ? "horizontal" : "vertical"), ct, id);
     }
 
-    /// <summary>The user's choice for a workspace (Win+Ctrl+J, Tiling page): it stays, with a notice.</summary>
-    public async Task SetAsync(string workspace, LayoutMode mode, CancellationToken ct)
+    // ------------------------------------------------------------------ screens
+
+    /// <summary>
+    /// Brings a shown workspace's windows into the layout it should have now (<see cref="ModeOf"/>),
+    /// if they are arranged in another. A hidden workspace waits until it is shown: rearranging means
+    /// focusing its windows, and that would switch to it. Returns the layout the windows follow now.
+    /// Caller holds the gate.
+    /// </summary>
+    async Task<LayoutMode> ReconcileLockedAsync(string workspace, JsonElement monitors, CancellationToken ct)
     {
+        _screenOf = GlazeTree.ScreenOfWorkspaces(monitors);
+        var wanted = ModeOf(workspace);
+        var now = Arranged(workspace);
+        if (now == wanted) return wanted;
+        var area = WorkspaceArea.All(monitors).FirstOrDefault(a => a.Name == workspace);
+        // Hidden: its windows stay as they are, so they are placed as they are (GlazeWM's tiles split like Dwindle).
+        if (area is not { Displayed: true }) return now ?? LayoutMode.Dwindle;
+
+        Log.Trace($"layout: workspace {workspace} from {(now is { } n ? Id(n) : "GlazeWM's tiles")} to {Id(wanted)}", "layout");
+        _store.Workspaces[workspace] = wanted;
+        _store.Save();
+        if (now == LayoutMode.Scrolling)
+        {
+            // Columns waiting off the screen come back first, then all of them into the tiles.
+            foreach (var (id, staged) in ColumnsOf(workspace, monitors))
+            {
+                try
+                {
+                    if (staged) await _ipc.CommandAsync($"move --workspace {workspace}", ct, id);
+                    await _ipc.CommandAsync("set-tiling", ct, id);
+                }
+                catch (WinMarchyException) { /* window closed meanwhile */ }
+            }
+            _strips.Remove(workspace);
+            _store.Columns.Remove(workspace);
+            _store.Save();
+        }
+        if (wanted == LayoutMode.Scrolling)
+        {
+            _strips.Remove(workspace);
+            await ArrangeLockedAsync(workspace, null, ct);
+        }
+        // Windows GlazeWM tiled by itself stay where they are; a layout WinMarchy had set is redone.
+        else if (now != null) await RelayoutAsync(workspace, wanted, ct);
+        return wanted;
+    }
+
+    /// <summary>
+    /// The columns of a scrolling workspace and whether each waits in the staging workspace: the strip
+    /// if WinMarchy has it in memory, else the windows layouts.json knows by handle.
+    /// </summary>
+    List<(string Id, bool Staged)> ColumnsOf(string workspace, JsonElement monitors)
+    {
+        var all = GlazeTree.WindowInfos(monitors);
+        var known = _store.Columns.TryGetValue(workspace, out var saved) ? saved : new List<long>();
+        var ids = _strips.TryGetValue(workspace, out var strip) ? strip.Ids.ToHashSet() : new HashSet<string>();
+        return all.Where(w => (w.Workspace == workspace || w.Workspace == GlazeConfig.StageWorkspace) && !w.OnTop &&
+                              (ids.Contains(w.Id) || known.Contains(w.Handle)))
+            .Select(w => (w.Id, w.Workspace == GlazeConfig.StageWorkspace)).ToList();
+    }
+
+    /// <summary>
+    /// Win+Ctrl+J: the screen with the focus goes to its next layout (Dwindle → Columns → Scrolling),
+    /// and every workspace on it follows. A work mode's own layout there ends.
+    /// </summary>
+    public async Task CycleAsync(CancellationToken ct)
+    {
+        var monitors = await _ipc.QueryAsync("monitors", ct);
+        var list = GlazeTree.List(monitors, "monitors").ToList();
+        int screen = Math.Max(0, list.FindIndex(m => GlazeTree.Bool(m, "hasFocus")));
+        await SetScreenAsync(screen, Next(_settings().ScreenLayoutOf(screen)), list.Count, ct);
+    }
+
+    /// <summary>"do:layout scrolling": the screen with the focus gets that layout.</summary>
+    public async Task SetFocusedScreenAsync(LayoutMode mode, CancellationToken ct)
+    {
+        var list = GlazeTree.List(await _ipc.QueryAsync("monitors", ct), "monitors").ToList();
+        await SetScreenAsync(Math.Max(0, list.FindIndex(m => GlazeTree.Bool(m, "hasFocus"))), mode, list.Count, ct);
+    }
+
+    async Task SetScreenAsync(int screen, LayoutMode mode, int screens, CancellationToken ct)
+    {
+        _chooseScreen(screen, mode);
         // Say it first: rearranging can take a moment, the notice should not wait for it.
-        _notify(L.T("layouts.changed", ("workspace", workspace), ("layout", Name(mode))));
-        await ApplyAsync(workspace, mode, untilClosed: false, ct);
+        _notify(screens > 1 ? L.T("layouts.screenChanged", ("screen", screen + 1), ("layout", Name(mode))) : L.T("layouts.changed", ("layout", Name(mode))));
+        await ApplyScreensAsync(ct, endOverridesOn: screen);
+    }
+
+    /// <summary>
+    /// After the screens' layouts changed (Win+Ctrl+J, Tiling page): every shown workspace takes its
+    /// screen's layout now, the hidden ones when they are shown.
+    /// </summary>
+    /// <param name="endOverridesOn">A screen whose workspaces lose a work mode's own layout: the user chose one for the screen.</param>
+    public async Task ApplyScreensAsync(CancellationToken ct, int? endOverridesOn = null)
+    {
+        await _busy.WaitAsync(ct);
+        try
+        {
+            var monitors = await _ipc.QueryAsync("monitors", ct);
+            _screenOf = GlazeTree.ScreenOfWorkspaces(monitors);
+            if (endOverridesOn is { } screen)
+            {
+                foreach (var name in _store.Overrides.Keys.Where(n => _screenOf.TryGetValue(n, out var s) && s == screen).ToList())
+                    _store.Overrides.Remove(name);
+                _store.Save();
+            }
+            foreach (var area in WorkspaceArea.All(monitors).Where(a => a.Displayed && GlazeConfig.IsRegular(a.Name)).ToList())
+                await ReconcileLockedAsync(area.Name, monitors, ct);
+        }
+        finally
+        {
+            _busy.Release();
+        }
     }
 
     /// <summary>
     /// A layout only while the workspace stays open (a work mode's shared screen), without a notice.
-    /// When GlazeWM closes the workspace, the layout it had before comes back; choosing one by hand
-    /// in the meantime keeps that one.
+    /// When GlazeWM closes the workspace, the override goes; Win+Ctrl+J on its screen ends it too.
     /// </summary>
-    public async Task UseUntilClosedAsync(string workspace, LayoutMode mode, CancellationToken ct)
+    public async Task UseWhileOpenAsync(string workspace, LayoutMode mode, CancellationToken ct)
     {
-        if (ModeOf(workspace) == mode) return;
-        await ApplyAsync(workspace, mode, untilClosed: true, ct);
+        await _busy.WaitAsync(ct);
+        try
+        {
+            // A workspace that just opened: which screen it is on is only known from a fresh look.
+            var monitors = await _ipc.QueryAsync("monitors", ct);
+            _screenOf = GlazeTree.ScreenOfWorkspaces(monitors);
+            if (ModeOf(workspace) == mode) return;
+            _store.Overrides[workspace] = mode;
+            _store.Save();
+            await ReconcileLockedAsync(workspace, monitors, ct);
+        }
+        finally
+        {
+            _busy.Release();
+        }
     }
 
-    /// <summary>After connecting: workspaces that closed while WinMarchy was not listening get their layout from before.</summary>
+    /// <summary>
+    /// After connecting: what layouts.json says about workspaces that closed meanwhile goes, and the
+    /// windows of workspaces in the floating layout of older versions come back into the tiles.
+    /// </summary>
     public async Task ForgetClosedAsync(CancellationToken ct)
     {
-        if (_store.UntilClosed.Count == 0) return;
-        var open = GlazeTree.List(await _ipc.QueryAsync("workspaces", ct), "workspaces").Select(w => GlazeTree.Str(w, "name")).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
-        await ClosedAsync(_store.UntilClosed.Keys.Where(n => !open.Contains(n)).ToList(), ct);
+        var monitors = await _ipc.QueryAsync("monitors", ct);
+        _screenOf = GlazeTree.ScreenOfWorkspaces(monitors);
+        var open = _screenOf.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        await ClosedAsync(_store.Workspaces.Keys.Concat(_store.Overrides.Keys).Concat(_store.Columns.Keys).Where(n => !open.Contains(n)).Distinct().ToList(), ct);
+        if (_store.FormerlyFloating.Count == 0) return;
+        await _busy.WaitAsync(ct);
+        try
+        {
+            foreach (var w in GlazeTree.WindowInfos(monitors).Where(w => _store.FormerlyFloating.Contains(w.Workspace) && w.Floating && !w.OnTop))
+            {
+                try { await _ipc.CommandAsync("set-tiling", ct, w.Id); }
+                catch (WinMarchyException) { /* closed meanwhile */ }
+            }
+            Log.Info(L.T("layouts.floatingGone", ("workspaces", string.Join(", ", _store.FormerlyFloating))));
+            _store.FormerlyFloating.Clear();
+            _store.Save();
+        }
+        finally
+        {
+            _busy.Release();
+        }
     }
 
     async Task ClosedAsync(IReadOnlyCollection<string> names, CancellationToken ct)
@@ -331,14 +526,10 @@ public sealed class LayoutEngine
             bool changed = false;
             foreach (var name in names)
             {
-                if (!_store.UntilClosed.Remove(name, out var before)) continue;
-                if (before is { } b && b != _default()) _store.Workspaces[name] = b;
-                else _store.Workspaces.Remove(name);
-                // A closed workspace has no windows, so no columns either.
+                // A closed workspace has no windows: no arrangement, no columns, and a work mode's layout ends.
+                changed |= _store.Overrides.Remove(name) | _store.Workspaces.Remove(name) | _store.Columns.Remove(name);
                 _strips.Remove(name);
-                _store.Columns.Remove(name);
-                Log.Trace($"layout: workspace {name} closed, back to {Name(ModeOf(name))}", "layout");
-                changed = true;
+                Log.Trace($"layout: workspace {name} closed", "layout");
             }
             if (changed) _store.Save();
         }
@@ -348,70 +539,77 @@ public sealed class LayoutEngine
         }
     }
 
-    async Task ApplyAsync(string workspace, LayoutMode mode, bool untilClosed, CancellationToken ct)
+    // ------------------------------------------------------------------ single windows (Win+T)
+
+    /// <summary>
+    /// Win+T on a tile or a column: the window leaves the layout and floats above the tiles, centred
+    /// at a comfortable size (<paramref name="corner"/>: small, bottom right, as Win+O pops it out).
+    /// The others close the gap. Caller holds the gate.
+    /// </summary>
+    internal async Task FloatLockedAsync(WindowInfo window, bool corner, JsonElement monitors, CancellationToken ct)
     {
-        await _busy.WaitAsync(ct);
-        try
+        var area = WorkspaceArea.All(monitors).FirstOrDefault(a => a.Name == window.Workspace);
+        bool column = _strips.TryGetValue(window.Workspace, out var strip) && strip.Ids.Contains(window.Id);
+        if (column) Forget(window.Id);
+        if (window.State == "fullscreen") await _ipc.CommandAsync("toggle-fullscreen", ct, window.Id);
+        await _ipc.CommandAsync("set-floating --shown-on-top --centered=false", ct, window.Id);
+        if (area != null)
         {
-            var before = ModeOf(workspace);
-            if (!untilClosed) _store.UntilClosed.Remove(workspace);
-            else if (!_store.UntilClosed.ContainsKey(workspace))
-                _store.UntilClosed[workspace] = _store.Workspaces.TryGetValue(workspace, out var chosen) ? chosen : null;
-            if (mode == _default()) _store.Workspaces.Remove(workspace);
-            else _store.Workspaces[workspace] = mode;
-            _store.Save();
-
-            var workspaces = await _ipc.QueryAsync("workspaces", ct);
-            var ws = GlazeTree.List(workspaces, "workspaces").Cast<JsonElement?>().FirstOrDefault(w => GlazeTree.Str(w!.Value, "name") == workspace);
-            if (ws is not { } w) return;
-
-            if (before == LayoutMode.Floating && mode != LayoutMode.Floating)
-            {
-                foreach (var (id, owner) in _floatedBy.ToArray())
-                {
-                    if (owner != workspace) continue;
-                    try { await _ipc.CommandAsync("set-tiling", ct, id); } catch { /* window closed */ }
-                    _floatedBy.TryRemove(id, out _);
-                }
-            }
-            if (before == LayoutMode.Scrolling && mode != LayoutMode.Scrolling)
-            {
-                // Columns waiting off the screen come back first, then all of them into the tiles.
-                var staged = GlazeTree.WindowInfos(workspaces).Where(x => x.Workspace == GlazeConfig.StageWorkspace).Select(x => x.Id).ToHashSet();
-                var ids = _strips.Remove(workspace, out var old) ? old.Ids : new List<string>();
-                foreach (var id in ids)
-                {
-                    try
-                    {
-                        if (staged.Contains(id)) await _ipc.CommandAsync($"move --workspace {workspace}", ct, id);
-                        await _ipc.CommandAsync("set-tiling", ct, id);
-                    }
-                    catch { /* window closed */ }
-                }
-                _store.Columns.Remove(workspace);
-                _store.Save();
-            }
-            if (mode == LayoutMode.Floating)
-            {
-                foreach (var win in GlazeTree.TilingWindows(w).ToList())
-                {
-                    if (GlazeTree.Str(win, "id") is not { } id) continue;
-                    await _ipc.CommandAsync("set-floating --centered", ct, id);
-                    _floatedBy[id] = workspace;
-                }
-            }
-            if (mode == LayoutMode.Scrolling)
-            {
-                _strips.Remove(workspace);
-                await ArrangeLockedAsync(workspace, null, ct);
-            }
-            if (mode is LayoutMode.Dwindle or LayoutMode.Columns && GlazeTree.Bool(w, "isDisplayed"))
-                await RelayoutAsync(workspace, mode, ct);
+            var (x, y, w, h) = FloatRect(area, window.Width, window.Height, corner, (int)Math.Round(_settings().InnerGap * area.Scale));
+            await _ipc.CommandAsync($"size --width {w}px --height {h}px", ct, window.Id);
+            await _ipc.CommandAsync($"position --x-pos {x} --y-pos {y}", ct, window.Id);
         }
-        finally
+        if (column) await ArrangeLockedAsync(window.Workspace, null, ct, focus: false);
+        await _ipc.CommandAsync($"focus --container-id {window.Id}", ct);
+        Log.Trace($"float: {window.Id} leaves the {(column ? "columns" : "tiles")} of {window.Workspace}", "layout");
+    }
+
+    /// <summary>
+    /// Where a window floats: centred, as wide as its tile was but at least 40 % and at most 70 % of
+    /// the screen (height: 50 to 80 %); in the corner a third of the screen, bottom right.
+    /// </summary>
+    public static (int X, int Y, int Width, int Height) FloatRect(WorkspaceArea area, int width, int height, bool corner, int gap)
+    {
+        if (corner)
         {
-            _busy.Release();
+            int cw = area.Width / 3, ch = area.Height / 3;
+            return (area.X + area.Width - cw - gap, area.Y + area.Height - ch - gap, cw, ch);
         }
+        int w = Math.Clamp(width, area.Width * 2 / 5, area.Width * 7 / 10);
+        int h = Math.Clamp(height, area.Height / 2, area.Height * 4 / 5);
+        return (area.X + (area.Width - w) / 2, area.Y + (area.Height - h) / 2, w, h);
+    }
+
+    /// <summary>
+    /// Win+T on a floating window: back into the layout of its workspace. Dwindle splits the tile that
+    /// had the focus last along its longer side (or GlazeWM puts the window back where it was, if that
+    /// spot is still there); Columns adds a column; Scrolling adds a column after the focused one.
+    /// Caller holds the gate.
+    /// </summary>
+    internal async Task TileLockedAsync(WindowInfo window, JsonElement monitors, CancellationToken ct)
+    {
+        var mode = await ReconcileLockedAsync(window.Workspace, monitors, ct);
+        var ws = GlazeTree.Workspaces(monitors).Cast<JsonElement?>().FirstOrDefault(w => GlazeTree.Str(w!.Value, "name") == window.Workspace);
+        // GlazeWM puts the window next to the tile that had the focus last; turned along its longer side, the window takes half of it.
+        if (mode == LayoutMode.Dwindle && ws is { } dwindle && GlazeTree.LastFocusedTiling(dwindle) is { } target)
+            await DwindleSplitAsync(target, ct);
+        if (mode == LayoutMode.Columns && ws is { } columns && GlazeTree.Str(columns, "tilingDirection") == "vertical")
+            await _ipc.CommandAsync("set-tiling-direction horizontal", ct, GlazeTree.Str(columns, "id"));
+        await _ipc.CommandAsync("set-tiling", ct, window.Id);
+        if (mode == LayoutMode.Scrolling) await ArrangeLockedAsync(window.Workspace, window.Id, ct);
+        else
+        {
+            await _ipc.CommandAsync($"focus --container-id {window.Id}", ct);
+            await _ipc.CommandAsync("wm-redraw", ct);
+        }
+        Log.Trace($"float: {window.Id} back into the {Id(mode)} layout of {window.Workspace}", "layout");
+    }
+
+    /// <summary>A window moved to <paramref name="workspace"/> (Win+Shift+1 …): that workspace's layout takes it. Caller holds the gate.</summary>
+    internal async Task ArrivedLockedAsync(string workspace, string id, CancellationToken ct)
+    {
+        if (await ReconcileLockedAsync(workspace, await _ipc.QueryAsync("monitors", ct), ct) == LayoutMode.Scrolling)
+            await ArrangeLockedAsync(workspace, id, ct);
     }
 
     // ------------------------------------------------------------------ scrolling
@@ -424,7 +622,7 @@ public sealed class LayoutEngine
 
     /// <summary>The columns of a scrolling workspace, or null. Caller holds the gate.</summary>
     internal ScrollStrip? StripOf(string workspace) =>
-        ModeOf(workspace) == LayoutMode.Scrolling && _strips.TryGetValue(workspace, out var s) ? s : null;
+        Arranged(workspace) == LayoutMode.Scrolling && _strips.TryGetValue(workspace, out var s) ? s : null;
 
     /// <summary>A window leaves its scrolling workspace (moved away, into the scratchpad). Caller holds the gate.</summary>
     internal void Forget(string windowId)
@@ -436,7 +634,7 @@ public sealed class LayoutEngine
     /// <summary>The strip of a scrolling workspace, built first if WinMarchy just started. Caller holds the gate.</summary>
     async Task<ScrollStrip?> EnsureStripAsync(string workspace, CancellationToken ct)
     {
-        if (ModeOf(workspace) != LayoutMode.Scrolling) return null;
+        if (Arranged(workspace) != LayoutMode.Scrolling) return null;
         if (!_strips.ContainsKey(workspace)) await ArrangeLockedAsync(workspace, null, ct);
         return _strips.TryGetValue(workspace, out var s) ? s : null;
     }
@@ -536,7 +734,7 @@ public sealed class LayoutEngine
 
     /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
     internal bool IsWaitingColumn(long handle) =>
-        _store.Columns.Any(c => ModeOf(c.Key) == LayoutMode.Scrolling && c.Value.Contains(handle));
+        _store.Columns.Any(c => Arranged(c.Key) == LayoutMode.Scrolling && c.Value.Contains(handle));
 
     // ------------------------------------------------------------------ dwindle and columns
 

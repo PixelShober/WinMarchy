@@ -21,8 +21,6 @@ public sealed class GlazeConfigOptions
     public List<string> ShutdownCommands { get; set; } = new();
     /// <summary>Workspace name → monitor index (0 = leftmost), for workspaces pinned to a screen.</summary>
     public Dictionary<string, int> WorkspaceMonitors { get; set; } = new();
-    /// <summary>Only for the GlazeWM hotkey engine; with AutoHotkey the list stays empty.</summary>
-    public List<(IReadOnlyList<string> Commands, string Binding, string Comment)> Keybindings { get; set; } = new();
 }
 
 /// <summary>
@@ -125,21 +123,8 @@ public static class GlazeConfig
         Line();
         Line("binding_modes: []");
         Line();
-        if (o.Keybindings.Count == 0)
-        {
-            Line("# AutoHotkey owns the shortcuts (WinMarchy → Hotkeys).");
-            Line("keybindings: []");
-        }
-        else
-        {
-            Line("keybindings:");
-            foreach (var (commands, binding, comment) in o.Keybindings)
-            {
-                Line($"  # {comment.Replace('\n', ' ')}");
-                Line("  - commands: " + List(commands));
-                Line($"    bindings: [{Q(binding)}]");
-            }
-        }
+        Line("# AutoHotkey owns the shortcuts (WinMarchy → Hotkeys).");
+        Line("keybindings: []");
         return sb.ToString();
     }
 
@@ -176,47 +161,4 @@ public static class GlazeConfig
     static string List(IEnumerable<string> items) => "[" + string.Join(", ", items.Select(Q)) + "]";
 
     static string Bool(bool b) => b ? "true" : "false";
-
-    /// <summary>
-    /// Arrows and Win+Shift+1 … go through WinMarchy for the scratchpad and the scrolling layout.
-    /// With the GlazeWM engine that would start WinMarchy.exe on every key press, so they stay
-    /// GlazeWM's own commands there.
-    /// </summary>
-    static IReadOnlyList<string>? Native(HotkeyAction action)
-    {
-        if (action.Kind != ActionKind.Do) return null;
-        var parts = action.Value.Split(' ', 2, StringSplitOptions.TrimEntries);
-        if (parts.Length < 2) return null;
-        return parts[0] switch
-        {
-            "focus" => new[] { "focus --direction " + parts[1] },
-            "swap" => new[] { "move --direction " + parts[1] },
-            "to-workspace" => new[] { "move --workspace " + parts[1], "focus --workspace " + parts[1] },
-            _ => null,
-        };
-    }
-
-    /// <summary>
-    /// Keybindings for the GlazeWM engine. Window commands run in GlazeWM itself, everything else goes
-    /// through WinMarchy.exe --action (GlazeWM cannot send keys or show menus).
-    /// </summary>
-    public static List<(IReadOnlyList<string> Commands, string Binding, string Comment)> Keybindings(
-        HotkeySet set, IKeyboardLayout layout, string winMarchyExe, IReadOnlyCollection<string>? leaveAlone = null,
-        IReadOnlyList<HotkeyBinding>? extra = null)
-    {
-        var list = new List<(IReadOnlyList<string>, string, string)>();
-        var taken = set.Active.Select(b => b.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var b in set.Active.Concat(extra?.Where(x => !taken.Contains(x.Keys)) ?? Enumerable.Empty<HotkeyBinding>()))
-        {
-            if (b.Combo is not { } combo || b.Action is not { } action) continue;
-            if (leaveAlone?.Contains(combo.ToString()) == true) continue;
-            var key = combo.ToGlaze(layout);
-            if (key == null) continue;
-            IReadOnlyList<string> commands = action.Kind == ActionKind.Wm
-                ? action.WmCommands.ToList()
-                : Native(action) ?? new[] { $"shell-exec --hide-window {winMarchyExe} --action {action}" };
-            list.Add((commands, key, b.Describe()));
-        }
-        return list;
-    }
 }

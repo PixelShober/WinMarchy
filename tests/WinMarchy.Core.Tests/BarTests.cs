@@ -97,20 +97,11 @@ public class BarTests
     }
 
     [Fact]
-    public void An_earlier_zebar_stays_until_the_user_switches()
+    public void The_bar_is_yasb_and_zebar_is_never_installed()
     {
-        using var temp = new TempDir();
-        var loc = Locations.Under(temp.Path);
-        Assert.Equal(Bars.Yasb, Bars.Chosen(new UserSettings(), loc));
-
-        Directory.CreateDirectory(loc.ZebarPackDir);
-        File.WriteAllText(Path.Combine(loc.ZebarPackDir, "zpack.json"), "{}");
-        Assert.Equal(Bars.Zebar, Bars.Chosen(new UserSettings(), loc));
-        Assert.Equal(Bars.Yasb, Bars.Chosen(new UserSettings { Bar = Bars.Yasb }, loc));
-        // A new setup takes YASB unless Zebar was chosen on purpose.
-        Assert.Equal(Bars.Yasb, Bars.ForSetup(new UserSettings()));
-        Assert.Equal(Bars.Zebar, Bars.ForSetup(new UserSettings { Bar = Bars.Zebar }));
-        Assert.Same(ToolCatalog.Yasb, Bars.Tool(Bars.Yasb));
+        Assert.Same(ToolCatalog.Yasb, Bars.Tool);
+        Assert.Null(ToolCatalog.Zebar.Repo);
+        Assert.Throws<WinMarchyException>(() => ToolInstaller.InstallAsync(ToolCatalog.Zebar, new SetupStep("zebar", (_, _) => Task.CompletedTask), CancellationToken.None).GetAwaiter().GetResult());
     }
 
     [Fact]
@@ -120,7 +111,7 @@ public class BarTests
         var loc = Locations.Under(temp.Path);
         Directory.CreateDirectory(loc.ZebarPackDir);
         File.WriteAllText(Path.Combine(loc.ZebarPackDir, "zpack.json"), "{}");
-        File.WriteAllText(loc.ZebarSettings, ZebarPack.PatchSettings(null, enabled: true));
+        File.WriteAllText(loc.ZebarSettings, $$"""{ "startupConfigs": [ { "pack": "{{ZebarPack.PackName}}", "widget": "bar", "preset": "default" } ] }""");
         var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
         var point = store.Begin("zebar-remove", "Zebar");
 
@@ -134,7 +125,7 @@ public class BarTests
     }
 
     [Fact]
-    public void Glazewm_leaves_both_bars_alone()
+    public void Glazewm_leaves_the_bar_and_an_old_zebar_alone()
     {
         var yaml = GlazeConfig.Generate(GlazeConfig.FromSettings(new UserSettings(), Tokyo, Bars.Height));
         Assert.Contains("window_process: { equals: 'yasb' }", yaml);
@@ -220,11 +211,10 @@ public class BarTests
         Assert.DoesNotMatch(ToolCatalog.Get(tool).Asset!, asset);
 
     [Fact]
-    public void Lunatask_is_found_but_never_downloaded()
+    public void Lunatask_is_gone_and_ExplorerBlurMica_is_experimental()
     {
-        Assert.Equal(InstallKind.None, ToolCatalog.Lunatask.Kind);
-        Assert.Null(ToolCatalog.Lunatask.Repo);
-        Assert.Contains("lunatask", Hotkeys.HotkeyAction.Apps);
+        Assert.DoesNotContain(ToolCatalog.All, t => t.Id == "lunatask");
+        Assert.DoesNotContain("lunatask", Hotkeys.HotkeyAction.Apps);
         Assert.Contains(ToolCatalog.ExplorerBlurMica, ToolCatalog.Extras);
         Assert.True(ToolCatalog.ExplorerBlurMica.Experimental);
     }

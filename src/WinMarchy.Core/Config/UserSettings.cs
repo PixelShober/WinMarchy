@@ -6,7 +6,7 @@ namespace WinMarchy.Core;
 public sealed class ThemeTargets
 {
     public bool GlazeWm { get; set; } = true;
-    /// <summary>The bar at the top, YASB or Zebar. Called "zebar" in settings.json from the time there was only Zebar.</summary>
+    /// <summary>The bar at the top. Called "zebar" in settings.json from the time the bar was Zebar.</summary>
     [JsonPropertyName("zebar")]
     public bool Bar { get; set; } = true;
     public bool Terminal { get; set; } = true;
@@ -85,12 +85,6 @@ public sealed class UserSettings
 
     public ThemeTargets ThemeTargets { get; set; } = new();
 
-    /// <summary>
-    /// "autohotkey": AutoHotkey owns every shortcut (Win alone opens the launcher, Win+wheel switches
-    /// workspaces). "glazewm": GlazeWM owns them – for machines where IT blocks AutoHotkey.
-    /// </summary>
-    public string HotkeyEngine { get; set; } = "autohotkey";
-
     /// <summary>Adds the "Persönlich" profile (consumer apps, bindings.lua) on top of "Business".</summary>
     public bool PersonalProfile { get; set; }
 
@@ -101,8 +95,26 @@ public sealed class UserSettings
     public bool ShowBar { get; set; } = true;
     public bool StartWithWindows { get; set; } = true;
 
-    /// <summary>Layout of every workspace without its own choice: "dwindle", "columns", "floating" or "manual".</summary>
+    /// <summary>Layout of a screen without its own choice: "dwindle", "columns" or "scrolling".</summary>
     public string DefaultLayout { get; set; } = "dwindle";
+
+    /// <summary>
+    /// Each screen's layout, by monitor index (0 = leftmost, as GlazeWM counts): every workspace shown
+    /// on that screen follows it. Missing: <see cref="DefaultLayout"/>.
+    /// </summary>
+    public List<string> ScreenLayouts { get; set; } = new();
+
+    /// <summary>The layout of screen <paramref name="index"/>.</summary>
+    public GlazeWm.LayoutMode ScreenLayoutOf(int index) =>
+        GlazeWm.LayoutEngine.TryParse(ScreenLayouts.ElementAtOrDefault(index), out var mode) ? mode : GlazeWm.LayoutEngine.Parse(DefaultLayout);
+
+    /// <summary>Sets the layout of screen <paramref name="index"/>; screens before it keep theirs.</summary>
+    public void SetScreenLayout(int index, GlazeWm.LayoutMode mode)
+    {
+        if (index < 0) return;
+        while (ScreenLayouts.Count <= index) ScreenLayouts.Add(GlazeWm.LayoutEngine.Id(ScreenLayoutOf(ScreenLayouts.Count)));
+        ScreenLayouts[index] = GlazeWm.LayoutEngine.Id(mode);
+    }
 
     public int InnerGap { get; set; } = 10;
     public int OuterGap { get; set; } = 10;
@@ -110,12 +122,6 @@ public sealed class UserSettings
     public bool HideTitleBars { get; set; }
     public bool DimInactive { get; set; }
     public bool FocusFollowsCursor { get; set; }
-
-    /// <summary>
-    /// Omarchy knows no minimizing: a window that gets minimized comes straight back into its tile.
-    /// Win+M brings back anything that slipped through.
-    /// </summary>
-    public bool BlockMinimize { get; set; } = true;
 
     /// <summary>A window that opens next to one in full screen ends the full screen, as in Hyprland.</summary>
     public bool NewWindowEndsFullscreen { get; set; } = true;
@@ -145,26 +151,17 @@ public sealed class UserSettings
     /// <summary>Browser behind Win+Shift+Enter: null = Windows' default browser, else an exe.</summary>
     public string? Browser2 { get; set; }
 
-    /// <summary>"windows" (Snipping Tool) or "greenshot".</summary>
+    /// <summary>"windows" (Snipping Tool) or "greenshot". Greenshot takes over once it is installed, unless <see cref="ScreenshotToolChosen"/>.</summary>
     public string ScreenshotTool { get; set; } = "windows";
 
-    /// <summary>"winmarchy" (WinMarchy's build of GlazeWM) or "official" (the signed release from glzr-io).</summary>
-    public string GlazeBuild { get; set; } = "winmarchy";
-
-    /// <summary>
-    /// "yasb" or "zebar". Null: never chosen; then a Zebar that WinMarchy set up earlier keeps running
-    /// until the user switches (see <see cref="Integrations.Bars.Chosen"/>), and a new setup takes YASB.
-    /// </summary>
-    public string? Bar { get; set; }
+    /// <summary>The user picked the screenshot tool in the settings: WinMarchy no longer switches to Greenshot by itself.</summary>
+    public bool ScreenshotToolChosen { get; set; }
 
     /// <summary>The user's own entries in the bar: in the menu under the logo, some also as buttons.</summary>
     public List<BarShortcut> BarShortcuts { get; set; } = new();
 
     /// <summary>What the bar shows, by module id (see Bars.Modules). Missing: the default.</summary>
     public Dictionary<string, bool> BarModules { get; set; } = new();
-
-    /// <summary>Tray icons that stay in sight while the tray is folded away (part of their name). Zebar only; YASB pins with Alt+click.</summary>
-    public List<string> BarTrayPinned { get; set; } = new();
 
     /// <summary>Settings file of the Files app, if it is not found automatically.</summary>
     public string? FilesSettingsPath { get; set; }
@@ -194,9 +191,19 @@ public sealed class UserSettings
 
     public void Save() => FileSafety.WriteText(Paths.SettingsFile, Json.Serialize(this, indented: true));
 
-    /// <summary>Older settings in today's form: the programs Win+Ctrl+D started per monitor become the first work mode.</summary>
+    /// <summary>
+    /// Older settings in today's form: the programs Win+Ctrl+D started per monitor become the first
+    /// work mode; the floating and manual layouts are gone (Win+T floats single windows); Lunatask is
+    /// no longer one of the apps.
+    /// </summary>
     public UserSettings Upgraded()
     {
+        if (!GlazeWm.LayoutEngine.TryParse(DefaultLayout, out _)) DefaultLayout = "dwindle";
+        ScreenLayouts = ScreenLayouts.Select(l => GlazeWm.LayoutEngine.TryParse(l, out _) ? l : DefaultLayout).ToList();
+        BarShortcuts.RemoveAll(b => b.Action.Trim().Equals("app:lunatask", StringComparison.OrdinalIgnoreCase));
+        foreach (var mode in WorkModes)
+            for (int i = 0; i < mode.Apps.Count; i++)
+                if (mode.Apps[i].Trim().Equals("app:lunatask", StringComparison.OrdinalIgnoreCase)) mode.Apps[i] = "";
         if (DesktopApps is { Count: > 0 } old && WorkModes.Count == 0)
         {
             var screens = old.Keys.Select(k => int.TryParse(k, out var i) ? i : -1).Where(i => i is >= 0 and < 16).DefaultIfEmpty(-1).Max() + 1;

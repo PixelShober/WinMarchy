@@ -70,8 +70,6 @@ public static class PolicyCheck
         new("taskManager", "HKCU", SystemPolicies, "DisableTaskMgr", On),
         new("registryTools", "HKCU", SystemPolicies, "DisableRegistryTools", On),
         new("notifications", "HKCU", @"Software\Policies\Microsoft\Windows\Explorer", "DisableNotificationCenter", On),
-        new("webView2", "HKLM", @"SOFTWARE\Policies\Microsoft\Edge\WebView2", null),
-        new("webView2", "HKCU", @"Software\Policies\Microsoft\Edge\WebView2", null),
         new("proxy", "HKCU", @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", "ProxyServer"),
         new("proxyScript", "HKCU", @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", "AutoConfigURL"),
     };

@@ -77,11 +77,6 @@ public sealed class AppLauncher
             case "obsidian":
                 return First(Path.Combine(_loc.LocalAppData, "Programs", "Obsidian", "Obsidian.exe")) is { } obs
                     ? Start(obs) : Open("https://obsidian.md/download");
-            case "lunatask":
-                // The installer from lunatask.app, else the Store app (from the Start menu's list), else its download page.
-                if (Tool(ToolCatalog.Lunatask) is { } luna) return Start(luna);
-                if (StartApps.Current.FirstOrDefault(a => a.Name.Equals("Lunatask", StringComparison.OrdinalIgnoreCase)) is { } store) return StartApps.Launch(store);
-                return StartMenuEntry("Lunatask") is { } lunaLink ? Start(lunaLink) : Open(ToolCatalog.Lunatask.Homepage);
             case "bitwarden":
                 return First(Path.Combine(_loc.LocalAppData, "Programs", "Bitwarden", "Bitwarden.exe")) is { } bw
                     ? Start(bw) : Web("https://vault.bitwarden.com/");

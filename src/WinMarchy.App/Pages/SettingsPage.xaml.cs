@@ -48,12 +48,11 @@ public partial class SettingsPage : UserControl, IPage
         ShowFilesDefault();
         FillBrowsers(Browser1, s.Browser);
         FillBrowsers(Browser2, s.Browser2);
+        Personal.IsChecked = s.PersonalProfile;
         (s.ScreenshotTool == Core.Platform.Screenshots.Greenshot ? ShotGreenshot : ShotWindows).IsChecked = true;
         ShowScreenshotHint();
-        (s.GlazeBuild == GlazeBuilds.Official ? GlazeOfficial : GlazeWinMarchy).IsChecked = true;
-        ShowGlazeHint();
-        (AppModel.Engine.Components.Bar == Bars.Zebar ? BarZebar : BarYasb).IsChecked = true;
-        ShowBarHint();
+        ShowGlaze();
+        ShowZebar();
         ShowExplorerBlur();
         _loading = false;
         ShowUpdate();
@@ -122,7 +121,7 @@ public partial class SettingsPage : UserControl, IPage
     void OnScreenshotTool(object sender, RoutedEventArgs e)
     {
         if (_loading || sender is not RadioButton { Tag: string tool } || tool == AppModel.Settings.ScreenshotTool) return;
-        var job = AppModel.Run("screenshots", "hotkeys", L.T("jobs.screenshots"), AppModel.Engine.ScreenshotToolSteps(tool), async j =>
+        var job = AppModel.Run("screenshots", "hotkeys", L.T("jobs.screenshots"), AppModel.Engine.ScreenshotToolSteps(tool, byUser: true), async j =>
         {
             await Dispatcher.InvokeAsync(() =>
             {
@@ -135,28 +134,27 @@ public partial class SettingsPage : UserControl, IPage
         else OnShown();
     }
 
-    // ------------------------------------------------------------------ GlazeWM build
+    // ------------------------------------------------------------------ GlazeWM
 
-    void ShowGlazeHint()
+    /// <summary>Which GlazeWM is there; an official release gets a button that puts WinMarchy's build in its place.</summary>
+    void ShowGlaze()
     {
         var status = AppModel.Engine.Components.Status(ToolCatalog.GlazeWm);
-        var now = !status.Installed ? L.T("settings.glazeMissing")
-            : L.T("settings.glazeInstalled", ("build", L.T(ToolCatalog.IsWinMarchyBuild(status.Path) ? "settings.glazeWinMarchy" : "settings.glazeOfficial")),
-                ("version", status.Version ?? "?"));
-        var wanted = L.T(AppModel.Settings.GlazeBuild == GlazeBuilds.Official ? "settings.glazeOfficialHint" : "settings.glazeWinMarchyHint");
-        GlazeHint.Text = wanted + " " + now;
+        bool fork = ToolCatalog.IsWinMarchyBuild(status.Path);
+        GlazeHint.Text = !status.Installed ? L.T("settings.glazeMissing")
+            : fork ? L.T("settings.glazeInstalled", ("version", status.Version ?? "?"))
+            : L.T("settings.glazeOfficialFound", ("path", status.Path));
+        GlazeFork.Visibility = status.Installed && !fork ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>Installs the other GlazeWM in C:\WinMarchy\Tools and starts it with WinMarchy's configuration.</summary>
-    void OnGlazeBuild(object sender, RoutedEventArgs e)
+    /// <summary>Installs WinMarchy's GlazeWM in C:\WinMarchy\Tools and starts it in place of the official one.</summary>
+    void OnGlazeFork(object sender, RoutedEventArgs e)
     {
-        if (_loading || sender is not RadioButton { Tag: string build } || build == AppModel.Settings.GlazeBuild) return;
-        var job = AppModel.Run("glazewm", "setup", L.T("jobs.glazeBuild"), AppModel.Engine.GlazeBuildSteps(build), async j =>
+        var job = AppModel.Run("glazewm", "setup", L.T("jobs.glazeBuild"), AppModel.Engine.GlazeForkSteps(), async j =>
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
-                    j.State == JobState.Done ? L.T("settings.glazeDone", ("build", L.T(build == GlazeBuilds.Official ? "settings.glazeOfficial" : "settings.glazeWinMarchy"))) : j.Status);
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error, j.State == JobState.Done ? L.T("settings.glazeDone") : j.Status);
                 OnShown();
             });
         });
@@ -164,42 +162,15 @@ public partial class SettingsPage : UserControl, IPage
         else OnShown();
     }
 
-    // ------------------------------------------------------------------ bar
+    // ------------------------------------------------------------------ Zebar leftovers
 
-    void ShowBarHint()
+    /// <summary>The card shows only while an older WinMarchy's Zebar is still there.</summary>
+    void ShowZebar()
     {
-        var c = AppModel.Engine.Components;
-        var zebar = c.Status(ToolCatalog.Zebar);
-        var yasb = c.Status(ToolCatalog.Yasb);
-        var parts = new List<string>
-        {
-            L.T(c.Bar == Bars.Zebar ? "settings.barZebarHint" : "settings.barYasbHint"),
-            yasb.Installed ? L.T("settings.barInstalled", ("tool", "YASB"), ("version", yasb.Version ?? "?")) : L.T("settings.barNotInstalled", ("tool", "YASB")),
-        };
-        var zebarThere = zebar.Installed || ZebarPack.IsInstalled(Locations.Current);
-        if (zebarThere) parts.Add(zebar.Installed && !zebar.InstalledByWinMarchy ? L.T("settings.zebarElsewhere", ("path", zebar.Path)) : L.T("settings.zebarStillThere"));
-        BarHint.Text = string.Join(" ", parts);
-        // Zebar goes only once YASB is the bar, so the desktop never ends up without one.
-        RemoveZebar.Visibility = zebarThere ? Visibility.Visible : Visibility.Collapsed;
-        RemoveZebar.IsEnabled = c.Bar == Bars.Yasb;
-    }
-
-    /// <summary>Installs the other bar if needed, sets it up in the theme's colours and starts it instead.</summary>
-    void OnBar(object sender, RoutedEventArgs e)
-    {
-        if (_loading || sender is not RadioButton { Tag: string bar } || bar == AppModel.Engine.Components.Bar) return;
-        var name = Bars.Tool(bar).Name;
-        var job = AppModel.Run("bar", "setup", L.T("jobs.bar", ("tool", name)), AppModel.Engine.BarSteps(bar), async j =>
-        {
-            await Dispatcher.InvokeAsync(() =>
-            {
-                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
-                    j.State == JobState.Done ? L.T("settings.barDone", ("tool", name)) : j.Status);
-                OnShown();
-            });
-        });
-        if (job != null) BarJob.Follow(job.Id);
-        else OnShown();
+        var zebar = AppModel.Engine.Components.Status(ToolCatalog.Zebar);
+        bool there = zebar.Installed || ZebarPack.IsInstalled(Locations.Current);
+        ZebarCard.Visibility = there ? Visibility.Visible : Visibility.Collapsed;
+        ZebarHint.Text = zebar.Installed && !zebar.InstalledByWinMarchy ? L.T("settings.zebarElsewhere", ("path", zebar.Path)) : L.T("settings.zebarStillThere");
     }
 
     async void OnRemoveZebar(object sender, RoutedEventArgs e)
@@ -340,6 +311,21 @@ public partial class SettingsPage : UserControl, IPage
     }
 
     void OnAutoUpdate(object sender, RoutedEventArgs e) => AppModel.Update(s => s.AutoUpdate = AutoUpdate.IsChecked == true);
+
+    /// <summary>The private shortcuts on top of the business ones; they take effect at once.</summary>
+    void OnPersonal(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        AppModel.Update(s => s.PersonalProfile = Personal.IsChecked == true);
+        var job = AppModel.Run("hotkeys", "hotkeys", L.T("jobs.hotkeys"), AppModel.Engine.HotkeySteps(), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("hotkeys.applied"));
+            });
+        });
+        if (job != null) PersonalJob.Follow(job.Id);
+    }
 
     void OnPathsChanged(object sender, RoutedEventArgs e)
     {

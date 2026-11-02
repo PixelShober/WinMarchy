@@ -11,13 +11,12 @@ public enum InstallKind
     MsiExtract,
     /// <summary>The vendor's per-user installer, run silently.</summary>
     Installer,
-    /// <summary>WinMarchy only detects it and links to the vendor.</summary>
+    /// <summary>WinMarchy only finds it (and themes it), it does not install it.</summary>
     None,
 }
 
 /// <summary>
-/// A program WinMarchy builds on. All the ones WinMarchy installs may be used free of charge in
-/// companies; Lunatask, which the user gets from its vendor, comes with the vendor's own terms.
+/// A program WinMarchy builds on. All of them may be used free of charge in companies.
 /// </summary>
 /// <param name="Experimental">Shown with a warning: it changes something deep in Windows and may break with an update.</param>
 public sealed record ToolDef(
@@ -44,42 +43,19 @@ public sealed record ToolStatus(ToolDef Tool, string? Path, string? Version, boo
     public bool Installed => Path != null;
 }
 
-/// <summary>The two GlazeWM builds WinMarchy can install.</summary>
-public static class GlazeBuilds
-{
-    public const string WinMarchy = "winmarchy";
-    public const string Official = "official";
-}
-
 public static class ToolCatalog
 {
     /// <summary>
-    /// GlazeWM as WinMarchy ships it: its own build from PixelShober/glazewm, upstream GlazeWM plus the
-    /// changes listed in WINMARCHY.md there. Not signed, so it runs without UIAccess.
+    /// GlazeWM as WinMarchy needs it: its own build from PixelShober/glazewm, upstream GlazeWM plus the
+    /// changes listed in WINMARCHY.md there. Not signed, so it runs without UIAccess. An official
+    /// release lacks those changes; WinMarchy replaces one it finds.
     /// </summary>
     public static readonly ToolDef GlazeWm = new("glazewm", "GlazeWM", "GPL-3.0", "https://github.com/PixelShober/glazewm",
         "PixelShober/glazewm", @"^glazewm-v[\d.]+-winmarchy\.\d+-x64\.zip$", InstallKind.Zip, "glazewm.exe", Required: true);
 
-    /// <summary>The signed release from glzr-io, without WinMarchy's changes. Same id and folder as <see cref="GlazeWm"/>.</summary>
-    public static readonly ToolDef GlazeWmOfficial = GlazeWm with
-    {
-        Homepage = "https://github.com/glzr-io/glazewm",
-        Repo = "glzr-io/glazewm",
-        AssetPattern = @"^standalone-glazewm-v[\d.]+-x64\.msi$",
-        Kind = InstallKind.MsiExtract,
-    };
-
-    /// <summary>Which GlazeWM the setup installs (Settings → GlazeWM).</summary>
-    public static ToolDef GlazeSource(UserSettings settings) =>
-        settings.GlazeBuild == GlazeBuilds.Official ? GlazeWmOfficial : GlazeWm;
-
-    /// <summary>WinMarchy's build ships WINMARCHY.md next to glazewm.exe; the official one does not.</summary>
+    /// <summary>WinMarchy's build ships WINMARCHY.md next to glazewm.exe; an official release does not.</summary>
     public static bool IsWinMarchyBuild(string? glazeExe) =>
         glazeExe != null && Path.GetDirectoryName(glazeExe) is { } dir && File.Exists(Path.Combine(dir, "WINMARCHY.md"));
-
-    /// <summary>Whether the GlazeWM found is the build the settings ask for.</summary>
-    public static bool IsWantedGlaze(string? glazeExe, UserSettings settings) =>
-        glazeExe != null && IsWinMarchyBuild(glazeExe) == (settings.GlazeBuild != GlazeBuilds.Official);
 
     /// <summary>
     /// The bar at the top since WinMarchy switched away from Zebar: GlazeWM workspaces, and small
@@ -89,9 +65,9 @@ public static class ToolCatalog
     public static readonly ToolDef Yasb = new("yasb", "YASB", "MIT", "https://github.com/amnweb/yasb",
         "amnweb/yasb", @"^yasb-[\d.]+-x64\.msi$", InstallKind.MsiExtract, "yasb.exe", Required: false);
 
-    /// <summary>The bar of older WinMarchy setups. Still there for those who keep it; Settings → Bar removes it.</summary>
+    /// <summary>The bar of WinMarchy versions before YASB. Never installed any more; Settings removes what is left of it.</summary>
     public static readonly ToolDef Zebar = new("zebar", "Zebar", "GPL-3.0", "https://github.com/glzr-io/zebar",
-        "glzr-io/zebar", @"^zebar-v[\d.]+-opt1-x64\.msi$", InstallKind.MsiExtract, "zebar.exe", Required: false);
+        null, null, InstallKind.None, "zebar.exe", Required: false);
 
     public static readonly ToolDef AutoHotkey = new("autohotkey", "AutoHotkey v2", "GPL-2.0", "https://www.autohotkey.com",
         "AutoHotkey/AutoHotkey", @"^AutoHotkey_2[\d.]+\.zip$", InstallKind.Zip, "AutoHotkey64.exe", Required: false);
@@ -138,17 +114,9 @@ public static class ToolCatalog
     public static readonly ToolDef ExplorerBlurMica = new("explorerblurmica", "ExplorerBlurMica", "LGPL-3.0", "https://github.com/Maplespe/ExplorerBlurMica",
         "Maplespe/ExplorerBlurMica", @"^Release_x64\.zip$", InstallKind.Zip, "ExplorerBlurMica.dll", Required: false, Extra: true, Experimental: true);
 
-    /// <summary>
-    /// To-do list, notes and habits. Its vendor publishes no checksum for the installer, so WinMarchy
-    /// does not download it: the user installs it from lunatask.app (or the Microsoft Store) and
-    /// WinMarchy finds it and starts it (app:lunatask).
-    /// </summary>
-    public static readonly ToolDef Lunatask = new("lunatask", "Lunatask", "Proprietär", "https://lunatask.app/download",
-        null, null, InstallKind.None, "Lunatask.exe", Required: false, Extra: true);
-
     public static IReadOnlyList<ToolDef> All { get; } = new[]
     {
-        GlazeWm, Yasb, Zebar, AutoHotkey, Flow, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Lunatask, Terminal, Files, VsCode,
+        GlazeWm, Yasb, Zebar, AutoHotkey, Flow, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Terminal, Files, VsCode,
     };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
@@ -185,8 +153,6 @@ public static class ToolCatalog
         "pwsh" => new[] { Path.Combine(loc.ProgramFiles, "PowerShell", "7", "pwsh.exe") },
         "starship" => new[] { Path.Combine(loc.ProgramFiles, "starship", "bin", "starship.exe") },
         "fastfetch" => new[] { Path.Combine(loc.ProgramFiles, "fastfetch", "fastfetch.exe") },
-        // Its installer (electron-builder) installs per user; the Store version has no exe to look for.
-        "lunatask" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Lunatask", "Lunatask.exe"), Path.Combine(loc.ProgramFiles, "Lunatask", "Lunatask.exe") },
         "greenshot" => new[] { Path.Combine(loc.ProgramFiles, "Greenshot", "Greenshot.exe"), Path.Combine(loc.LocalAppData, "Programs", "Greenshot", "Greenshot.exe") },
         "terminal" => new[] { Path.Combine(loc.LocalAppData, "Microsoft", "WindowsApps", "wt.exe") },
         "vscode" => new[]
@@ -205,7 +171,6 @@ public static class ToolCatalog
         path ??= KnownPaths(t, loc).FirstOrDefault(File.Exists);
         path ??= OnPath(t.Exe);
         if (path == null && t.Id == "files") path = FilesPackage(loc);
-        if (path == null && t.Id == "lunatask") path = StorePackage(loc, "Lunatask");
 
         string? version = null;
         if (path != null && File.Exists(path))
@@ -252,14 +217,6 @@ public static class ToolCatalog
             catch { }
         }
         return null;
-    }
-
-    /// <summary>A Store app's package folder (its exe may not be started directly; it proves the app is there).</summary>
-    static string? StorePackage(Locations loc, string name)
-    {
-        var packages = Path.Combine(loc.LocalAppData, "Packages");
-        if (!Directory.Exists(packages)) return null;
-        return Directory.EnumerateDirectories(packages).FirstOrDefault(d => Path.GetFileName(d).Contains(name, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Files from the Store or its sideload package has no exe on disk we may start; its package folder proves it is there.</summary>

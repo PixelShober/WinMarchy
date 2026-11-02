@@ -77,36 +77,53 @@ public static class Dialogs
 
     public static void Attach(Grid host) => _host = host;
 
-    public static Task<bool> ConfirmAsync(string title, string text, string confirm, bool danger = false)
+    public static async Task<bool> ConfirmAsync(string title, string text, string confirm, bool danger = false) =>
+        await ChooseAsync(title, text, L.T("common.cancel"), (confirm, danger ? "Danger" : "Primary")) == 0;
+
+    /// <summary>
+    /// A question with a cancel button and one or more answers (label and button style); the last one
+    /// is the default. Returns the answer's index, or -1 for cancel and Escape.
+    /// </summary>
+    public static Task<int> ChooseAsync(string title, string text, string cancelLabel, params (string Label, string Style)[] answers)
     {
-        var tcs = new TaskCompletionSource<bool>();
+        var tcs = new TaskCompletionSource<int>();
         var host = _host;
         if (host == null)
         {
-            tcs.SetResult(false);
+            tcs.SetResult(-1);
             return tcs.Task;
         }
         var app = Application.Current;
         var stack = new StackPanel();
         stack.Children.Add(new TextBlock { Text = title, Style = (Style)app.FindResource("H2") });
-        stack.Children.Add(new TextBlock { Text = text, Style = (Style)app.FindResource("Muted"), Margin = new Thickness(0, 8, 0, 18) });
+        stack.Children.Add(new TextBlock { Text = text, Style = (Style)app.FindResource("Muted"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 18) });
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var cancel = new Button { Content = L.T("common.cancel"), Margin = new Thickness(0, 0, 8, 0), IsCancel = true };
-        var ok = new Button { Content = confirm, Style = (Style)app.FindResource(danger ? "Danger" : "Primary"), IsDefault = true };
+        var cancel = new Button { Content = cancelLabel, Margin = new Thickness(0, 0, 8, 0), IsCancel = true };
         buttons.Children.Add(cancel);
-        buttons.Children.Add(ok);
-        stack.Children.Add(buttons);
-        var card = new Border { Style = (Style)app.FindResource("Card"), Child = stack, Width = 460, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        card.SetResourceReference(Border.BorderBrushProperty, danger ? "Error" : "Accent");
+        var card = new Border { Style = (Style)app.FindResource("Card"), Child = stack, Width = 480, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        card.SetResourceReference(Border.BorderBrushProperty, answers.Any(a => a.Style == "Danger") ? "Error" : "Accent");
 
-        void Close(bool result)
+        void Close(int result)
         {
             host.Children.Clear();
             host.Visibility = Visibility.Collapsed;
             tcs.TrySetResult(result);
         }
-        cancel.Click += (_, _) => Close(false);
-        ok.Click += (_, _) => Close(true);
+        cancel.Click += (_, _) => Close(-1);
+        for (int i = 0; i < answers.Length; i++)
+        {
+            int index = i;
+            var button = new Button
+            {
+                Content = answers[i].Label,
+                Style = (Style)app.FindResource(answers[i].Style),
+                IsDefault = i == answers.Length - 1,
+                Margin = new Thickness(0, 0, i == answers.Length - 1 ? 0 : 8, 0),
+            };
+            button.Click += (_, _) => Close(index);
+            buttons.Children.Add(button);
+        }
+        stack.Children.Add(buttons);
         host.Children.Add(card);
         host.Visibility = Visibility.Visible;
         Ui.Motion.FadeIn(card, 6);

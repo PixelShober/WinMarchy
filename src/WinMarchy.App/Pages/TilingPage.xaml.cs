@@ -8,34 +8,32 @@ using WinMarchy.Core.Integrations;
 
 namespace WinMarchy.App.Pages;
 
-public partial class TilingPage : UserControl, IPage
+public partial class TilingPage : UserControl, IPage, IGuardedPage
 {
     static readonly int[] Gaps = { 0, 5, 10, 15, 20, 30 };
-    static readonly string[] LayoutIds = { "dwindle", "columns", "scrolling", "floating", "manual" };
-    static readonly LayoutMode[] Modes = { LayoutMode.Dwindle, LayoutMode.Columns, LayoutMode.Scrolling, LayoutMode.Floating, LayoutMode.Manual };
+    static readonly LayoutMode[] Modes = { LayoutMode.Dwindle, LayoutMode.Columns, LayoutMode.Scrolling };
     /// <summary>More screens than this are not shown, whatever settings.json says.</summary>
     const int MaxScreens = 8;
     /// <summary>Starting points for a work mode's programs; the box takes anything that opens a window.</summary>
     static readonly string[] ModeSuggestions =
     {
         "app:browser https://", "app:browser2 https://", "web:https://", "app:mail", "app:calendar", "app:teams", "app:terminal",
-        "app:files", "app:editor", "app:notes", "app:word", "app:stackfield", "app:lunatask", "app:obsidian", "app:herdr", "run:",
+        "app:files", "app:editor", "app:notes", "app:word", "app:stackfield", "app:obsidian", "app:herdr", "run:",
     };
-    readonly Dictionary<string, RadioButton> _layouts = new();
-    readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _minimize, _fullscreen;
-    readonly List<TextBox> _monitorRows = new();
+    readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _fullscreen;
+    readonly List<(TextBox Workspaces, List<RadioButton> Layout)> _monitorRows = new();
     readonly List<(TextBox Name, List<TextBox> Apps)> _modeRows = new();
     readonly Dictionary<string, CheckBox> _barModules = new();
-    readonly TextBox _trayPinned = new();
-    readonly StackPanel _trayPinnedPanel = new();
     readonly StackPanel _shortcutRows = new();
     readonly TextBlock _shortcutError = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 4, 0, 0) };
     readonly List<(TextBox Title, TextBox Action, CheckBox InBar)> _shortcuts = new();
+    /// <summary>The page as it was filled from the settings; anything else is a change not taken over yet.</summary>
+    string _shown = "";
 
     /// <summary>Suggestions in the action box of a bar entry; anything a shortcut can do works.</summary>
     static readonly string[] ActionSuggestions =
     {
-        "app:terminal", "app:browser", "app:files", "app:editor", "app:mail", "app:calendar", "app:teams", "app:notes", "app:lunatask",
+        "app:terminal", "app:browser", "app:files", "app:editor", "app:mail", "app:calendar", "app:teams", "app:notes",
         "app:stackfield", "app:calculator", "app:taskmanager", "do:theme-menu", "do:wallpaper-menu", "do:keybindings", "do:menu system",
         "do:screenshot", "do:about", "do:lock", "open:ms-settings:", "web:https://", "run:",
     };
@@ -43,15 +41,19 @@ public partial class TilingPage : UserControl, IPage
     public TilingPage()
     {
         InitializeComponent();
-        foreach (var mode in LayoutIds)
+        // The three layouts as a legend; each screen picks its own further down.
+        foreach (var mode in Modes)
         {
             var content = new StackPanel();
             content.Children.Add(Diagram(mode));
-            content.Children.Add(UiKit.Text(L.T("layouts." + mode), "H3", new Thickness(0, 10, 0, 2)));
-            content.Children.Add(UiKit.Text(L.T("layouts." + mode + "Text"), "Small"));
-            var option = new RadioButton { Style = UiKit.S("OptionCard"), GroupName = "layout", Content = content, Tag = mode };
-            _layouts[mode] = option;
-            Layouts.Children.Add(option);
+            content.Children.Add(UiKit.Text(LayoutEngine.Name(mode), "H3", new Thickness(0, 10, 0, 2)));
+            var text = UiKit.Text(L.T("layouts." + LayoutEngine.Id(mode) + "Text"), "Small");
+            text.TextWrapping = TextWrapping.Wrap;
+            content.Children.Add(text);
+            var card = new Border { Child = content, BorderThickness = new Thickness(2), Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 0, 12, 12) };
+            card.SetResourceReference(Border.BackgroundProperty, "Surface");
+            card.SetResourceReference(Border.BorderBrushProperty, "Border");
+            Layouts.Children.Add(card);
         }
         foreach (var g in Gaps)
         {
@@ -67,7 +69,6 @@ public partial class TilingPage : UserControl, IPage
         foreach (var c in new[] { _square, _titleBars, _dim, _focusFollows, _fullscreen }) Look.Children.Add(c);
         _taskbar = UiKit.Switch(L.T("setup.taskbar"), s.HideTaskbar, L.T("tiling.taskbarHint"));
         _bar = UiKit.Switch(L.T("setup.bar"), s.ShowBar, L.T("setup.barHint"));
-        _minimize = UiKit.Switch(L.T("tiling.blockMinimize"), s.BlockMinimize, L.T("tiling.blockMinimizeHint"));
         for (int c = 1; c <= 3; c++) ScrollingColumns.Items.Add(new ComboBoxItem { Content = L.T("tiling.columnsCount", ("count", c)), Tag = c });
         Desktop.Children.Add(_taskbar);
         Desktop.Children.Add(_bar);
@@ -76,32 +77,16 @@ public partial class TilingPage : UserControl, IPage
         var modules = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
         foreach (var (id, _) in Bars.Modules)
         {
-            var box = new CheckBox { Content = L.T("bar.modules." + id), IsChecked = Bars.IsOn(s, id), Margin = new Thickness(0, 0, 14, 6) };
+            var box = new CheckBox { Content = L.T("bar.modules." + id), Margin = new Thickness(0, 0, 14, 6) };
             _barModules[id] = box;
             modules.Children.Add(box);
         }
         Desktop.Children.Add(modules);
-        // Zebar keeps its own list of pinned tray icons; YASB pins with Alt+click.
-        _trayPinnedPanel.Children.Add(UiKit.Text(L.T("tiling.trayPinned"), "H3", new Thickness(0, 0, 0, 4)));
-        _trayPinned.Text = string.Join(", ", s.BarTrayPinned);
-        System.Windows.Automation.AutomationProperties.SetName(_trayPinned, L.T("tiling.trayPinned"));
-        _trayPinnedPanel.Children.Add(_trayPinned);
-        var trayHint = UiKit.Text(L.T("tiling.trayPinnedHint"), "Small", new Thickness(0, 4, 0, 12));
-        trayHint.TextWrapping = TextWrapping.Wrap;
-        _trayPinnedPanel.Children.Add(trayHint);
-        Desktop.Children.Add(_trayPinnedPanel);
-        BuildShortcuts(s);
-        Desktop.Children.Add(_minimize);
-        var touchpad = UiKit.Text(L.T("tiling.touchpadHint"), "Small", new Thickness(0, 4, 0, 8));
-        touchpad.TextWrapping = TextWrapping.Wrap;
-        Desktop.Children.Add(touchpad);
-        var gestures = new Button { Content = L.T("tiling.touchpad"), HorizontalAlignment = HorizontalAlignment.Left };
-        gestures.Click += (_, _) => Core.Platform.AppLauncher.Open("ms-settings:devices-touchpad");
-        Desktop.Children.Add(gestures);
+        BuildShortcuts();
     }
 
     /// <summary>A tiny picture of the layout: tiles in the accent and two neutral shades.</summary>
-    static FrameworkElement Diagram(string mode)
+    static FrameworkElement Diagram(LayoutMode mode)
     {
         var canvas = new Canvas { Width = 120, Height = 70, HorizontalAlignment = HorizontalAlignment.Left };
         void Tile(double x, double y, double w, double h, string brush)
@@ -115,30 +100,22 @@ public partial class TilingPage : UserControl, IPage
         }
         switch (mode)
         {
-            case "dwindle":
+            case LayoutMode.Dwindle:
                 Tile(0, 0, 58, 70, "BorderStrong");
                 Tile(62, 0, 58, 33, "BorderStrong");
                 Tile(62, 37, 27, 33, "BorderStrong");
                 Tile(93, 37, 27, 33, "Accent");
                 break;
-            case "columns":
+            case LayoutMode.Columns:
                 Tile(0, 0, 37, 70, "BorderStrong");
                 Tile(41, 0, 38, 70, "BorderStrong");
                 Tile(83, 0, 37, 70, "Accent");
                 break;
-            case "scrolling":
+            default:
                 // Two columns on the screen, the next ones waiting at the edge.
                 Tile(0, 0, 54, 70, "BorderStrong");
                 Tile(58, 0, 54, 70, "Accent");
                 Tile(116, 0, 4, 70, "BorderStrong");
-                break;
-            case "floating":
-                Tile(6, 6, 70, 44, "BorderStrong");
-                Tile(40, 22, 74, 44, "Accent");
-                break;
-            default:
-                Tile(0, 0, 58, 70, "BorderStrong");
-                Tile(62, 0, 58, 70, "Accent");
                 break;
         }
         return canvas;
@@ -147,40 +124,65 @@ public partial class TilingPage : UserControl, IPage
     public void OnShown()
     {
         var s = AppModel.Settings;
-        if (_layouts.TryGetValue(s.DefaultLayout, out var l)) l.IsChecked = true;
         Select(InnerGap, s.InnerGap);
         Select(OuterGap, s.OuterGap);
         Select(ScrollingColumns, s.ScrollingColumns);
-        ShowBarChoice();
+        foreach (var (box, on) in new[] { (_square, s.SquareCorners), (_titleBars, s.HideTitleBars), (_dim, s.DimInactive), (_focusFollows, s.FocusFollowsCursor),
+                     (_fullscreen, s.NewWindowEndsFullscreen), (_taskbar, s.HideTaskbar), (_bar, s.ShowBar) })
+            box.IsChecked = on;
+        foreach (var (id, box) in _barModules) box.IsChecked = Bars.IsOn(s, id);
+        _shortcutRows.Children.Clear();
+        _shortcuts.Clear();
+        _shortcutError.Visibility = Visibility.Collapsed;
+        foreach (var shortcut in s.BarShortcuts) AddShortcutRow(shortcut);
         RenderMonitors();
         RenderWorkModes();
-        _ = RenderWorkspacesAsync();
+        _shown = Snapshot();
     }
 
-    // ------------------------------------------------------------------ bar
+    // ------------------------------------------------------------------ leaving with changes
 
-    /// <summary>What only one of the two bars can do follows the bar chosen in the settings.</summary>
-    void ShowBarChoice()
+    /// <summary>Everything the page lets the user change, as one text: a change shows as a different text.</summary>
+    string Snapshot()
     {
-        var zebar = AppModel.Engine.Components.Bar == Bars.Zebar;
-        foreach (var id in Bars.YasbOnly)
+        var parts = new List<string?>
         {
-            if (!_barModules.TryGetValue(id, out var box)) continue;
-            box.IsEnabled = !zebar;
-            box.ToolTip = zebar ? L.T("tiling.yasbOnly") : null;
-        }
-        _trayPinnedPanel.Visibility = zebar ? Visibility.Visible : Visibility.Collapsed;
+            (ScrollingColumns.SelectedItem as ComboBoxItem)?.Tag?.ToString(), (InnerGap.SelectedItem as ComboBoxItem)?.Tag?.ToString(),
+            (OuterGap.SelectedItem as ComboBoxItem)?.Tag?.ToString(),
+        };
+        parts.AddRange(new[] { _square, _titleBars, _dim, _focusFollows, _fullscreen, _taskbar, _bar }.Select(b => b.IsChecked?.ToString()));
+        parts.AddRange(_barModules.Select(m => m.Key + "=" + m.Value.IsChecked));
+        parts.AddRange(_monitorRows.Select(r => r.Workspaces.Text.Trim() + "|" + r.Layout.FindIndex(b => b.IsChecked == true)));
+        parts.AddRange(_modeRows.Select(r => r.Name.Text.Trim() + "|" + string.Join("|", r.Apps.Select(a => a.Text.Trim()))));
+        parts.AddRange(_shortcuts.Select(x => x.Title.Text.Trim() + "|" + x.Action.Text.Trim() + "|" + x.InBar.IsChecked));
+        return string.Join("\n", parts);
     }
 
-    /// <summary>The user's own bar entries: in the menu under the logo, and as buttons if ticked (YASB).</summary>
-    void BuildShortcuts(UserSettings s)
+    /// <summary>
+    /// Leaving the page with changes not taken over: take them over, throw them away, or stay. A
+    /// change that cannot be taken over (a typing error) keeps the page open with the error shown.
+    /// </summary>
+    public async Task<bool> CanLeaveAsync()
+    {
+        if (Snapshot() == _shown) return true;
+        var choice = await Dialogs.ChooseAsync(L.T("tiling.unsavedTitle"), L.T("tiling.unsavedText"), L.T("tiling.unsavedStay"),
+            (L.T("tiling.unsavedDiscard"), "Ghost"), (L.T("tiling.apply"), "Primary"));
+        return choice switch
+        {
+            0 => true,
+            1 => await ApplyAsync(),
+            _ => false,
+        };
+    }
+
+    /// <summary>The user's own bar entries: in the menu under the logo, and as buttons if ticked.</summary>
+    void BuildShortcuts()
     {
         Desktop.Children.Add(UiKit.Text(L.T("tiling.shortcuts"), "H3", new Thickness(0, 4, 0, 4)));
         var hint = UiKit.Text(L.T("tiling.shortcutsHint"), "Small", new Thickness(0, 0, 0, 8));
         hint.TextWrapping = TextWrapping.Wrap;
         Desktop.Children.Add(hint);
         Desktop.Children.Add(_shortcutRows);
-        foreach (var shortcut in s.BarShortcuts) AddShortcutRow(shortcut);
         var add = UiKit.IconTextButton("plus", L.T("tiling.shortcutAdd"));
         add.HorizontalAlignment = HorizontalAlignment.Left;
         add.Click += (_, _) => AddShortcutRow(new BarShortcut());
@@ -188,7 +190,6 @@ public partial class TilingPage : UserControl, IPage
         _shortcutError.SetResourceReference(TextBlock.ForegroundProperty, "Error");
         _shortcutError.Style = UiKit.S("Small");
         Desktop.Children.Add(_shortcutError);
-        Desktop.Children.Add(new Border { Height = 12 });
     }
 
     void AddShortcutRow(BarShortcut shortcut)
@@ -266,8 +267,9 @@ public partial class TilingPage : UserControl, IPage
         System.Windows.Forms.Screen.AllScreens.OrderBy(m => m.Bounds.X).ThenBy(m => m.Bounds.Y).ToList();
 
     /// <summary>
-    /// A row per screen: the connected ones, and those that still have workspaces from another setup
-    /// (the docking station at work), so a laptop on its own keeps them for the next time.
+    /// A row per screen: its layout and its workspaces. The connected screens, and those that still
+    /// have workspaces from another setup (the docking station at work), so a laptop on its own keeps
+    /// them for the next time.
     /// </summary>
     void RenderMonitors()
     {
@@ -276,12 +278,14 @@ public partial class TilingPage : UserControl, IPage
         MonitorsError.Visibility = Visibility.Collapsed;
         var s = AppModel.Settings;
         var screens = Screens();
-        int rows = Math.Clamp(Math.Max(screens.Count, s.WorkspaceMonitors.Values.DefaultIfEmpty(-1).Max() + 1), 1, MaxScreens);
+        int rows = Math.Clamp(new[] { screens.Count, s.WorkspaceMonitors.Values.DefaultIfEmpty(-1).Max() + 1, s.ScreenLayouts.Count }.Max(), 1, MaxScreens);
         for (int i = 0; i < rows; i++)
         {
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
 
             var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             name.Children.Add(UiKit.Text(L.T("tiling.monitorName", ("number", i + 1)), "H3"));
@@ -289,19 +293,39 @@ public partial class TilingPage : UserControl, IPage
                 : L.T(screens[i].Primary ? "tiling.monitorPrimary" : "tiling.monitorSize", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height)), "Small"));
             grid.Children.Add(name);
 
+            // The screen's layout: every workspace shown on it follows.
+            var segments = new StackPanel { Orientation = Orientation.Horizontal };
+            var buttons = new List<RadioButton>();
+            var current = s.ScreenLayoutOf(i);
+            foreach (var mode in Modes)
+            {
+                var b = new RadioButton { Style = UiKit.S("Segment"), GroupName = "screen-layout-" + i, Content = LayoutEngine.Name(mode), IsChecked = mode == current, Tag = mode };
+                System.Windows.Automation.AutomationProperties.SetName(b, L.T("tiling.monitorLayout", ("number", i + 1), ("layout", LayoutEngine.Name(mode))));
+                buttons.Add(b);
+                segments.Children.Add(b);
+            }
+            var group = new Border { Style = UiKit.S("SegmentGroup"), Child = segments, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(group, 1);
+            grid.Children.Add(group);
+
             var mine = s.WorkspaceMonitors.Where(p => p.Value == i).Select(p => int.TryParse(p.Key, out var n) ? n : 0).Where(n => n > 0).OrderBy(n => n);
             var workspaces = new TextBox { Style = UiKit.S("MonoBox"), Text = Ranges(mine), ToolTip = L.T("tiling.monitorWorkspacesHint"), VerticalAlignment = VerticalAlignment.Center };
             System.Windows.Automation.AutomationProperties.SetName(workspaces, L.T("tiling.monitorWorkspaces"));
-            Grid.SetColumn(workspaces, 1);
+            Grid.SetColumn(workspaces, 3);
             grid.Children.Add(workspaces);
 
             Monitors.Children.Add(grid);
-            _monitorRows.Add(workspaces);
+            _monitorRows.Add((workspaces, buttons));
         }
         var hint = UiKit.Text(L.T("tiling.monitorsHint"), "Small");
         hint.TextWrapping = TextWrapping.Wrap;
         Monitors.Children.Add(hint);
     }
+
+    /// <summary>Each row's layout, as settings.json writes it.</summary>
+    List<string> ReadScreenLayouts() => _monitorRows
+        .Select(r => r.Layout.FirstOrDefault(b => b.IsChecked == true)?.Tag is LayoutMode m ? LayoutEngine.Id(m) : LayoutEngine.Id(LayoutMode.Dwindle))
+        .ToList();
 
     // ------------------------------------------------------------------ work modes
 
@@ -442,7 +466,7 @@ public partial class TilingPage : UserControl, IPage
         for (int i = 0; i < count; i++)
         {
             int take = per + (i < extra ? 1 : 0);
-            _monitorRows[i].Text = take == 0 ? "" : Ranges(Enumerable.Range(next, take));
+            _monitorRows[i].Workspaces.Text = take == 0 ? "" : Ranges(Enumerable.Range(next, take));
             next += take;
         }
     }
@@ -453,7 +477,7 @@ public partial class TilingPage : UserControl, IPage
         var map = new Dictionary<string, int>();
         for (int i = 0; i < _monitorRows.Count; i++)
         {
-            var numbers = ParseRanges(_monitorRows[i].Text);
+            var numbers = ParseRanges(_monitorRows[i].Workspaces.Text);
             if (numbers == null) return (map, L.T("tiling.monitorsInvalid", ("number", i + 1)));
             foreach (var n in numbers)
             {
@@ -468,72 +492,28 @@ public partial class TilingPage : UserControl, IPage
     static void Select(ComboBox box, int value) =>
         box.SelectedItem = box.Items.Cast<ComboBoxItem>().OrderBy(i => Math.Abs((int)i.Tag - value)).First();
 
-    async Task RenderWorkspacesAsync()
-    {
-        Workspaces.Children.Clear();
-        var agent = AppModel.Agent;
-        if (agent?.Glaze is not { Connected: true } ipc || agent.Layouts is not { } layouts)
-        {
-            Workspaces.Children.Add(UiKit.Text(L.T("tiling.notConnected"), "Muted"));
-            return;
-        }
-        try
-        {
-            var data = await ipc.QueryAsync("workspaces", CancellationToken.None);
-            var list = GlazeTree.List(data, "workspaces")
-                .Where(w => GlazeTree.Str(w, "name") != GlazeConfig.ScratchpadWorkspace)
-                .OrderBy(w => GlazeTree.Str(w, "name"), Comparer<string?>.Create(GlazeTree.CompareNames)).ToList();
-            foreach (var w in list)
-            {
-                var name = GlazeTree.Str(w, "name")!;
-                var windows = GlazeTree.Windows(w).Count();
-                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
-                var group = new Border { Style = UiKit.S("SegmentGroup") };
-                var seg = new StackPanel { Orientation = Orientation.Horizontal };
-                foreach (var mode in Modes)
-                {
-                    var b = new RadioButton { Style = UiKit.S("Segment"), GroupName = "ws-" + name, Content = LayoutEngine.Name(mode), IsChecked = layouts.ModeOf(name) == mode };
-                    b.Checked += async (_, _) => await layouts.SetAsync(name, mode, CancellationToken.None);
-                    seg.Children.Add(b);
-                }
-                group.Child = seg;
-                DockPanel.SetDock(group, Dock.Right);
-                row.Children.Add(group);
-                var label = UiKit.Text(L.T("tiling.workspaceRow", ("name", name), ("count", windows)), GlazeTree.Bool(w, "hasFocus") ? "H3" : "Body");
-                label.VerticalAlignment = VerticalAlignment.Center;
-                row.Children.Add(label);
-                Workspaces.Children.Add(row);
-            }
-            if (list.Count == 0) Workspaces.Children.Add(UiKit.Text(L.T("tiling.noWorkspaces"), "Muted"));
-        }
-        catch (Exception ex)
-        {
-            Workspaces.Children.Add(UiKit.Text(Net.Describe(ex), "Muted"));
-        }
-    }
+    void OnApply(object sender, RoutedEventArgs e) => _ = ApplyAsync();
 
-    void OnRefreshWorkspaces(object sender, RoutedEventArgs e) => _ = RenderWorkspacesAsync();
-
-    async void OnApply(object sender, RoutedEventArgs e)
+    /// <summary>Saves what the page shows and puts it into effect. False if something is mistyped (the error stands next to it).</summary>
+    async Task<bool> ApplyAsync()
     {
-        var layout = _layouts.FirstOrDefault(l => l.Value.IsChecked == true).Key ?? "dwindle";
         var (map, error) = ReadMonitors();
         MonitorsError.Text = error ?? "";
         MonitorsError.Visibility = error == null ? Visibility.Collapsed : Visibility.Visible;
         var (modes, modeError) = ReadWorkModes();
         WorkModesError.Text = modeError ?? "";
         WorkModesError.Visibility = modeError == null ? Visibility.Collapsed : Visibility.Visible;
-        if (error != null || modeError != null) return;
         var (shortcuts, shortcutError) = ReadShortcuts();
         _shortcutError.Text = shortcutError ?? "";
         _shortcutError.Visibility = shortcutError == null ? Visibility.Collapsed : Visibility.Visible;
-        if (shortcutError != null) return;
+        if (error != null || modeError != null || shortcutError != null) return false;
+        var layouts = ReadScreenLayouts();
         AppModel.Update(s =>
         {
             s.WorkspaceMonitors = map;
+            s.ScreenLayouts = layouts;
             s.WorkModes = modes;
             s.ScrollingColumns = ScrollingColumns.SelectedItem is ComboBoxItem { Tag: int c } ? c : s.ScrollingColumns;
-            s.DefaultLayout = layout;
             s.InnerGap = InnerGap.SelectedItem is ComboBoxItem { Tag: int i } ? i : s.InnerGap;
             s.OuterGap = OuterGap.SelectedItem is ComboBoxItem { Tag: int o } ? o : s.OuterGap;
             s.SquareCorners = _square.IsChecked == true;
@@ -543,11 +523,10 @@ public partial class TilingPage : UserControl, IPage
             s.NewWindowEndsFullscreen = _fullscreen.IsChecked == true;
             s.HideTaskbar = _taskbar.IsChecked == true;
             s.ShowBar = _bar.IsChecked == true;
-            s.BlockMinimize = _minimize.IsChecked == true;
             s.BarModules = _barModules.ToDictionary(m => m.Key, m => m.Value.IsChecked == true);
-            s.BarTrayPinned = _trayPinned.Text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
             s.BarShortcuts = shortcuts;
         });
+        _shown = Snapshot();
         try
         {
             await (AppModel.Agent?.ApplyTilingAsync() ?? Task.CompletedTask);
@@ -557,5 +536,6 @@ public partial class TilingPage : UserControl, IPage
         {
             Toasts.Show(ToastKind.Error, Net.Describe(ex));
         }
+        return true;
     }
 }

@@ -111,10 +111,9 @@ public class ExtrasTests
 {
     [Fact]
     public void The_optional_extras() =>
-        Assert.Equal(new[] { "pwsh", "starship", "fastfetch", "herdr", "pi", "greenshot", "explorerblurmica", "lunatask" }, ToolCatalog.Extras.Select(t => t.Id));
+        Assert.Equal(new[] { "pwsh", "starship", "fastfetch", "herdr", "pi", "greenshot", "explorerblurmica" }, ToolCatalog.Extras.Select(t => t.Id));
 
-    /// <summary>Lunatask's vendor publishes no checksum: WinMarchy only links to it.</summary>
     [Fact]
-    public void Every_extra_but_lunatask_can_be_installed_from_its_vendor() =>
-        Assert.All(ToolCatalog.Extras.Where(t => t != ToolCatalog.Lunatask), t => Assert.True(t.Kind != InstallKind.None && t.Repo != null && t.Asset != null, t.Id));
+    public void Every_extra_can_be_installed_from_its_vendor() =>
+        Assert.All(ToolCatalog.Extras, t => Assert.True(t.Repo != null && t.Asset != null, t.Id));
 }

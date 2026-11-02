@@ -10,10 +10,11 @@ using WinMarchy.Core.Themes;
 namespace WinMarchy.App.Overlays;
 
 /// <summary>
-/// Omarchy's menu on Windows: a card in the middle of the screen, typed text filters, arrows move,
-/// Enter runs, Escape or Backspace goes back. Typing in the main menu also finds programs from the
-/// Start menu. The same window shows the theme switcher and the list of shortcuts (Enter on a
-/// shortcut runs it, as in Omarchy).
+/// Omarchy's menu on Windows: a card in the middle of the screen over the desktop as it is, typed
+/// text filters, arrows move, Enter runs, Escape or Backspace goes back. The main menu lists the
+/// starred shortcuts, and typing there also finds programs from the Start menu. The same window
+/// shows the theme switcher, the list of shortcuts (Enter on a shortcut runs it, as in Omarchy) and
+/// what to do with a screenshot that Greenshot put into the clipboard.
 /// </summary>
 public sealed class MenuWindow : Window
 {
@@ -31,6 +32,9 @@ public sealed class MenuWindow : Window
 
     public static void ShowKeybindings() => Open(w => w.ShowBindings());
 
+    /// <summary>A screenshot is in the clipboard: save it, save it elsewhere, or edit it.</summary>
+    public static void ShowScreenshot(byte[] png) => Open(w => w.ShowScreenshotActions(png));
+
     static void Open(Action<MenuWindow> setup)
     {
         var app = Application.Current;
@@ -47,7 +51,7 @@ public sealed class MenuWindow : Window
         });
     }
 
-    enum Mode { Menu, Themes, Bindings, Wallpapers }
+    enum Mode { Menu, Themes, Bindings, Wallpapers, Screenshot }
 
     /// <summary>Wallpaper thumbnails, decoded once per file.</summary>
     static readonly Dictionary<string, ImageSource?> Thumbnails = new(StringComparer.OrdinalIgnoreCase);
@@ -80,7 +84,9 @@ public sealed class MenuWindow : Window
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
         Topmost = true;
-        Background = _look.Scrim;
+        // No dimming: the desktop stays as it is around the card. Clicks there go to the window
+        // underneath, which takes the focus and so closes the menu.
+        Background = Brushes.Transparent;
         UseLayoutRounding = true;
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
@@ -188,7 +194,7 @@ public sealed class MenuWindow : Window
         _mode = Mode.Menu;
         _menu = menu;
         _card.Width = 360;
-        _all = MenuModel.Entries(menu);
+        _all = menu == MenuModel.Root ? MenuModel.Entries(menu).Concat(FavoriteRows(withHeader: true)).ToList() : MenuModel.Entries(menu);
         SetTitle(MenuModel.Title(menu));
         Reset(index);
         if (menu == MenuModel.Root)
@@ -298,6 +304,82 @@ public sealed class MenuWindow : Window
         _all = list;
         SetTitle(L.T("menu.titles.wallpaper", ("theme", theme.Title)));
         Reset(Math.Max(0, current));
+    }
+
+    /// <summary>What to do with the screenshot Greenshot put into the clipboard; Escape leaves it there and nothing else.</summary>
+    internal void ShowScreenshotActions(byte[] png)
+    {
+        _history.Clear();
+        _mode = Mode.Screenshot;
+        _card.Width = 440;
+        _all = new List<MenuEntry>
+        {
+            new("download", L.T("menu.screenshot.save")) { Run = () => SaveScreenshot(png), Keys = L.T("menu.screenshot.saveWhere") },
+            new("folder", L.T("menu.screenshot.saveAs")) { Run = () => SaveScreenshotAs(png), Dialog = true },
+            new("pencil", L.T("menu.screenshot.edit")) { Run = () => EditScreenshot(png) },
+            new("external", L.T("menu.screenshot.folder")) { Run = () => Ui.UiKit.OpenFolder(Core.Platform.Screenshots.Folder) },
+        };
+        SetTitle(L.T("menu.titles.screenshot"));
+        Reset(0);
+    }
+
+    static void SaveScreenshot(byte[] png)
+    {
+        try
+        {
+            var folder = Directory.CreateDirectory(Core.Platform.Screenshots.Folder).FullName;
+            var path = Core.Platform.Screenshots.NewFile(folder, DateTime.Now);
+            File.WriteAllBytes(path, png);
+            Osd.Show(L.T("menu.screenshot.saved", ("name", Path.GetFileName(path))));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Osd.Show(Net.Describe(ex));
+        }
+    }
+
+    static void SaveScreenshotAs(byte[] png)
+    {
+        var folder = Directory.CreateDirectory(Core.Platform.Screenshots.Folder).FullName;
+        var d = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = L.T("menu.screenshot.saveAs"),
+            InitialDirectory = folder,
+            FileName = Path.GetFileName(Core.Platform.Screenshots.NewFile(folder, DateTime.Now)),
+            Filter = L.T("menu.screenshot.filter"),
+            DefaultExt = ".png",
+        };
+        if (d.ShowDialog() != true) return;
+        try
+        {
+            File.WriteAllBytes(d.FileName, png);
+            Osd.Show(L.T("menu.screenshot.saved", ("name", Path.GetFileName(d.FileName))));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Osd.Show(Net.Describe(ex));
+        }
+    }
+
+    /// <summary>Greenshot opens a picture file given on its command line in its editor; the file goes to the temp folder.</summary>
+    static void EditScreenshot(byte[] png)
+    {
+        if (AppModel.Engine.Components.Status(Core.Tools.ToolCatalog.Greenshot).Path is not { } exe)
+        {
+            Osd.Show(L.T("screenshot.greenshotMissing"));
+            return;
+        }
+        try
+        {
+            var folder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "WinMarchy")).FullName;
+            var path = Core.Platform.Screenshots.NewFile(folder, DateTime.Now);
+            File.WriteAllBytes(path, png);
+            Core.Platform.AppLauncher.Start(exe, "\"" + path + "\"");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Osd.Show(Net.Describe(ex));
+        }
     }
 
     /// <summary>"1-totoro.png" → "Totoro".</summary>
@@ -410,24 +492,40 @@ public sealed class MenuWindow : Window
         Render();
     }
 
-    /// <summary>The main menu's search: programs from the Start menu first, then WinMarchy's own entries.</summary>
+    /// <summary>The main menu's search: starred shortcuts first, then programs from the Start menu, then WinMarchy's own entries.</summary>
     static List<MenuEntry> SearchEverything(string q, Func<MenuEntry, bool> matches)
     {
+        var favorites = FavoriteRows(withHeader: false).Where(matches).ToList();
         var apps = Core.Platform.StartApps.Search(Core.Platform.StartApps.Current, q)
             .Select(a => new MenuEntry("grid", a.Name) { Run = () => Core.Platform.StartApps.Launch(a) }).ToList();
         var own = MenuModel.Searchable().Where(matches).ToList();
         var list = new List<MenuEntry>();
-        if (apps.Count > 0)
+        void Add(string title, List<MenuEntry> rows)
         {
-            list.Add(MenuEntry.Section(L.T("menu.sectionApps")));
-            list.AddRange(apps);
+            if (rows.Count == 0) return;
+            // A title only where it tells groups apart.
+            if (list.Count > 0 || favorites.Count + apps.Count > 0) list.Add(MenuEntry.Section(title));
+            list.AddRange(rows);
         }
-        if (own.Count > 0)
-        {
-            if (apps.Count > 0) list.Add(MenuEntry.Section("WinMarchy"));
-            list.AddRange(own);
-        }
+        Add(L.T("menu.sectionFavorites"), favorites);
+        Add(L.T("menu.sectionApps"), apps);
+        Add("WinMarchy", own);
         return list;
+    }
+
+    /// <summary>
+    /// The starred shortcuts as rows that run them, with their keys on the right. "Win+1 … 0" and
+    /// the like are left out: they do one thing per key.
+    /// </summary>
+    static List<MenuEntry> FavoriteRows(bool withHeader)
+    {
+        var layout = KeyboardLayouts.Current;
+        var rows = AppModel.Engine.CurrentHotkeys().Active
+            .Where(b => b.Favorite && b.Template == null)
+            .Select(b => new MenuEntry("star", b.Describe()) { Action = b.Do, Keys = b.Combo?.Display(layout) ?? b.Keys })
+            .ToList();
+        if (withHeader && rows.Count > 0) rows.Insert(0, MenuEntry.Section(L.T("menu.sectionFavorites")));
+        return rows;
     }
 
     /// <summary>The next row that can be selected from <paramref name="from"/> on (headers are skipped).</summary>
@@ -651,6 +749,16 @@ public sealed class MenuWindow : Window
             return;
         }
         Log.Trace("menu: " + entry.Label + (entry.Action != null ? " → " + entry.Action : ""), "menu");
+        if (entry.Dialog)
+        {
+            // The dialog takes the focus: the menu must not close under it (Deactivated), it goes afterwards.
+            _closing = true;
+            Hide();
+            try { entry.Run?.Invoke(); }
+            catch (Exception ex) { Osd.Show(Net.Describe(ex)); }
+            Close();
+            return;
+        }
         if (entry.OwnWindow)
         {
             // While the menu is in front, Windows lets WinMarchy's window take over the focus.
@@ -702,6 +810,8 @@ sealed class MenuPreview
     public void Wallpapers() => Show(w => w.ShowWallpaperList());
 
     public void Bindings() => Show(w => w.ShowBindings());
+
+    public void Screenshot() => Show(w => w.ShowScreenshotActions(Array.Empty<byte>()));
 
     /// <summary>The main menu with something typed: programs and WinMarchy's own entries.</summary>
     public void Search(string text) => Show(w =>

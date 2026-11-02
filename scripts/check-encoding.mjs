@@ -11,8 +11,6 @@ const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const textExt = new Set(['.cs', '.csproj', '.props', '.targets', '.xaml', '.manifest', '.json', '.md', '.js', '.mjs', '.css', '.html',
   '.yml', '.yaml', '.txt', '.xml', '.svg', '.ps1', '.ahk', '.sln', '.editorconfig', '.gitignore', '.gitattributes']);
 const skipDirs = new Set(['node_modules', 'dist', 'bin', 'obj', '.git', 'artifacts', 'release', 'TestResults']);
-// The bundled Zebar client is third-party code (GPL, see its header); it is checked as UTF-8 only.
-const thirdParty = new Set(['src/WinMarchy.Core/Resources/Zebar/zebar.js']);
 
 function listFiles() {
   try {
@@ -49,7 +47,6 @@ for (const file of listFiles()) {
     errors.push(`${file}: is not valid UTF-8`);
     continue;
   }
-  if (thirdParty.has(file)) continue;
   const lines = text.split('\n');
   lines.forEach((line, i) => {
     if (mojibake.test(line)) errors.push(`${file}:${i + 1}: looks like broken umlauts (mojibake): ${line.trim().slice(0, 80)}`);

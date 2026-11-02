@@ -61,17 +61,63 @@ public static class GlazeTree
     /// <summary>Workspaces that hold windows the user works with (not the scratchpad, not the staging area).</summary>
     public static bool IsRegularWorkspace(JsonElement workspace) => Str(workspace, "name") is { } n && GlazeConfig.IsRegular(n);
 
-    /// <summary>A floating window that stays above all others (scratchpad, Win+O).</summary>
+    /// <summary>A floating window that stays above all others (scratchpad, Win+T, Win+O).</summary>
     public static bool ShownOnTop(JsonElement window) =>
         window.TryGetProperty("state", out var s) && Bool(s, "shownOnTop");
+
+    /// <summary>Every workspace, from "query workspaces" or "query monitors".</summary>
+    public static IEnumerable<JsonElement> Workspaces(JsonElement data)
+    {
+        var workspaces = List(data, "workspaces").ToList();
+        return workspaces.Count > 0 ? workspaces : List(data, "monitors").SelectMany(Children).Where(w => Type(w) == "workspace");
+    }
+
+    /// <summary>
+    /// Workspace name → index of the monitor it is on, in GlazeWM's order (the one "bind_to_monitor"
+    /// and WinMarchy's screens count in), from "query monitors".
+    /// </summary>
+    public static Dictionary<string, int> ScreenOfWorkspaces(JsonElement monitorsData)
+    {
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        int i = 0;
+        foreach (var m in List(monitorsData, "monitors"))
+        {
+            foreach (var ws in Children(m).Where(c => Type(c) == "workspace"))
+                if (Str(ws, "name") is { } name) map[name] = i;
+            i++;
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// The tiling window that had the focus last in a container (a workspace), following GlazeWM's
+    /// focus order down the tree. GlazeWM puts a window that comes into the tiles next to this one.
+    /// </summary>
+    public static JsonElement? LastFocusedTiling(JsonElement container)
+    {
+        var node = container;
+        for (int depth = 0; depth < 32; depth++)
+        {
+            var children = Children(node).Where(c => Type(c) == "split" || (Type(c) == "window" && WindowState(c) == "tiling")).ToList();
+            if (children.Count == 0) return null;
+            var order = node.TryGetProperty("childFocusOrder", out var o) && o.ValueKind == JsonValueKind.Array
+                ? o.EnumerateArray().Select(x => x.GetString()).ToList() : new List<string?>();
+            // Most recently focused first; a split without a tiling window in it does not count.
+            var next = order.Select(id => children.Cast<JsonElement?>().FirstOrDefault(c => Str(c!.Value, "id") == id))
+                .OfType<JsonElement>().FirstOrDefault(c => Type(c) == "window" || TilingWindows(c).Any());
+            if (next.ValueKind != JsonValueKind.Object) next = children.FirstOrDefault(c => Type(c) == "window" || TilingWindows(c).Any());
+            if (next.ValueKind != JsonValueKind.Object) return null;
+            if (Type(next) == "window") return next;
+            node = next;
+        }
+        return null;
+    }
 
     /// <summary>Every window with its workspace and rectangle, from "query workspaces" or "query monitors".</summary>
     public static List<WindowInfo> WindowInfos(JsonElement data)
     {
         var list = new List<WindowInfo>();
-        var workspaces = List(data, "workspaces").ToList();
-        if (workspaces.Count == 0) workspaces = List(data, "monitors").SelectMany(Children).Where(w => Type(w) == "workspace").ToList();
-        foreach (var ws in workspaces)
+        foreach (var ws in Workspaces(data))
         {
             var name = Str(ws, "name") ?? "";
             foreach (var w in Windows(ws))
@@ -117,12 +163,13 @@ public static class GlazeTree
         data.ValueKind == JsonValueKind.Object && data.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array
             ? list.EnumerateArray() : Enumerable.Empty<JsonElement>();
 
-    public static JsonElement? FocusedWorkspace(JsonElement workspacesData) =>
-        List(workspacesData, "workspaces").Cast<JsonElement?>().FirstOrDefault(w => Bool(w!.Value, "hasFocus"));
+    /// <summary>The workspace with the focus, from "query workspaces" or "query monitors".</summary>
+    public static JsonElement? FocusedWorkspace(JsonElement data) =>
+        Workspaces(data).Cast<JsonElement?>().FirstOrDefault(w => Bool(w!.Value, "hasFocus"));
 
-    public static JsonElement? WorkspaceOf(JsonElement workspacesData, string windowId) =>
-        List(workspacesData, "workspaces").Cast<JsonElement?>()
-            .FirstOrDefault(w => Windows(w!.Value).Any(win => Str(win, "id") == windowId));
+    /// <summary>The workspace a window is in, from "query workspaces" or "query monitors".</summary>
+    public static JsonElement? WorkspaceOf(JsonElement data, string windowId) =>
+        Workspaces(data).Cast<JsonElement?>().FirstOrDefault(w => Windows(w!.Value).Any(win => Str(win, "id") == windowId));
 
     /// <summary>Workspace names sort as numbers first (1 … 10), then alphabetically.</summary>
     public static int CompareNames(string? a, string? b)

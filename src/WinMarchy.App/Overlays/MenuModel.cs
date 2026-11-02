@@ -19,6 +19,8 @@ sealed record MenuEntry(string Icon, string Label)
     public bool Header { get; init; }
     /// <summary>Opens WinMarchy's own window: run before the menu closes, not after.</summary>
     public bool OwnWindow { get; init; }
+    /// <summary>Opens a dialog (save as): the menu hides first and closes once the dialog is done.</summary>
+    public bool Dialog { get; init; }
 
     public static MenuEntry Section(string title) => new("", title) { Header = true };
 }
@@ -66,7 +68,7 @@ static class MenuModel
         {
             Item("camera", "capture.screenshot", "send:Win+Shift+S"),
             Item("play", "capture.record", "send:Win+Shift+R"),
-            Do("folder", "capture.screenshotsFolder", () => Ui.UiKit.OpenFolder(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots"))),
+            Do("folder", "capture.screenshotsFolder", () => Ui.UiKit.OpenFolder(Core.Platform.Screenshots.Folder)),
         },
         "toggle" => new[]
         {

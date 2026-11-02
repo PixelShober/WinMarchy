@@ -49,11 +49,11 @@ Alles kommt direkt aus einem GitHub-Release, wird vor dem Entpacken geprüft (SH
 | AutoHotkey v2 | Tastenkürzel, auch die Win-Taste allein | GPL-2.0 |
 | Flow Launcher | Programme suchen (Win allein) | MIT |
 
-**YASB** ersetzt Zebar als Leiste. Die Menüs lassen sich auch per Tastenkürzel aufklappen: Aktion `do:bar-menu` mit `logo`, `calendar`, `audio`, `network`, `media`, `cpu` oder `memory`, etwa auf **Tastenkürzel → Neu**. Kalender und Lautstärke liegen schon auf `Win+Alt+D` und `Win+Alt+A`. Lässt Windows Desktop-Apps nicht an den Standort (Einstellungen → Datenschutz → Standort, in Firmen oft per Richtlinie), gibt Windows 11 keine WLAN-Liste heraus; ein Klick aufs Netz öffnet dann die WLAN-Liste von Windows. Die Lautstärke-Anzeige folgt den Fn-Tasten erst mit YASB 2.0.8, das bisher nur als Vorabversion erschienen ist; sobald es regulär da ist, holt es **Programme aktualisieren**. Workspaces links, die Uhr in der Mitte, Infobereich, Netz, Ton, CPU und Akku rechts, wie die Waybar in Omarchy. Ein Klick auf die Uhr klappt den Kalender mit Kalenderwochen und Feiertagen auf, auf den Ton die Lautstärke mit den Ausgabegeräten, auf das Netz die WLAN-Liste, auf die CPU den Verlauf. Das Logo öffnet ein Menü mit WinMarchy-Menü, Tastenkürzeln, Theme, Hintergrund, deinen eigenen Einträgen und den Punkten zum Sperren, Abmelden und Herunterfahren. Eigene Einträge legst du unter **Tiling → Eigene Einträge in der Leiste** an (Name und Aktion wie bei Tastenkürzeln), auf Wunsch auch als Knopf direkt in der Leiste. Farben und Schrift kommen aus dem Theme. Die Symbole stammen aus Segoe Fluent Icons, die Windows 11 mitbringt; unter Windows 10 muss die Schrift einmal von Microsoft installiert werden. YASBs MSI ist für alle Benutzer gebaut; WinMarchy packt es nur aus, Administratorrechte braucht es dafür nicht.
+**YASB** ist die Leiste. Die Menüs lassen sich auch per Tastenkürzel aufklappen: Aktion `do:bar-menu` mit `logo`, `calendar`, `audio`, `network`, `media`, `cpu` oder `memory`, etwa auf **Tastenkürzel → Neu**. Kalender und Lautstärke liegen schon auf `Win+Alt+D` und `Win+Alt+A`. Lässt Windows Desktop-Apps nicht an den Standort (Einstellungen → Datenschutz → Standort, in Firmen oft per Richtlinie), gibt Windows 11 keine WLAN-Liste heraus; ein Klick aufs Netz öffnet dann die WLAN-Liste von Windows. Die Lautstärke-Anzeige folgt den Fn-Tasten erst mit YASB 2.0.8, das bisher nur als Vorabversion erschienen ist; sobald es regulär da ist, holt es **Programme aktualisieren**. Workspaces links, die Uhr in der Mitte, Infobereich, Netz, Ton, CPU und Akku rechts, wie die Waybar in Omarchy. Ein Klick auf die Uhr klappt den Kalender mit Kalenderwochen und Feiertagen auf, auf den Ton die Lautstärke mit den Ausgabegeräten, auf das Netz die WLAN-Liste, auf die CPU den Verlauf. Das Logo öffnet ein Menü mit WinMarchy-Menü, Tastenkürzeln, Theme, Hintergrund, deinen eigenen Einträgen und den Punkten zum Sperren, Abmelden und Herunterfahren. Eigene Einträge legst du unter **Tiling → Eigene Einträge in der Leiste** an (Name und Aktion wie bei Tastenkürzeln), auf Wunsch auch als Knopf direkt in der Leiste. Farben und Schrift kommen aus dem Theme. Die Symbole stammen aus Segoe Fluent Icons, die Windows 11 mitbringt; unter Windows 10 muss die Schrift einmal von Microsoft installiert werden. YASBs MSI ist für alle Benutzer gebaut; WinMarchy packt es nur aus, Administratorrechte braucht es dafür nicht.
 
-Wer noch Zebar aus einer früheren Einrichtung hat, behält es, bis er unter **Einstellungen → Leiste** auf YASB umstellt. Dort entfernt **Zebar entfernen** Zebar wieder: WinMarchy beendet es, nimmt seine Leiste aus Zebars Autostart (beides in einem Wiederherstellungspunkt) und löscht es aus `C:\WinMarchy\Tools`. Ein Zebar, das jemand anders installiert hat, bleibt; WinMarchy sagt dann, wo es liegt. GlazeWM bringt Zebar nicht mehr mit: Der WinMarchy-Build startet in seiner Beispielkonfiguration keine Leiste, und die Konfiguration von WinMarchy hat ohnehin keinen Startbefehl.
+Zebar, die Leiste älterer Versionen, installiert WinMarchy nicht mehr, und auch GlazeWM bringt es nicht mit. Ist von früher noch eines da, steht unter **Einstellungen** ein Knopf **Zebar entfernen**: WinMarchy beendet es, nimmt seine Leiste aus Zebars Autostart (beides in einem Wiederherstellungspunkt) und löscht es aus `C:\WinMarchy\Tools`. Ein Zebar, das jemand anders installiert hat, bleibt; WinMarchy sagt dann, wo es liegt.
 
-**GlazeWM** kommt als WinMarchy-Build: GlazeWM von glzr-io plus die Korrekturen und Funktionen, die WinMarchy braucht. Jede Abweichung steht in [WINMARCHY.md](https://github.com/PixelShober/glazewm/blob/winmarchy/WINMARCHY.md) des Forks, Korrekturen gehen zusätzlich als Pull Request an glzr-io. Anders als das offizielle Release ist der Build nicht signiert und läuft deshalb ohne UIAccess: Programme, die als Administrator laufen, kachelt er nicht. Unter **Einstellungen → GlazeWM** lässt sich jederzeit auf das offizielle Release zurückwechseln. Gibt es den WinMarchy-Build gerade nicht, nimmt die Einrichtung das offizielle.
+**GlazeWM** kommt als WinMarchy-Build: GlazeWM von glzr-io plus die Korrekturen und Funktionen, die WinMarchy braucht. Jede Abweichung steht in [WINMARCHY.md](https://github.com/PixelShober/glazewm/blob/winmarchy/WINMARCHY.md) des Forks, Korrekturen gehen zusätzlich als Pull Request an glzr-io. Anders als das offizielle Release ist der Build nicht signiert und läuft deshalb ohne UIAccess: Programme, die als Administrator laufen, kachelt er nicht. WinMarchy nimmt immer diesen Build. Findet es ein offizielles Release (etwa von einer früheren Einrichtung oder selbst installiert), ersetzt die Einrichtung es, und unter **Einstellungen → GlazeWM** steht dafür ein Knopf. Das offizielle bleibt installiert, läuft aber nicht mehr neben dem WinMarchy-Build.
 
 Optionale Extras, in der Einrichtung einzeln anzuhaken:
 
@@ -64,26 +64,23 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 | Fastfetch | Systeminfo mit IP- und MAC-Adresse in jedem neuen Terminal-Tab, wie „Über“ in Omarchy (auch im Logo-Menü der Leiste und unter WinMarchy-Menü → Info) | MIT |
 | Herdr | Terminal-Arbeitsplatz für Coding-Agents (Win+Strg+Eingabe), unter Windows noch Beta | Apache-2.0 |
 | Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
-| Greenshot | Bildschirmfotos mit Editor, statt Snipping Tool (umschaltbar unter **Einstellungen**) | GPL-3.0 |
+| Greenshot | Bildschirmfotos mit Editor statt Snipping Tool, sobald installiert (umschaltbar unter **Einstellungen**) | GPL-3.0 |
 | ExplorerBlurMica (experimentell) | Unschärfe hinter Explorer, eingefärbt mit dem Theme (ein- und ausschalten unter **Einstellungen**) | LGPL-3.0 |
-| Lunatask | Aufgaben, Notizen, Gewohnheiten. Nur verlinkt, siehe unten | proprietär |
 
 **Starship und Fastfetch** bekommen ihre Einstellungen in `C:\WinMarchy\Runtime`, eine eigene `starship.toml` oder Fastfetch-Konfiguration bleibt also unberührt. Jeder neue PowerShell-Tab zeigt zuerst Fastfetch (mit IP- und MAC-Adresse, praktisch für IT-Tickets) und dann Starships Eingabezeile; `fastfetch` lässt sich auch selbst eintippen. Ins Profil kommt nur der markierte WinMarchy-Block, der das Startskript lädt, wenn es da ist: in PowerShell 7 und in Windows PowerShell 5.1, dort aber nur, wenn die Ausführungsrichtlinie Profile zulässt (RemoteSigned oder lockerer). Windows 10 und 11 stehen ohne Vorgabe auf Restricted; dann bleibt Windows PowerShell unberührt, und Starship und Fastfetch kommen mit dem Extra PowerShell 7. WinMarchy ändert die Richtlinie nicht. Unter AppLocker läuft PowerShell im eingeschränkten Sprachmodus: Fastfetch erscheint trotzdem, Starship nicht, denn sein Skript läuft dort nicht.
 
 **ExplorerBlurMica** ist eine DLL, die Explorer lädt. Mit `regsvr32` als Administrator eingetragen, gilt sie für alle Benutzer. WinMarchy schreibt dieselben zwei Einträge nur für dein Konto unter `HKEY_CURRENT_USER`, ohne Administratorrechte und mit Wiederherstellungspunkt. Neu geöffnete Explorer-Fenster zeigen den Effekt. Ausschalten trägt die DLL aus, entladen wird sie mit der nächsten Anmeldung. Experimentell, weil ein Windows-Update sie stören kann und manche Firmen Explorer-Erweiterungen nur systemweit zulassen. Stürzt Explorer ab: beim Öffnen Esc gedrückt halten, dann bleibt der Effekt aus.
 
-**Lunatask** lädt WinMarchy nicht selbst herunter, weil der Hersteller keine Prüfsumme veröffentlicht. Die Einrichtung verlinkt [lunatask.app](https://lunatask.app/download). Ist es installiert (oder aus dem Microsoft Store), startet die Aktion `app:lunatask` es, etwa als Tastenkürzel oder als eigener Eintrag in der Leiste. Für Lunatask gelten die Bedingungen des Herstellers, auch für den Einsatz in der Firma.
-
 Windows Terminal, Files und VS Code erkennt WinMarchy und färbt sie ein, installiert sie aber nicht selbst. Files lässt sich unter **Einstellungen** als Standard-Dateimanager festlegen: Ordner, Laufwerke und Win+E öffnen dann Files, Dieser PC und Papierkorb bleiben beim Explorer.
 
-Alle Programme, die WinMarchy selbst installiert, dürfen kostenlos in Firmen eingesetzt werden. Komorebi war deshalb keine Option: Für den geschäftlichen Einsatz braucht es eine kostenpflichtige Lizenz.
+Alle Programme, die WinMarchy installiert, dürfen kostenlos in Firmen eingesetzt werden. Komorebi war deshalb keine Option: Für den geschäftlichen Einsatz braucht es eine kostenpflichtige Lizenz.
 
 ## Ordner
 
 | Ordner | Inhalt |
 |-|-|
 | `C:\WinMarchy\App` | WinMarchy.exe |
-| `C:\WinMarchy\Config` | Einstellungen, eigene Tastenkürzel, Layouts pro Workspace, Scratchpad |
+| `C:\WinMarchy\Config` | Einstellungen, eigene Tastenkürzel, Anordnung der Workspaces, Scratchpad |
 | `C:\WinMarchy\Backups` | Sicherungspunkte |
 | `C:\WinMarchy\Tools` | GlazeWM, YASB, AutoHotkey, PowerShell und die Extras |
 | `C:\WinMarchy\Themes` | Vorschaubilder und Hintergründe, unter `<theme>\own` deine eigenen |
@@ -99,14 +96,15 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 |-|-|
 | `Win` allein | Programme suchen (Flow Launcher) |
 | `Win+Eingabe` | Terminal |
-| `Win+Space` | WinMarchy-Menü; Tippen sucht auch in den Programmen des Startmenüs |
+| `Win+Space` | WinMarchy-Menü mit deinen Favoriten; Tippen sucht in Favoriten, Programmen des Startmenüs und im Menü |
 | `Win+K` | Alle Kürzel anzeigen, Favoriten zuerst (Eingabe führt das gewählte aus) |
 | `Win+W` | Fenster schließen |
 | `Win+Pfeiltasten` | Fokus wechseln, mit Umschalt Fenster tauschen |
 | `Win+J` | Teilung drehen, sofort sichtbar |
 | `Win+1` … `Win+0` | Workspace 1 bis 10 |
 | `Win+Strg+D`, `Win+Strg+1` bis `3` | Arbeitsmodus: frischer Workspace auf jedem Bildschirm mit festen Programmen, auch der Browser mit festen Seiten; nochmal drücken holt zurück, was vorher da war. `Win+Strg+Pfeil` schaltet alle Bildschirme weiter |
-| `Win+Strg+J` | Layout des Workspace wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
+| `Win+Strg+J` | Layout des Bildschirms wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
+| `Win+T`, `Win+O` | Fenster schweben lassen (über den Kacheln, mit `O` klein in der Ecke); noch einmal zurück ins Layout |
 | `Win+Strg+M` | Musik abspielen oder anhalten |
 | `Win+Alt+D`, `Win+Alt+A` | Kalender und Lautstärke der Leiste aufklappen (YASB, optional) |
 | `Win+S` | Scratchpad ein- und ausblenden, `Win+Alt+S` legt ein Fenster hinein oder holt es heraus |
@@ -115,9 +113,9 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+Umschalt+G` | Stackfield |
 | `Win+Strg+T` | Theme wählen, mit Fortschrittsbalken |
 | `Win+Strg+Alt+Space` | Hintergrund wählen, auch eigene Bilder |
-| `Druck` | Bildschirmfoto mit Snipping Tool oder Greenshot |
+| `Druck` | Bildschirmfoto. Mit Greenshot liegt es sofort in der Zwischenablage, ein Menü bietet Speichern und Bearbeiten an |
 
-Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Eine `bindings.lua`, Hyprland-`bindings.conf` oder einen WinMarchy-Export liest **Tastenkürzel → Importieren**; du wählst dann aus, was du übernimmst. Wie die Layouts Dwindle, Scrolling und Floating auf GlazeWM abgebildet sind, erklärt [docs/tiling.md](docs/tiling.md).
+Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Eine `bindings.lua`, Hyprland-`bindings.conf` oder einen WinMarchy-Export liest **Tastenkürzel → Importieren**; du wählst dann aus, was du übernimmst. Wie die Layouts Dwindle, Spalten und Scrolling pro Bildschirm auf GlazeWM abgebildet sind und wie einzelne Fenster schweben, erklärt [docs/tiling.md](docs/tiling.md).
 
 ## Rückgängig machen
 
@@ -165,7 +163,7 @@ Der Titel des Pull Requests bestimmt die Version (Conventional Commits): `feat:`
 ## Danke
 
 - [Omarchy](https://github.com/basecamp/omarchy) von David Heinemeier Hansson, MIT. Die Themes stammen von dort.
-- [GlazeWM und Zebar](https://github.com/glzr-io) von glzr-io, GPL-3.0.
+- [GlazeWM](https://github.com/glzr-io/glazewm) von glzr-io, GPL-3.0.
 - [YASB](https://github.com/amnweb/yasb) von AmN, MIT.
 - [Starship](https://starship.rs), ISC, und [Fastfetch](https://github.com/fastfetch-cli/fastfetch), MIT.
 - [ExplorerBlurMica](https://github.com/Maplespe/ExplorerBlurMica) von Maplespe, LGPL-3.0.

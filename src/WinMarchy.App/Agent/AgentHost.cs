@@ -29,6 +29,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     readonly DispatcherTimer _flowTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     DateTime _flowStarted = DateTime.MinValue;
     HwndSource? _window;
+    ScreenshotWatch? _screenshots;
     LayoutEngine? _layouts;
     WindowCommands? _windows;
     bool _keepAwake;
@@ -66,13 +67,18 @@ public sealed class AgentHost : IAgentHost, IDisposable
     public void Start()
     {
         CreateMessageWindow();
+        _screenshots = new ScreenshotWatch(() => Settings);
         CreateTray();
         _taskbarTimer.Tick += (_, _) => EnforceTaskbar();
         _taskbarTimer.Start();
         AppModel.SettingsChanged += EnforceTaskbar;
         _ = Task.Run(() => GlazeLoopAsync(_cts.Token));
 
-        if (SetupDone) StartComponents();
+        if (SetupDone)
+        {
+            StartComponents();
+            TakeGreenshot();
+        }
         HookMinimize();
         // The program list for Win+Space's search, read once in the background.
         StartApps.Refresh();
@@ -103,12 +109,12 @@ public sealed class AgentHost : IAgentHost, IDisposable
         {
             if (!c.StartGlaze()) Log.Info(L.T("agent.glazeMissing"));
             if (Settings.ShowBar && !c.BarRunning) c.StartBar();
-            if (Settings.HotkeyEngine == "autohotkey" && File.Exists(Paths.AhkScript) && !Core.Services.Components.OurAhkProcesses().Any()) c.StartAhk();
+            if (File.Exists(Paths.AhkScript) && !Core.Services.Components.OurAhkProcesses().Any()) c.StartAhk();
             // Print belongs to Greenshot when the user chose it; it has to run for that.
             if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
                 c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
             // Win opens Flow Launcher; after the setup it has never run yet.
-            Log.Trace($"components: glazewm {Core.Services.Components.IsRunning("glazewm")}, {c.Bar} {c.BarRunning}, " +
+            Log.Trace($"components: glazewm {Core.Services.Components.IsRunning("glazewm")}, yasb {c.BarRunning}, " +
                       $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, flow {Core.Services.Components.IsRunning("Flow.Launcher")}", "agent");
             if (c.StartFlow())
             {
@@ -120,6 +126,27 @@ public sealed class AgentHost : IAgentHost, IDisposable
         {
             Log.Warn(L.T("agent.startFailed", ("detail", Net.Describe(ex))));
         }
+    }
+
+    /// <summary>
+    /// Greenshot is the screenshot tool once it is installed, unless Snipping Tool was chosen on
+    /// purpose; and its captures go to the clipboard. Settings from before either get it set up once
+    /// (a job with its own restore point, like a switch on the Settings page).
+    /// </summary>
+    void TakeGreenshot()
+    {
+        var s = Settings;
+        if (AppModel.Engine.Components.Status(Core.Tools.ToolCatalog.Greenshot).Path is not { } exe) return;
+        bool wanted = s.ScreenshotTool == Screenshots.Greenshot || !s.ScreenshotToolChosen;
+        var fixedIni = Screenshots.GreenshotFixedIni(exe, Locations.Current);
+        var current = File.Exists(fixedIni) ? FileSafety.ReadShared(fixedIni) : null;
+        if (!wanted || (s.ScreenshotTool == Screenshots.Greenshot && Screenshots.GreenshotFixed(current, clipboard: true) == current)) return;
+        Log.Info(L.T("agent.greenshotTakesOver"));
+        AppModel.Run("screenshots", "hotkeys", L.T("jobs.screenshots"), AppModel.Engine.ScreenshotToolSteps(Screenshots.Greenshot, byUser: false), j =>
+        {
+            if (j.State == JobState.Done) Notify(L.T("agent.greenshotTakesOver"));
+            return Task.CompletedTask;
+        });
     }
 
     /// <summary>
@@ -164,6 +191,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _tray.Visible = false;
         _tray.Dispose();
         _window?.Dispose();
+        _screenshots?.Dispose();
         if (Glaze is { } g) _ = g.DisposeAsync().AsTask();
     }
 
@@ -287,7 +315,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         // Layouts and the window functions take turns: a multi-step command is never interleaved
         // with the layout engine's reaction to the events it causes.
         var gate = new SemaphoreSlim(1, 1);
-        var layouts = new LayoutEngine(ipc, () => LayoutEngine.Parse(Settings.DefaultLayout), Notify, gate, () => Settings);
+        var layouts = new LayoutEngine(ipc, Notify, gate, () => Settings, (screen, mode) => AppModel.Update(s => s.SetScreenLayout(screen, mode)));
         var windows = new WindowCommands(ipc, Notify, gate, layouts, () => Settings);
         ipc.Event += e => _ = layouts.OnEventAsync(e, ct);
         ipc.Event += e => _ = windows.OnEventAsync(e, ct);
@@ -425,6 +453,12 @@ public sealed class AgentHost : IAgentHost, IDisposable
             try { await windows.EnforceMonitorsAsync(Settings.WorkspaceMonitors, _cts.Token); }
             catch (Exception ex) when (ex is not OperationCanceledException) { Log.Warn(L.T("tiling.monitorsFailed", ("detail", Net.Describe(ex)))); }
         }
+        // Then every shown workspace takes the layout of its screen.
+        if (_layouts is { } layouts)
+        {
+            try { await layouts.ApplyScreensAsync(_cts.Token); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { Log.Warn(L.T("tiling.layoutsFailed", ("detail", Net.Describe(ex)))); }
+        }
         _taskbarShownByUser = false;
         EnforceTaskbar();
         var running = AppModel.Engine.Components.BarRunning;
@@ -486,7 +520,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
             c.StopBar();
             return;
         }
-        if (!c.StartBar()) Notify(L.T("agent.barMissing", ("tool", Core.Integrations.Bars.Tool(c.Bar).Name)));
+        if (!c.StartBar()) Notify(L.T("agent.barMissing", ("tool", Core.Integrations.Bars.Tool.Name)));
     }
 
     public void ToggleKeepAwake()
@@ -570,7 +604,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     void OnMinimizeStart(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
     {
         if (idObject != 0 || idChild != 0 || hwnd == IntPtr.Zero) return;
-        if (!Settings.BlockMinimize || _windows is not { } windows) return;
+        if (_windows is not { } windows) return;
         var handle = hwnd.ToInt64();
         _ = Task.Run(async () =>
         {

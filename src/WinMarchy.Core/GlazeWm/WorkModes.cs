@@ -266,7 +266,7 @@ public sealed class WorkModeRunner
 
         for (int m = 0; m < plan.Targets.Count && m < shown.Count; m++)
             if (plan.Targets[m].Goal == ScreenGoal.Fresh && shown[m] is { } ws && plan.Start.Count(x => x.Screen == m) > 1 && _layouts != null)
-                await _layouts.UseUntilClosedAsync(ws, LayoutMode.Dwindle, ct);
+                await _layouts.UseWhileOpenAsync(ws, LayoutMode.Dwindle, ct);
 
         var caught = new Dictionary<int, string>();
         foreach (var (slot, screen) in plan.Start)

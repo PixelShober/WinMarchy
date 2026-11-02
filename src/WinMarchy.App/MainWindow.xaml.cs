@@ -75,9 +75,18 @@ public partial class MainWindow : Window
         else Show(route);
     }
 
-    void OnNav(object sender, RoutedEventArgs e)
+    async void OnNav(object sender, RoutedEventArgs e)
     {
-        if (sender is RadioButton b) Show(RouteOf(b));
+        if (sender is not RadioButton b) return;
+        var route = RouteOf(b);
+        if (route == _route) return;
+        // A page with changes not taken over asks first; staying selects its tab again.
+        if (_pages.TryGetValue(_route, out var current) && current is IGuardedPage guarded && !await guarded.CanLeaveAsync())
+        {
+            NavFor(_route).IsChecked = true;
+            return;
+        }
+        Show(route);
     }
 
     void Show(string route)
@@ -240,6 +249,13 @@ public partial class MainWindow : Window
 public interface IPage
 {
     void OnShown();
+}
+
+/// <summary>A page that may hold changes not taken over yet: it is asked before another page opens.</summary>
+public interface IGuardedPage
+{
+    /// <summary>False: stay on the page.</summary>
+    Task<bool> CanLeaveAsync();
 }
 
 /// <summary>Remembers window size and position in C:\WinMarchy\Config\window.json.</summary>

@@ -32,8 +32,6 @@ jobs:
           dotnet-version: 10.0.x
       - name: UTF-8, Umlaute und Übersetzungen prüfen
         run: node scripts/check-encoding.mjs
-      - name: Leiste (bar.js) prüfen
-        run: node --check src/WinMarchy.Core/Resources/Zebar/bar.js
       - name: Tests
         run: dotnet test tests/WinMarchy.Core.Tests -c Release
 
@@ -90,11 +88,10 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: GlazeWM-Konfigurationen und Zebar-Manifest prüfen
+      - name: GlazeWM-Konfigurationen prüfen
         shell: bash
         run: |
           for f in artifacts/selftest/*.yaml; do npx --yes js-yaml@4.1.0 "$f" > /dev/null && echo "$f: OK"; done
-          node -e "JSON.parse(require('fs').readFileSync('artifacts/selftest/zpack.json','utf8')); console.log('zpack.json: OK')"
 
       # The bar's config against the schema of the YASB release WinMarchy installs.
       - name: YASB-, Starship- und Fastfetch-Konfiguration prüfen

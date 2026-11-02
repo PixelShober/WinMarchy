@@ -175,12 +175,15 @@ public static class ToolInstaller
     /// known by the tag WinMarchy noted when it installed it; for older installs by the program's
     /// version.
     /// </summary>
-    public static async Task<ReleaseInfo?> NewerReleaseAsync(ToolDef tool, string? installedVersion, CancellationToken ct)
+    public static async Task<ReleaseInfo?> NewerReleaseAsync(ToolDef tool, string? installedVersion, CancellationToken ct) =>
+        await LatestReleaseAsync(tool, ct) is { } release && !IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), installedVersion) ? release : null;
+
+    /// <summary>The vendor's latest release, or null for a program WinMarchy does not download.</summary>
+    public static async Task<ReleaseInfo?> LatestReleaseAsync(ToolDef tool, CancellationToken ct)
     {
         if (tool.Repo == null) return null;
         using var http = Net.CreateClient(TimeSpan.FromMinutes(2));
-        var release = await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
-        return IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), installedVersion) ? null : release;
+        return await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
     }
 
     internal static bool IsCurrent(string latestTag, string? installedTag, string? installedVersion)

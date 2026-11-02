@@ -8,7 +8,7 @@ using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Services;
 
-/// <summary>Starting, stopping and reloading GlazeWM, the bar (YASB or Zebar) and the AutoHotkey script.</summary>
+/// <summary>Starting, stopping and reloading GlazeWM, the bar (YASB) and the AutoHotkey script.</summary>
 public sealed class Components
 {
     readonly Locations _loc;
@@ -26,25 +26,54 @@ public sealed class Components
     public string? YasbExe => Status(ToolCatalog.Yasb).Path;
     public string? AhkExe => Status(ToolCatalog.AutoHotkey).Path;
 
-    /// <summary>The bar that runs now (see <see cref="Bars.Chosen"/>).</summary>
-    public string Bar => Bars.Chosen(_settings(), _loc);
+    /// <summary>The bar's program (YASB), if it is installed.</summary>
+    public string? BarExe => YasbExe;
 
-    /// <summary>The chosen bar's program, if it is installed.</summary>
-    public string? BarExe => Status(Bars.Tool(Bar)).Path;
-
-    public bool BarRunning => IsRunning(Bars.Process(Bar));
+    public bool BarRunning => IsRunning(Bars.Process);
 
     /// <summary>The exe that GlazeWM, the bar and AutoHotkey call back: the installed copy if there is one.</summary>
     public static string SelfExe => File.Exists(Paths.InstalledExe) ? Paths.InstalledExe : Environment.ProcessPath ?? Paths.InstalledExe;
 
     public static bool IsRunning(string processName) => Process.GetProcessesByName(processName).Length > 0;
 
+    /// <summary>
+    /// Starts GlazeWM unless it runs already. Once WinMarchy's build is installed, another GlazeWM
+    /// that runs instead (an official release installed on its own) is ended first: it lacks what
+    /// WinMarchy needs, and two window managers would fight over the windows.
+    /// </summary>
     public bool StartGlaze()
     {
-        if (IsRunning("glazewm")) return true;
         var exe = GlazeExe;
-        if (exe == null) return false;
-        return Platform.AppLauncher.Start(exe, "start");
+        if (exe == null) return IsRunning("glazewm");
+        bool running = false;
+        foreach (var p in Process.GetProcessesByName("glazewm"))
+        {
+            using (p)
+            {
+                string? path = null;
+                try { path = p.MainModule?.FileName; } catch { }
+                // The command line (cli\glazewm.exe) is not the window manager.
+                if (path != null && path.Contains(Path.DirectorySeparatorChar + "cli" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
+                // A path Windows does not tell (an elevated process) counts as WinMarchy's own.
+                if (path == null || path.Equals(exe, StringComparison.OrdinalIgnoreCase) || !ToolCatalog.IsWinMarchyBuild(exe))
+                {
+                    running = true;
+                    continue;
+                }
+                try
+                {
+                    p.Kill();
+                    p.WaitForExit(3000);
+                    Log.Info(L.T("agent.glazeOtherEnded", ("path", path)));
+                }
+                catch (Exception ex)
+                {
+                    running = true;
+                    Log.Warn(L.T("agent.glazeEndFailed", ("detail", Net.Describe(ex))));
+                }
+            }
+        }
+        return running || Platform.AppLauncher.Start(exe, "start");
     }
 
     /// <summary>
@@ -105,16 +134,10 @@ public sealed class Components
         return Platform.AppLauncher.Start(flow);
     }
 
-    /// <summary>Starts the chosen bar. False if it is not installed.</summary>
-    public bool StartBar()
-    {
-        if (BarExe is not { } exe) return false;
-        if (Bar == Bars.Zebar)
-            return Platform.AppLauncher.Start(exe, $"start-widget-preset --pack {ZebarPack.PackName} --widget-name {ZebarPack.Widget} --preset default");
-        return Platform.AppLauncher.Start(exe);
-    }
+    /// <summary>Starts the bar. False if it is not installed.</summary>
+    public bool StartBar() => BarExe is { } exe && Platform.AppLauncher.Start(exe);
 
-    /// <summary>Ends both bars: the one not chosen must not stay either (after a switch).</summary>
+    /// <summary>Ends the bar, and a Zebar left over from older WinMarchy versions with it.</summary>
     public void StopBar()
     {
         // YASB first through its own command line, so it can let go of the tray icons; whatever still runs is ended.
@@ -130,7 +153,7 @@ public sealed class Components
                 Log.Debug("yasbc stop: " + ex.Message);
             }
         }
-        foreach (var name in new[] { "yasb", "zebar" })
+        foreach (var name in new[] { Bars.Process, Bars.OldZebar })
         {
             foreach (var p in Process.GetProcessesByName(name))
             {

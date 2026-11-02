@@ -7,13 +7,13 @@ Tasten mit Satzzeichen sind nach ihrer **Position** benannt, wie Omarchy sie üb
 Zwei Profile:
 
 - **Business** ist immer aktiv. Statt HEY, Signal und Obsidian öffnet es Outlook, OneNote, Word und Stackfield. Fehlt ein Programm, nimmt WinMarchy die Web-Version im eigenen Browserfenster.
-- **Persönlich** schaltest du unter **Tastenkürzel** dazu. Es bringt Omarchys private Web-Apps und deine Kürzel aus der `bindings.lua`. Wo es eine Business-Taste belegt, gewinnt das persönliche Kürzel; die Liste zeigt das als „ersetzt …“ an.
+- **Persönlich** schaltest du unter **Einstellungen → Browser und private Programme** dazu („Private Kürzel dazu“). Es bringt Omarchys private Web-Apps und deine Kürzel aus der `bindings.lua`. Wo es eine Business-Taste belegt, gewinnt das persönliche Kürzel; die Liste zeigt das als „ersetzt …“ an.
 
 Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotkeys.json`, schlagen beide Profile und gelten, sobald du sie speicherst. Updates lassen die Datei in Ruhe. **Exportieren** nimmt sie auf einen anderen Rechner mit.
 
 **Importieren** liest einen WinMarchy-Export, Omarchys `bindings.lua` oder Hyprlands `bindings.conf`. Danach zeigt WinMarchy jedes Kürzel aus der Datei mit dem, was daraus würde, und du hakst an, was du übernimmst. Vorausgewählt ist, was neu ist und keine belegte Taste nimmt. Linux-Befehle übersetzt WinMarchy, wo Windows dasselbe kann: Web-Apps, Spotify-Links und bekannte Programme. Was kein Gegenstück hat, steht ausgegraut dabei. Vor dem Übernehmen legt WinMarchy einen Sicherungspunkt an.
 
-**Favoriten:** Am Anfang gibt es keine. Mit dem Stern auf der Seite **Tastenkürzel** markierst du welche; `Win+K` zeigt sie dann ganz oben, darunter alle anderen und zuletzt den Abschnitt „Optional“. Was in den Tabellen unten *optional* heißt, steht dort. Die Sterne liegen mit den eigenen Kürzeln in `hotkeys.json` und überstehen Updates.
+**Favoriten:** Am Anfang gibt es keine. Mit dem Stern auf der Seite **Tastenkürzel** markierst du welche; `Win+K` zeigt sie dann ganz oben, darunter alle anderen und zuletzt den Abschnitt „Optional“. Im WinMarchy-Menü (`Win+Space`) stehen sie unter den Menüpunkten, und die Suche dort findet sie zuerst. Eigene Kürzel hat die Seite **Tastenkürzel** in einem eigenen Tab. Was in den Tabellen unten *optional* heißt, steht dort. Die Sterne liegen mit den eigenen Kürzeln in `hotkeys.json` und überstehen Updates.
 
 ## Was sich nicht 1:1 übertragen lässt
 
@@ -26,7 +26,7 @@ Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotk
 | `Super+Shift+L` (Sperrbildschirm-Explorer) | nicht belegt | Windows hat kein Gegenstück. |
 | Spotify-Playlists mit Autoplay | Playlist öffnet sich | Unter Windows gibt es kein `playerctl`. Spotify zeigt die Playlist, starten musst du selbst. |
 | `Super+J` (Teilung drehen) | `Win+J` | Gleiche Taste. GlazeWMs eigener Befehl gilt erst fürs nächste Fenster, WinMarchy baut die Teilung deshalb selbst um, damit man sie sofort sieht. Das alte Verhalten liegt auf `Win+Alt+J`. |
-| Minimieren | gibt es in Omarchy nicht | WinMarchy holt minimierte Fenster sofort zurück (abschaltbar unter **Tiling**). `Win+M` holt alles zurück, was trotzdem minimiert ist. |
+| Minimieren | gibt es in Omarchy nicht | WinMarchy holt minimierte Fenster sofort zurück. `Win+M` holt alles zurück, was trotzdem minimiert ist. |
 | `Print` (Bildschirmfoto) | `Druck` | Snipping Tool oder Greenshot, umschaltbar unter **Einstellungen**. |
 | Idle-Sperre (`Super+Ctrl+I`) | Wach bleiben | Windows regelt die Sperre über Energieoptionen und oft per Richtlinie. WinMarchy verhindert nur den Ruhezustand, solange der Schalter an ist. |
 
@@ -73,11 +73,11 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+Q` | Fenster schließen · *optional* | gleich |
 | `Win+J` | Teilung drehen (Nebeneinander wird übereinander und zurück, sofort.) | gleich |
 | `Win+Alt+J` | Teilung für das nächste Fenster · *optional* | gleich |
-| `Win+T` | Schwebend oder gekachelt (Das Fenster verlässt die Kacheln; andere Fenster können es überdecken.) | gleich |
-| `Win+O` | Herauslösen und oben halten (Schwebt und bleibt über allen anderen Fenstern.) | gleich |
+| `Win+T` | Schwebend oder gekachelt (Das Fenster schwebt über den Kacheln, nichts deckt es zu. Noch einmal gedrückt, kommt es zurück ins Layout des Bildschirms.) | gleich |
+| `Win+O` | Herauslösen in die Ecke (Klein unten rechts und über allen Fenstern, etwa für einen Anruf oder ein Video. Noch einmal gedrückt, kommt es zurück ins Layout.) | gleich |
 | `Win+F` | Vollbild | gleich |
 | `Win+Alt+F` | Volle Breite | gleich |
-| `Win+Strg+J` | Layout wechseln: Dwindle, Spalten, Scrolling (Win+L gehört unter Windows dem Sperren, und auch Win+Alt+L kommt nicht immer an.) | Super + L |
+| `Win+Strg+J` | Layout des Bildschirms wechseln: Dwindle, Spalten, Scrolling (Win+L gehört unter Windows dem Sperren, und auch Win+Alt+L kommt nicht immer an.) | Super + L |
 | `Win+Left` | Fokus nach links | gleich |
 | `Win+Right` | Fokus nach rechts | gleich |
 | `Win+Up` | Fokus nach oben | gleich |
@@ -189,10 +189,8 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+Strg+P` | Energie · *optional* | gleich |
 | `Strg+Alt+Umschalt+T` | Windows-Taskleiste ein oder aus · *optional* | gleich |
 
-## Zwei Wege, die Tasten abzufangen
+## Wie die Tasten ankommen
 
-**AutoHotkey** (Standard) fängt jedes Kürzel ab und schickt es in etwa einer Millisekunde per `WM_COPYDATA` an WinMarchy. Nur so geht die Win-Taste allein und das Mausrad mit Win. Läuft WinMarchy gerade nicht, schickt das Skript Fensterbefehle direkt an GlazeWMs Kommandozeile und startet für den Rest `WinMarchy.exe --action …`.
-
-**GlazeWM** ist für Rechner gedacht, auf denen AutoHotkey gesperrt ist. GlazeWM bindet die Kürzel dann selbst; was kein Fensterbefehl ist, läuft über `shell-exec WinMarchy.exe --action …`. Die Win-Taste allein und das Mausrad gehen so nicht.
+**AutoHotkey** fängt jedes Kürzel ab und schickt es in etwa einer Millisekunde per `WM_COPYDATA` an WinMarchy. Nur so geht die Win-Taste allein und das Mausrad mit Win. Läuft WinMarchy gerade nicht, schickt das Skript Fensterbefehle direkt an GlazeWMs Kommandozeile und startet für den Rest `WinMarchy.exe --action …`. GlazeWM selbst bindet keine Tasten; ist AutoHotkey nicht installiert, wirkt kein Kürzel, bis die Einrichtung es nachholt.
 
 Vor jeder Änderung prüft AutoHotkey das neue Skript mit `/Validate`. Hat es einen Fehler, bleibt das alte aktiv.

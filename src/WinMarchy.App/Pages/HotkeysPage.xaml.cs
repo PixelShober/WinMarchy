@@ -8,7 +8,9 @@ namespace WinMarchy.App.Pages;
 
 public partial class HotkeysPage : UserControl, IPage
 {
-    static readonly string[] GroupIds = { "all", "favorites", "tiling", "workspaces", "apps", "menus", "utilities", "system" };
+    static readonly string[] GroupIds = { "all", "favorites", "custom", "tiling", "workspaces", "apps", "menus", "utilities", "system" };
+    /// <summary>Tabs that gather shortcuts from every group, with the group as a heading.</summary>
+    static readonly HashSet<string> Gathering = new() { "all", "favorites", "custom" };
     static readonly string[] Kinds = { "wm", "app", "web", "open", "send", "do", "run" };
 
     string _group = "all";
@@ -33,10 +35,7 @@ public partial class HotkeysPage : UserControl, IPage
     public void OnShown()
     {
         _loading = true;
-        var s = AppModel.Settings;
-        (s.HotkeyEngine == "glazewm" ? EngineGlaze : EngineAhk).IsChecked = true;
-        WinAlone.IsChecked = s.WinKeyOpensLauncher;
-        Personal.IsChecked = s.PersonalProfile;
+        WinAlone.IsChecked = AppModel.Settings.WinKeyOpensLauncher;
         _loading = false;
         UpdateEngineText();
         Reload();
@@ -54,26 +53,14 @@ public partial class HotkeysPage : UserControl, IPage
 
     void UpdateEngineText()
     {
-        var ahk = AppModel.Settings.HotkeyEngine != "glazewm";
-        EngineText.Text = ahk ? L.T("hotkeys.engineAhkText") : L.T("hotkeys.engineGlazeText");
-        WinAlone.IsEnabled = ahk;
-        if (ahk && AppModel.Engine.Components.AhkExe == null) EngineText.Text += " " + L.T("hotkeys.ahkNotInstalled");
+        EngineText.Text = L.T("hotkeys.engineAhkText");
+        if (AppModel.Engine.Components.AhkExe == null) EngineText.Text += " " + L.T("hotkeys.ahkNotInstalled");
     }
 
-    void OnEngine(object sender, RoutedEventArgs e)
+    void OnWinAlone(object sender, RoutedEventArgs e)
     {
-        if (_loading || sender is not RadioButton { Tag: string engine }) return;
-        AppModel.Update(s => s.HotkeyEngine = engine);
-        UpdateEngineText();
-        Reload();
-    }
-
-    void OnWinAlone(object sender, RoutedEventArgs e) => AppModel.Update(s => s.WinKeyOpensLauncher = WinAlone.IsChecked == true);
-
-    void OnPersonal(object sender, RoutedEventArgs e)
-    {
-        AppModel.Update(s => s.PersonalProfile = Personal.IsChecked == true);
-        Reload();
+        if (_loading) return;
+        AppModel.Update(s => s.WinKeyOpensLauncher = WinAlone.IsChecked == true);
     }
 
     void OnSearch(object sender, TextChangedEventArgs e)
@@ -92,19 +79,21 @@ public partial class HotkeysPage : UserControl, IPage
         var off = new HashSet<string>(_custom.Disabled.Select(Normalize), StringComparer.OrdinalIgnoreCase);
         var shown = _set.All
             .Where(b => _set.Active.Contains(b) || off.Contains(b.Keys) || (b.Source == "custom" && !b.Enabled))
-            .Where(b => _group == "all" || b.Group == _group || (_group == "favorites" && b.Favorite))
+            .Where(b => _group == "all" || b.Group == _group || (_group == "favorites" && b.Favorite) || (_group == "custom" && b.Source == "custom"))
             .Where(b => query.Length == 0 || b.Keys.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                         b.Describe().Contains(query, StringComparison.OrdinalIgnoreCase) || b.Do.Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
         if (shown.Count == 0)
         {
-            List.Children.Add(UiKit.Text(L.T("hotkeys.empty"), "Muted", new Thickness(20, 18, 20, 18)));
+            var empty = UiKit.Text(L.T(_group == "custom" && query.Length == 0 ? "hotkeys.emptyCustom" : "hotkeys.empty"), "Muted", new Thickness(20, 18, 20, 18));
+            empty.TextWrapping = TextWrapping.Wrap;
+            List.Children.Add(empty);
             return;
         }
         string? lastGroup = null;
         foreach (var b in shown.OrderBy(b => Array.IndexOf(GroupIds, b.Group)).ThenBy(b => shown.IndexOf(b)).ToList())
         {
-            if (_group is "all" or "favorites" && b.Group != lastGroup)
+            if (Gathering.Contains(_group) && b.Group != lastGroup)
             {
                 lastGroup = b.Group;
                 var head = UiKit.Text(L.T("hotkeys.groups." + b.Group), "H3", new Thickness(20, List.Children.Count == 0 ? 16 : 22, 20, 6));
@@ -121,7 +110,6 @@ public partial class HotkeysPage : UserControl, IPage
         var grid = new Grid { Margin = new Thickness(20, 0, 12, 0), MinHeight = 40 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var keys = UiKit.Keycaps(b.Keys);
@@ -143,11 +131,6 @@ public partial class HotkeysPage : UserControl, IPage
         if (notes.Count > 0) text.Children.Add(UiKit.Text(string.Join(" · ", notes), "Small"));
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
-
-        var source = UiKit.Badge(L.T("hotkeys.sources." + b.Source), b.Source == "custom" ? "accent" : "muted");
-        source.Margin = new Thickness(0, 0, 10, 0);
-        Grid.SetColumn(source, 2);
-        grid.Children.Add(source);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         // Favourites come first in Win+K, the rest under "Optional".
@@ -192,7 +175,7 @@ public partial class HotkeysPage : UserControl, IPage
             };
             actions.Children.Add(toggle);
         }
-        Grid.SetColumn(actions, 3);
+        Grid.SetColumn(actions, 2);
         grid.Children.Add(actions);
 
         var row = new Border { Child = grid, BorderThickness = new Thickness(0, 1, 0, 0) };

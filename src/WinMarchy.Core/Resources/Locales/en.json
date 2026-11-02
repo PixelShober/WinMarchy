@@ -77,8 +77,7 @@
       "yasb": "Top bar",
       "starship": "Prompt",
       "fastfetch": "System info",
-      "explorerblurmica": "Explorer effect",
-      "lunatask": "Tasks"
+      "explorerblurmica": "Explorer effect"
     },
     "running": "Running",
     "installedBadge": "Installed",
@@ -92,12 +91,10 @@
     "installed": "{tool} is now in {path}",
     "removed": "{tool} removed",
     "glazeStopping": "Ending GlazeWM for the swap, the windows stay open …",
-    "glazeFallback": "WinMarchy's build of GlazeWM was not available, installing the official release: {detail}",
     "removeLater": "{tool} is still in use and is deleted at the next start: {path}",
     "upToDate": "{tool} is up to date ({version}).",
     "updateFailed": "{tool} could not be updated: {detail}",
     "updateInUse": "{tool} is on and loaded by Explorer. To update it, switch it off under Settings, sign out and switch it on again.",
-    "updateOtherBuild": "The GlazeWM build running here is not the one chosen under Settings → GlazeWM. Switching there installs it.",
     "updateRunning": "{tool} is running and stays as it is. Close it and update again."
   },
 
@@ -108,7 +105,6 @@
     "programsText": "Every program comes straight from the vendor's GitHub release and is checked before it is unpacked. Everything goes to C:\\WinMarchy\\Tools, no admin rights needed.",
     "why": {
       "glazewm": "Tiles the windows and runs the workspaces. Nothing works without it.",
-      "zebar": "The earlier bar at the top. New setups use YASB.",
       "autohotkey": "Catches the shortcuts, including the Win key on its own.",
       "flow": "The launcher behind the Win key, like Walker in Omarchy.",
       "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1.",
@@ -118,8 +114,7 @@
       "yasb": "The bar at the top: workspaces, a clock with calendar, sound, Wi-Fi and battery. Small menus drop down from it; you add entries of your own on the Tiling page.",
       "starship": "Omarchy's prompt for PowerShell: folder, Git branch and status, in the theme's colours. Where Windows PowerShell loads no profiles, WinMarchy ticks PowerShell 7 as well.",
       "fastfetch": "Shows in every new terminal tab what is inside your computer, with IP and MAC address, like Omarchy's About. Also in the bar's logo menu and under About in the WinMarchy menu.",
-      "explorerblurmica": "Blur behind Explorer in the theme's colour. Registered for your account only; switch it off under Settings.",
-      "lunatask": "Tasks, notes and habits in one place. Its vendor publishes no checksum, so WinMarchy does not download it: install it from lunatask.app, then the action app:lunatask starts it. The vendor's terms of use apply."
+      "explorerblurmica": "Blur behind Explorer in the theme's colour. Registered for your account only; switch it off under Settings."
     },
     "detected": "{tool} found",
     "notDetected": "{tool} not found",
@@ -141,8 +136,7 @@
     "extrasDone": "Extras installed.",
     "piNeedsBash": "Needs Git Bash, which is missing here.",
     "experimental": "Experimental",
-    "fromVendor": "Get {tool} from the vendor",
-    "zebarStays": "The setup now uses YASB as the bar. You remove the Zebar from the earlier setup under Settings → Bar."
+    "glazeOfficial": "Official release, gets replaced"
   },
 
   "themes": {
@@ -195,18 +189,11 @@
   "hotkeys": {
     "title": "Shortcuts",
     "subtitle": "Omarchy's shortcuts, moved to Windows. The Win key plays the part of Super.",
-    "engine": "Who catches the keys",
-    "engineAhk": "AutoHotkey",
-    "engineGlaze": "GlazeWM",
-    "engineAhkText": "AutoHotkey catches every shortcut and passes window commands on to GlazeWM. This is the only way the Win key on its own can open the launcher.",
-    "engineGlazeText": "GlazeWM catches the shortcuts itself. Meant for PCs where AutoHotkey is blocked. The Win key on its own and the mouse wheel do not work then.",
-    "ahkNotInstalled": "AutoHotkey is not installed yet, GlazeWM fills in until it is.",
+    "engine": "AutoHotkey catches the keys",
+    "engineAhkText": "Every shortcut goes through AutoHotkey, which passes window commands on to GlazeWM. That way the Win key alone opens the search too.",
+    "ahkNotInstalled": "AutoHotkey is not installed yet; until it is, no shortcut works. Setup installs it.",
     "winAlone": "Win key on its own opens the launcher",
     "winAloneHint": "Like Super in Omarchy. Ctrl+Esc still opens the Start menu.",
-    "profiles": "Profiles",
-    "profilesText": "Business is always on: Outlook, OneNote, Word and Stackfield instead of HEY, Signal and Obsidian.",
-    "personal": "Personal",
-    "personalHint": "Spotify, WhatsApp, Telegram and your shortcuts from bindings.lua.",
     "search": "Search shortcuts",
     "add": "New shortcut",
     "apply": "Apply",
@@ -220,8 +207,6 @@
     "replaces": "replaces “{label}”",
     "validating": "AutoHotkey is checking the script …",
     "activeAhk": "{count} shortcuts active (AutoHotkey)",
-    "activeGlaze": "{count} shortcuts active (GlazeWM)",
-    "ahkMissingFallback": "AutoHotkey is missing, GlazeWM takes the shortcuts.",
     "customUnreadable": "Could not read your own shortcuts: {detail}",
     "groups": {
       "all": "All",
@@ -231,11 +216,7 @@
       "menus": "Menus",
       "utilities": "Tools",
       "system": "System",
-      "favorites": "Favourites"
-    },
-    "sources": {
-      "business": "Business",
-      "personal": "Personal",
+      "favorites": "Favourites",
       "custom": "Own"
     },
     "kinds": {
@@ -284,7 +265,6 @@
       "unknownCommand": "“{command}” is not a WinMarchy function.",
       "runEmpty": "Enter a path.",
       "duplicate": "{keys} is bound twice. The last entry wins.",
-      "wheelNeedsAhk": "Mouse wheel shortcuts only work with AutoHotkey.",
       "appNoUrls": "Only the browser takes addresses, “{app}” does not.",
       "appUrl": "“{url}” is not a web address (https://…)."
     },
@@ -312,7 +292,9 @@
     "importBadKeys": "“{keys}” is not a key combination Windows knows.",
     "importReplaces": "Replaces “{label}” · {action}",
     "importSame": "Already set like this.",
-    "imported": "Imported {count} shortcuts."
+    "imported": "Imported {count} shortcuts.",
+    "ahkMissing": "AutoHotkey is not installed, so no shortcut works yet. Setup installs it.",
+    "emptyCustom": "No shortcuts of your own yet. \"New shortcut\" creates one; a profile shortcut you change shows up here too."
   },
 
   "apps": {
@@ -342,8 +324,7 @@
     "notepad": "Notepad",
     "stackfield": "Stackfield",
     "pi": "Pi",
-    "browser2": "Second browser",
-    "lunatask": "Lunatask"
+    "browser2": "Second browser"
   },
 
   "commands": {
@@ -353,9 +334,9 @@
     "wallpaper-next": "Next wallpaper",
     "bar-toggle": "Top bar on or off",
     "taskbar-toggle": "Taskbar on or off",
-    "layout-next": "Next layout",
-    "layout-prev": "Previous layout",
-    "layout": "Set layout (dwindle, columns, scrolling, floating, manual)",
+    "layout-next": "Next layout of the screen",
+    "layout-prev": "Cycle the screen's layout",
+    "layout": "Set the screen's layout (dwindle, columns, scrolling)",
     "scratch-toggle": "Show or hide the scratchpad",
     "scratch-store": "Move window to the scratchpad",
     "workspace-next": "Next workspace",
@@ -385,20 +366,14 @@
     "about": "About this system (Fastfetch)",
     "bar-shortcut": "Own bar entry",
     "bar-menu": "Open a menu of the bar (calendar, audio, network …)",
-    "work-mode": "Work mode 1 to 3 (number after it)"
+    "work-mode": "Work mode 1 to 3 (number after it)",
+    "float-toggle": "Float the window or put it back into the layout (corner: small in the corner)"
   },
 
   "tiling": {
     "title": "Tiling",
-    "subtitle": "How GlazeWM arranges your windows. As in Omarchy, each workspace has its own layout.",
-    "defaultLayout": "Default layout",
-    "defaultLayoutText": "Used for new workspaces. Win+Ctrl+J moves the workspace you are on to the next layout: dwindle, columns, scrolling.",
+    "subtitle": "How GlazeWM arranges your windows. Each screen has its layout, and every workspace on it follows.",
     "scrollingNote": "Scrolling puts the windows into a row of columns that may be wider than the screen. Win+Left and Right scroll, Win+Shift+Arrow moves the column. Columns off the screen wait out of sight until the row scrolls to them. GlazeWM cannot do this itself, so WinMarchy places these windows (they float for it).",
-    "workspaces": "Workspaces",
-    "refresh": "Refresh",
-    "workspaceRow": "Workspace {name} · {count} windows",
-    "noWorkspaces": "GlazeWM reports no workspaces.",
-    "notConnected": "Your workspaces show up here once GlazeWM runs.",
     "look": "Look",
     "innerGap": "Gap between windows",
     "outerGap": "Gap to the edge",
@@ -416,15 +391,11 @@
     "applied": "GlazeWM has the new settings.",
     "splitNext": "The split applies from the next window on.",
     "allTaken": "All {count} workspaces are in use.",
-    "touchpad": "Open touchpad gestures",
-    "touchpadHint": "Win+Ctrl+Arrow switches all monitors together, like virtual desktops, and Win+Ctrl+D opens work mode 1. Under “Advanced gestures” you can put the three-finger swipe on these shortcuts. Better not “Switch desktops”: Windows' virtual desktops do not get along with GlazeWM.",
     "scrollingColumns": "Scrolling shows",
     "columnsCount": "{count} side by side",
     "barModules": "The bar shows",
-    "blockMinimize": "Prevent minimizing",
-    "blockMinimizeHint": "As in Omarchy: a minimized window goes straight back into its tile. Win+M brings back anything that is minimized anyway.",
-    "monitors": "Monitors and workspaces",
-    "monitorsText": "As in the Omarchy plugin Screens: every monitor gets fixed workspaces. Win+3 always opens workspace 3 on its monitor, and a work mode only takes that monitor's workspaces there.",
+    "monitors": "Screens, layouts and workspaces",
+    "monitorsText": "As in Omarchy's Screens plugin: each screen gets its layout and fixed workspaces. Win+3 always opens workspace 3 on its screen and in that screen's layout, and a work mode only takes that screen's workspaces there.",
     "monitorsHint": "Monitors count from left to right, as GlazeWM counts them. Unplug one and its workspaces move to another. Its row stays here until you clear it, so the split fits again at the dock.",
     "monitorsSplit": "Split evenly",
     "monitorsInvalid": "Monitor {number}: only workspace numbers from 1 to 10, such as 1-5 or 6, 7.",
@@ -436,8 +407,6 @@
     "monitorWorkspacesHint": "For example 1-5 or 6, 7, 8. Empty: this monitor takes whatever is free.",
     "desktopAppLate": "{action} showed no window within 12 seconds; it was meant for workspace {workspace}.",
     "monitorsFailed": "Could not move workspaces to their monitors: {detail}",
-    "trayPinned": "Always visible in the tray",
-    "trayPinnedHint": "Part of the name, separated by commas, such as Teams, OneDrive. The rest waits behind the small arrow; middle click on an icon pins it there.",
     "shortcuts": "Your own bar entries",
     "shortcutsHint": "They sit in the menu under the logo, which drops down from the top; with “As button” also right in the bar. Write the action as for a shortcut: app:terminal, web:https://…, open:ms-settings:…, do:theme-menu or run:C:\\Path\\script.ps1. YASB only.",
     "shortcutTitle": "Name",
@@ -447,7 +416,6 @@
     "shortcutRemove": "Remove",
     "shortcutAdd": "Add entry",
     "shortcutNoTitle": "The entry with the action {action} needs a name.",
-    "yasbOnly": "YASB only",
     "newWindowEndsFullscreen": "A new window ends full screen",
     "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, the full-screen window goes back into its tile, as in Hyprland.",
     "oneMonitor": "Only one monitor is connected.",
@@ -460,7 +428,16 @@
     "workModeApp": "Work mode {mode}, monitor {number}",
     "workModeAppHint": "What starts here, written like a shortcut's action. Empty: nothing.",
     "workModeNoKeys": "no shortcut",
-    "workModeInvalid": "{mode}, monitor {number}: {detail}"
+    "workModeInvalid": "{mode}, monitor {number}: {detail}",
+    "layouts": "Layouts",
+    "layoutsText": "Which layout a screen has is set below with the screens. Win+Ctrl+J moves the screen you are on to the next one: dwindle, columns, scrolling.",
+    "floatingNote": "Floating is not a layout: Win+T takes a single window out, it then floats above the tiles and nothing covers it. Win+T again puts it back into the screen's layout. Win+O puts it small into the bottom right corner.",
+    "monitorLayout": "Screen {number}: {layout}",
+    "layoutsFailed": "The screens' layouts could not be applied: {detail}",
+    "unsavedTitle": "Apply the changes?",
+    "unsavedText": "Something on the Tiling page is changed but not applied yet.",
+    "unsavedStay": "Stay here",
+    "unsavedDiscard": "Discard"
   },
 
   "layouts": {
@@ -468,13 +445,11 @@
     "dwindleText": "Each new window splits the space of the focused one. Omarchy's default.",
     "columns": "Columns",
     "columnsText": "Windows side by side, equally wide.",
-    "floating": "Floating",
-    "floatingText": "Windows lie freely on top of each other.",
-    "manual": "Manual",
-    "manualText": "You split yourself, with Win+J.",
-    "changed": "Workspace {workspace}: {layout}",
+    "changed": "Layout: {layout}",
     "scrolling": "Scrolling",
-    "scrollingText": "Columns in a row, wider than the screen. Win+Arrow scrolls."
+    "scrollingText": "Columns in a row, wider than the screen. Win+Arrow scrolls.",
+    "screenChanged": "Screen {screen}: {layout}",
+    "floatingGone": "The floating layout is gone. The windows of workspace {workspaces} are tiled again; single windows float with Win+T."
   },
 
   "scratchpad": {
@@ -565,7 +540,7 @@
     "filesDefaultMissing": "Files is not installed. It is free in the Microsoft Store and at files.community.",
     "filesDefaultOn": "Files is now the default file manager.",
     "filesDefaultOff": "Explorer is the default file manager again.",
-    "browsers": "Browsers",
+    "browsers": "Browsers and private apps",
     "browsersText": "Two shortcuts, two browsers: Edge for work and Firefox for the rest, for example. Web apps like Spotify open in the first one if it is based on Chromium, else in Edge.",
     "browser1": "Win+Shift+B and web apps",
     "browser2": "Win+Shift+Enter",
@@ -578,30 +553,19 @@
     "screenshotWindows": "Windows (Snipping Tool)",
     "screenshotGreenshot": "Greenshot",
     "screenshotWindowsHint": "Print and Win+Ctrl+Alt+C open Snipping Tool, Alt+Print records the screen as a video.",
-    "screenshotGreenshotHint": "Print captures a region, Alt+Print a window, Ctrl+Print the whole screen, as Greenshot has them set. Win+Ctrl+Alt+C works too.",
+    "screenshotGreenshotHint": "Print captures a region, Alt+Print a window, Ctrl+Print the whole screen, as Greenshot is set up. Win+Ctrl+Alt+C works too. The picture is in the clipboard right away, and a small menu offers to save or edit it.",
     "screenshotGreenshotInstall": "When you switch, WinMarchy downloads Greenshot straight from its maker.",
     "screenshotDone": "Screenshots now with {tool}.",
     "glaze": "GlazeWM",
-    "glazeText": "Which GlazeWM manages the windows. The WinMarchy build is GlazeWM from glzr-io with the fixes and features WinMarchy needs (github.com/PixelShober/glazewm). The official release is signed but lacks these changes. Switching ends GlazeWM for a moment; your windows stay open.",
-    "glazeWinMarchy": "WinMarchy build",
-    "glazeOfficial": "Official (glzr-io)",
-    "glazeWinMarchyHint": "Not signed, so without UIAccess: GlazeWM does not tile programs that run as administrator.",
-    "glazeOfficialHint": "Signed by glzr-io. What the WinMarchy build adds, WinMarchy does from the outside as far as it can.",
-    "glazeInstalled": "Installed now: {build}, version {version}.",
+    "glazeText": "GlazeWM manages the windows. WinMarchy uses its own build for that: GlazeWM from glzr-io with the fixes and features WinMarchy needs (github.com/PixelShober/glazewm). It is not signed and so runs without UIAccess: it does not tile programs that run as administrator.",
+    "glazeInstalled": "Installed: WinMarchy build, version {version}.",
     "glazeMissing": "No GlazeWM installed yet.",
-    "glazeDone": "GlazeWM now runs as {build}.",
-    "bar": "Bar",
-    "barText": "Which bar runs at the top. YASB is WinMarchy's new bar: the calendar, sound, Wi-Fi and the menu under the logo drop down from it, and on the Tiling page you add entries of your own. Zebar stays available until YASB works for you.",
-    "barYasbHint": "YASB runs now.",
-    "barZebarHint": "Zebar from an earlier setup runs now. A click on YASB gets YASB from its vendor, sets it up in your theme and starts it instead of Zebar.",
-    "barInstalled": "{tool} {version} is installed.",
-    "barNotInstalled": "{tool} is not installed yet.",
-    "barDone": "The bar is {tool} now.",
-    "zebarStillThere": "Zebar is still there and can be removed once YASB runs.",
+    "glazeDone": "GlazeWM now runs as the WinMarchy build.",
+    "zebarStillThere": "Older WinMarchy versions used Zebar as the bar. It is still on the computer and can go; the bar is YASB now.",
     "zebarElsewhere": "Zebar is installed outside WinMarchy ({path}). WinMarchy only takes out its own bar; you remove the program under Windows Settings → Apps.",
     "zebarRemove": "Remove Zebar",
     "zebarRemoveTitle": "Remove Zebar?",
-    "zebarRemoveConfirm": "WinMarchy ends Zebar, takes its bar out of Zebar's startup list and deletes Zebar from C:\\WinMarchy\\Tools. The bar's files go into a restore point. If you switch the bar back to Zebar later, WinMarchy downloads the program again.",
+    "zebarRemoveConfirm": "WinMarchy ends Zebar, takes its bar out of Zebar's startup list and deletes Zebar from C:\\WinMarchy\\Tools. The bar's files go into a restore point.",
     "zebarRemoved": "Zebar is removed.",
     "explorerBlurText": "Blur behind Explorer, tinted with the theme. Explorer loads a DLL for it; WinMarchy registers it for your account only, without admin rights, and switching it off undoes that. Experimental: a Windows update can break it, and some companies only allow Explorer extensions registered for all users.",
     "explorerBlurSwitch": "Switch ExplorerBlurMica on",
@@ -614,7 +578,12 @@
     "toolUpdates": "Update programs",
     "toolUpdatesHint": "GlazeWM, YASB, AutoHotkey and the extras WinMarchy installed come in their latest version from the vendor. Running programs are ended for a moment. Flow Launcher updates itself.",
     "toolUpdatesNone": "WinMarchy has not installed any programs yet.",
-    "toolUpdatesDone": "Programs are up to date."
+    "toolUpdatesDone": "Programs are up to date.",
+    "glazeOfficialFound": "Found: an official release ({path}). It lacks what WinMarchy needs. The button installs the WinMarchy build into C:\\WinMarchy\\Tools and starts it instead. The official one stays installed but no longer runs.",
+    "glazeForkInstall": "Install the WinMarchy build",
+    "zebar": "Zebar from before",
+    "personal": "Add private shortcuts",
+    "personalHint": "Spotify, WhatsApp, Telegram and your shortcuts from bindings.lua, on top of the business ones. Where one takes a business key, it wins. Takes effect at once."
   },
 
   "log": {
@@ -678,8 +647,7 @@
     "extras": "Install extras: {tools}",
     "hotkeysImport": "Import shortcuts",
     "screenshots": "Switch the screenshot tool",
-    "glazeBuild": "Switch GlazeWM",
-    "bar": "Bar: {tool}",
+    "glazeBuild": "Install the WinMarchy build of GlazeWM",
     "zebarRemove": "Remove Zebar",
     "explorerBlurOn": "Switch ExplorerBlurMica on",
     "explorerBlurOff": "Switch ExplorerBlurMica off",
@@ -729,12 +697,14 @@
     "shellTheme": "Colour Starship and Fastfetch",
     "notSetUp": "not set up",
     "zebarRemove": "Remove Zebar",
-    "update": "Update {tool}"
+    "update": "Update {tool}",
+    "greenshot": "Set up Greenshot for screenshots",
+    "greenshotFixed": "Reset Greenshot",
+    "notInstalled": "{tool} is not installed"
   },
 
   "integrations": {
     "glazewm": { "done": "Config written: {path}" },
-    "zebar": { "done": "Bar set up: {path}" },
     "terminal": {
       "done": "Colour scheme “WinMarchy” set: {path}",
       "failed": "Could not change Windows Terminal ({path}): {detail}",
@@ -907,7 +877,9 @@
     "glazeHungAgain": "GlazeWM hangs again. “Reload GlazeWM” in the tray menu restarts it; the log shows what happened before.",
     "glazeEnded": "Ended GlazeWM (PID {pid}).",
     "glazeEndFailed": "Could not end GlazeWM: {detail}",
-    "barMissing": "{tool} is not installed."
+    "barMissing": "{tool} is not installed.",
+    "glazeOtherEnded": "Another GlazeWM ran instead of the WinMarchy build ({path}). WinMarchy ended it and starts its own.",
+    "greenshotTakesOver": "Screenshots now go through Greenshot: the picture is in the clipboard right away, and a menu offers to save it."
   },
 
   "tray": {
@@ -938,7 +910,8 @@
       "system": "System",
       "themes": "Theme",
       "keybindings": "Shortcuts ({count})",
-      "wallpaper": "Background · {theme}"
+      "wallpaper": "Background · {theme}",
+      "screenshot": "Screenshot in the clipboard"
     },
     "root": {
       "apps": "Apps",
@@ -977,7 +950,7 @@
       "nightlight": "Night light",
       "bar": "Top bar",
       "taskbar": "Taskbar",
-      "layout": "Workspace layout",
+      "layout": "Screen layout",
       "gaps": "Window gaps",
       "transparency": "See-through window"
     },
@@ -1033,7 +1006,17 @@
     "keybindingsOptional": "Optional",
     "sectionApps": "Apps",
     "keybindingsFavorites": "Favourites",
-    "keybindingsOthers": "All the others"
+    "keybindingsOthers": "All the others",
+    "sectionFavorites": "Favourites",
+    "screenshot": {
+      "save": "Save",
+      "saveWhere": "Pictures\\Screenshots",
+      "saveAs": "Save as …",
+      "edit": "Edit in Greenshot",
+      "folder": "Open folder",
+      "saved": "Saved: {name}",
+      "filter": "PNG image (*.png)|*.png"
+    }
   },
 
   "install": {
@@ -1099,7 +1082,7 @@
     "toolExeMissing": "{exe} is missing from the {tool} package.",
     "toolNoChecksum": "GitHub publishes no checksum for {file} of {tool}. WinMarchy installs nothing it cannot check.",
     "toolNotFoundAfterInstall": "{tool} cannot be found after installing it.",
-    "toolNotInstallable": "WinMarchy does not install {tool} itself. The link to the vendor is on Start.",
+    "toolNotInstallable": "WinMarchy cannot install {tool} itself.",
     "zipInvalidPath": "The ZIP contains an invalid path: {entry}",
     "filesMissing": "Files is not installed.",
     "hotkeysImportInvalid": "The file holds no WinMarchy shortcuts.",
@@ -1140,7 +1123,6 @@
       "taskManager": "Task Manager is blocked. Win+Shift+T opens nothing.",
       "registryTools": "The registry editor is blocked. WinMarchy still writes to HKEY_CURRENT_USER.",
       "notifications": "The notification center is switched off.",
-      "webView2": "IT has rules for WebView2. The earlier bar (Zebar) runs on WebView2, YASB does not need it.",
       "proxy": "A proxy is set ({value}). Downloads from GitHub go through it.",
       "proxyScript": "A proxy script is set ({value}). Downloads from GitHub go through it.",
       "mdm": "The PC is managed through {value} (Intune or another MDM). Such settings are not always in the registry."
@@ -1149,7 +1131,10 @@
 
   "screenshot": {
     "greenshotMissing": "Greenshot is not installed, so Snipping Tool steps in. You can install Greenshot in the settings.",
-    "printKeyFreed": "Print no longer opens Snipping Tool; Greenshot takes the key."
+    "printKeyFreed": "Print no longer opens Snipping Tool; Greenshot takes the key.",
+    "fileName": "Screenshot {date}",
+    "toClipboard": "Greenshot puts every screenshot straight into the clipboard, then WinMarchy offers to save it ({path}).",
+    "notToClipboard": "Greenshot decides again where a screenshot goes ({path})."
   },
 
   "fastfetch": {

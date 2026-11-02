@@ -142,7 +142,7 @@ public static class Diagnostics
         });
         Guard("Bar", () =>
         {
-            Line($"chosen: {Integrations.Bars.Chosen(s, loc)} (setting: {s.Bar ?? "not chosen"}) · shown: {s.ShowBar}");
+            Line($"shown: {s.ShowBar} · Zebar left over: {(Integrations.ZebarPack.IsInstalled(loc) ? "yes" : "no")}");
             Line($"YASB config: {(Integrations.YasbBar.IsInstalled(loc) ? "WinMarchy's" : File.Exists(loc.YasbConfig) ? "someone else's" : "missing")} · {loc.YasbDir}");
             // YASB writes what it did not like in its config into its own log.
             var yasbLog = Path.Combine(loc.YasbDir, "yasb.log");
@@ -150,12 +150,6 @@ public static class Diagnostics
             {
                 Line("yasb.log, last lines:");
                 foreach (var l in FileSafety.ReadShared(yasbLog).Split('\n').TakeLast(40)) Line("  " + l.TrimEnd());
-            }
-            if (Integrations.ZebarPack.IsInstalled(loc))
-            {
-                Line(File.Exists(loc.ZebarSettings) ? FileSafety.ReadShared(loc.ZebarSettings).Trim() : loc.ZebarSettings + " missing");
-                var config = Path.Combine(loc.ZebarPackDir, "config.js");
-                Line(File.Exists(config) ? FileSafety.ReadShared(config).Trim() : config + " missing");
             }
         });
         Guard("Shell and Explorer extras", () =>

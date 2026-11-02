@@ -16,8 +16,6 @@
     <!-- Hotkey profiles (Business, Persönlich) and the AutoHotkey runtime part. -->
     <EmbeddedResource Include="Resources\Hotkeys\*.json" LogicalName="WinMarchy.Hotkeys.%(Filename).json" />
     <EmbeddedResource Include="Resources\Hotkeys\runtime.ahk" LogicalName="WinMarchy.Hotkeys.runtime.ahk" />
-    <!-- Zebar widget pack (Omarchy-style bar). -->
-    <EmbeddedResource Include="Resources\Zebar\**\*" LogicalName="WinMarchy.Zebar.%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

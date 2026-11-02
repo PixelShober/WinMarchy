@@ -82,7 +82,7 @@ public static class HotkeyImport
     /// <summary>Hyprland dispatchers with a WinMarchy counterpart ("{0}" is the argument).</summary>
     static readonly Dictionary<string, string> Dispatchers = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["killactive"] = "wm:close", ["togglefloating"] = "wm:toggle-floating --centered", ["fullscreen"] = "wm:toggle-fullscreen",
+        ["killactive"] = "wm:close", ["togglefloating"] = "do:float-toggle", ["fullscreen"] = "wm:toggle-fullscreen",
         ["togglesplit"] = "do:toggle-split", ["workspace"] = "wm:focus --workspace {0}", ["movetoworkspace"] = "do:to-workspace {0}",
         ["movefocus"] = "do:focus {0}", ["swapwindow"] = "do:swap {0}", ["movewindow"] = "do:swap {0}",
         ["togglespecialworkspace"] = "do:scratch-toggle", ["movetoworkspacesilent"] = "do:scratch-store",

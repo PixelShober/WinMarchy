@@ -103,7 +103,6 @@ public class NetTests
 
     [Theory]
     [InlineData("glazewm", "glazewm-v3.10.1-winmarchy.1-x64.zip")]
-    [InlineData("zebar", "zebar-v3.3.1-opt1-x64.msi")]
     [InlineData("autohotkey", "AutoHotkey_2.0.19.zip")]
     [InlineData("flow", "Flow-Launcher-Setup.exe")]
     [InlineData("pwsh", "PowerShell-7.5.4-win-x64.zip")]
@@ -118,19 +117,12 @@ public class NetTests
         using var temp = new TempDir();
         var exe = temp.File("glazewm.exe");
         File.WriteAllText(exe, "");
-        var winmarchy = new UserSettings();
-        var official = new UserSettings { GlazeBuild = GlazeBuilds.Official };
         Assert.False(ToolCatalog.IsWinMarchyBuild(exe));
-        Assert.True(ToolCatalog.IsWantedGlaze(exe, official));
-        Assert.False(ToolCatalog.IsWantedGlaze(exe, winmarchy));
-
         File.WriteAllText(temp.File("WINMARCHY.md"), "");
-        Assert.True(ToolCatalog.IsWantedGlaze(exe, winmarchy));
-        Assert.False(ToolCatalog.IsWantedGlaze(exe, official));
-        Assert.False(ToolCatalog.IsWantedGlaze(null, winmarchy));
-
-        Assert.Same(ToolCatalog.GlazeWm, ToolCatalog.GlazeSource(winmarchy));
-        Assert.Equal(("glazewm", "glzr-io/glazewm"), (ToolCatalog.GlazeSource(official).Id, ToolCatalog.GlazeSource(official).Repo));
+        Assert.True(ToolCatalog.IsWinMarchyBuild(exe));
+        Assert.False(ToolCatalog.IsWinMarchyBuild(null));
+        // Only the fork: WinMarchy has no official release to install.
+        Assert.Equal("PixelShober/glazewm", ToolCatalog.GlazeWm.Repo);
     }
 
     [Fact]
@@ -138,8 +130,6 @@ public class NetTests
     {
         Assert.DoesNotMatch(ToolCatalog.GlazeWm.Asset!, "glazewm-v3.10.1-winmarchy.1-x64.zip.sha256");
         Assert.DoesNotMatch(ToolCatalog.GlazeWm.Asset!, "standalone-glazewm-v3.10.0-x64.msi");
-        Assert.Matches(ToolCatalog.GlazeWmOfficial.Asset!, "standalone-glazewm-v3.10.0-x64.msi");
-        Assert.DoesNotMatch(ToolCatalog.GlazeWmOfficial.Asset!, "standalone-glazewm-v3.10.0-arm64.msi");
         Assert.DoesNotMatch(ToolCatalog.PowerShell.Asset!, "PowerShell-7.5.4-win-arm64.zip");
         Assert.DoesNotMatch(ToolCatalog.AutoHotkey.Asset!, "AutoHotkey_1.1.37.02.zip");
         Assert.DoesNotMatch(ToolCatalog.Pi.Asset!, "pi-windows-arm64.zip");
@@ -187,8 +177,9 @@ public class LayoutTests
     [InlineData("dwindle", LayoutMode.Dwindle)]
     [InlineData("Columns", LayoutMode.Columns)]
     [InlineData("scrolling", LayoutMode.Scrolling)]
-    [InlineData("floating", LayoutMode.Floating)]
-    [InlineData("manual", LayoutMode.Manual)]
+    // The floating and manual layouts of older versions are gone; such a setting reads as Dwindle.
+    [InlineData("floating", LayoutMode.Dwindle)]
+    [InlineData("manual", LayoutMode.Dwindle)]
     [InlineData(null, LayoutMode.Dwindle)]
     public void Parses_layout_names(string? text, LayoutMode mode) => Assert.Equal(mode, LayoutEngine.Parse(text));
 }

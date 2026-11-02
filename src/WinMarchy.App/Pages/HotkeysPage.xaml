@@ -8,43 +8,18 @@
       <TextBlock Text="{ui:T hotkeys.subtitle}" Style="{StaticResource Muted}" Margin="0,6,0,0" />
     </StackPanel>
 
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="20" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-      <Border Style="{StaticResource Card}">
-        <StackPanel>
-          <TextBlock Text="{ui:T hotkeys.engine}" Style="{StaticResource H2}" />
-          <Border Style="{StaticResource SegmentGroup}" Margin="0,12,0,10">
-            <StackPanel Orientation="Horizontal">
-              <RadioButton x:Name="EngineAhk" Style="{StaticResource Segment}" GroupName="engine" Content="{ui:T hotkeys.engineAhk}" Checked="OnEngine" Tag="autohotkey" />
-              <RadioButton x:Name="EngineGlaze" Style="{StaticResource Segment}" GroupName="engine" Content="{ui:T hotkeys.engineGlaze}" Checked="OnEngine" Tag="glazewm" />
-            </StackPanel>
-          </Border>
-          <TextBlock x:Name="EngineText" Style="{StaticResource Muted}" />
-          <CheckBox x:Name="WinAlone" Style="{StaticResource Switch}" Margin="0,14,0,0" Click="OnWinAlone">
-            <StackPanel>
-              <TextBlock Text="{ui:T hotkeys.winAlone}" Style="{StaticResource Body}" />
-              <TextBlock Text="{ui:T hotkeys.winAloneHint}" Style="{StaticResource Small}" />
-            </StackPanel>
-          </CheckBox>
-        </StackPanel>
-      </Border>
-      <Border Grid.Column="2" Style="{StaticResource Card}">
-        <StackPanel>
-          <TextBlock Text="{ui:T hotkeys.profiles}" Style="{StaticResource H2}" />
-          <TextBlock Text="{ui:T hotkeys.profilesText}" Style="{StaticResource Muted}" Margin="0,6,0,14" />
-          <CheckBox x:Name="Personal" Style="{StaticResource Switch}" Click="OnPersonal">
-            <StackPanel>
-              <TextBlock Text="{ui:T hotkeys.personal}" Style="{StaticResource Body}" />
-              <TextBlock Text="{ui:T hotkeys.personalHint}" Style="{StaticResource Small}" />
-            </StackPanel>
-          </CheckBox>
-        </StackPanel>
-      </Border>
-    </Grid>
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="{ui:T hotkeys.engine}" Style="{StaticResource H2}" />
+        <TextBlock x:Name="EngineText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+        <CheckBox x:Name="WinAlone" Style="{StaticResource Switch}" Margin="0,14,0,0" Click="OnWinAlone">
+          <StackPanel>
+            <TextBlock Text="{ui:T hotkeys.winAlone}" Style="{StaticResource Body}" />
+            <TextBlock Text="{ui:T hotkeys.winAloneHint}" Style="{StaticResource Small}" />
+          </StackPanel>
+        </CheckBox>
+      </StackPanel>
+    </Border>
 
     <Border x:Name="Problems" Background="{DynamicResource WarnSoft}" Padding="16,12" Margin="0,20,0,0" Visibility="Collapsed">
       <DockPanel>
@@ -129,10 +104,11 @@
         </Button>
         <Button x:Name="ApplyButton" Style="{StaticResource Primary}" Content="{ui:T hotkeys.apply}" Click="OnApply" />
       </StackPanel>
-      <Grid Width="280" HorizontalAlignment="Left">
-        <TextBox x:Name="Search" Padding="30,5,8,5" TextChanged="OnSearch" AutomationProperties.Name="{ui:T hotkeys.search}" />
-        <ui:Icon Kind="search" Size="14" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Left" Margin="10,0,0,0" IsHitTestVisible="False" />
-        <TextBlock x:Name="SearchHint" Text="{ui:T hotkeys.search}" Style="{StaticResource Muted}" Margin="31,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" />
+      <!-- Search: the icon and the hint sit where the typed text starts (border 1 + padding 32 + the text box's own 2). -->
+      <Grid Width="280" HorizontalAlignment="Left" VerticalAlignment="Center">
+        <TextBox x:Name="Search" Padding="32,5,8,5" TextChanged="OnSearch" AutomationProperties.Name="{ui:T hotkeys.search}" />
+        <ui:Icon Kind="search" Size="14" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False" />
+        <TextBlock x:Name="SearchHint" Text="{ui:T hotkeys.search}" Style="{StaticResource Muted}" Margin="35,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" />
       </Grid>
     </DockPanel>
     <Border Style="{StaticResource SegmentGroup}" Margin="0,0,0,14">

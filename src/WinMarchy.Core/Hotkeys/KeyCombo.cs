@@ -25,21 +25,16 @@ public sealed record KeyCombo(Mods Mods, string Key)
         ["Slash"] = 0x35, ["IntlBackslash"] = 0x56,
     };
 
-    /// <summary>Named keys: AutoHotkey name, GlazeWM name.</summary>
-    static readonly Dictionary<string, (string Ahk, string Glaze)> Named = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>Named keys and their AutoHotkey names.</summary>
+    static readonly Dictionary<string, string> Named = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Enter"] = ("Enter", "enter"), ["Space"] = ("Space", "space"), ["Tab"] = ("Tab", "tab"),
-        ["Escape"] = ("Escape", "escape"), ["Backspace"] = ("Backspace", "back"), ["Delete"] = ("Delete", "delete"),
-        ["Insert"] = ("Insert", "insert"), ["Home"] = ("Home", "home"), ["End"] = ("End", "end"),
-        ["PageUp"] = ("PgUp", "page_up"), ["PageDown"] = ("PgDn", "page_down"),
-        ["Left"] = ("Left", "left"), ["Right"] = ("Right", "right"), ["Up"] = ("Up", "up"), ["Down"] = ("Down", "down"),
-        ["PrintScreen"] = ("PrintScreen", "print_screen"),
-        ["NumpadAdd"] = ("NumpadAdd", "add"), ["NumpadSub"] = ("NumpadSub", "subtract"),
-        ["WheelUp"] = ("WheelUp", ""), ["WheelDown"] = ("WheelDown", ""),
+        ["Enter"] = "Enter", ["Space"] = "Space", ["Tab"] = "Tab", ["Escape"] = "Escape", ["Backspace"] = "Backspace",
+        ["Delete"] = "Delete", ["Insert"] = "Insert", ["Home"] = "Home", ["End"] = "End", ["PageUp"] = "PgUp", ["PageDown"] = "PgDn",
+        ["Left"] = "Left", ["Right"] = "Right", ["Up"] = "Up", ["Down"] = "Down", ["PrintScreen"] = "PrintScreen",
+        ["NumpadAdd"] = "NumpadAdd", ["NumpadSub"] = "NumpadSub", ["WheelUp"] = "WheelUp", ["WheelDown"] = "WheelDown",
         // Media keys: mostly sent (send:MediaPlayPause), but they may also start a shortcut on their own.
-        ["MediaPlayPause"] = ("Media_Play_Pause", "media_play_pause"), ["MediaNext"] = ("Media_Next", "media_next_track"),
-        ["MediaPrev"] = ("Media_Prev", "media_prev_track"), ["MediaStop"] = ("Media_Stop", "media_stop"),
-        ["VolumeMute"] = ("Volume_Mute", "volume_mute"), ["VolumeUp"] = ("Volume_Up", "volume_up"), ["VolumeDown"] = ("Volume_Down", "volume_down"),
+        ["MediaPlayPause"] = "Media_Play_Pause", ["MediaNext"] = "Media_Next", ["MediaPrev"] = "Media_Prev", ["MediaStop"] = "Media_Stop",
+        ["VolumeMute"] = "Volume_Mute", ["VolumeUp"] = "Volume_Up", ["VolumeDown"] = "Volume_Down",
     };
 
     /// <summary>Keys that work without a modifier: Print, F13 to F24 and the media keys.</summary>
@@ -176,46 +171,8 @@ public sealed record KeyCombo(Mods Mods, string Key)
 
     string AhkKey =>
         ScanCodes.TryGetValue(Key, out var sc) ? $"SC{sc:X3}" :
-        Named.TryGetValue(Key, out var n) ? n.Ahk :
+        Named.TryGetValue(Key, out var n) ? n :
         Key.ToLowerInvariant();
-
-    // ------------------------------------------------------------------ GlazeWM
-
-    /// <summary>
-    /// GlazeWM binding, e.g. "lwin+shift+enter". GlazeWM names punctuation by virtual key, so physical
-    /// keys go through the active keyboard layout. Null when GlazeWM cannot bind the key (mouse wheel).
-    /// </summary>
-    public string? ToGlaze(IKeyboardLayout layout)
-    {
-        string key;
-        if (ScanCodes.TryGetValue(Key, out var sc))
-        {
-            var vk = layout.VirtualKeyFromScanCode(sc);
-            if (!GlazeOemNames.TryGetValue(vk, out var name)) return null;
-            key = name;
-        }
-        else if (Named.TryGetValue(Key, out var n))
-        {
-            if (n.Glaze.Length == 0) return null;
-            key = n.Glaze;
-        }
-        else key = Key.ToLowerInvariant();
-
-        var parts = new List<string>();
-        if (Mods.HasFlag(Mods.Win)) parts.Add("lwin");
-        if (Mods.HasFlag(Mods.Ctrl)) parts.Add("ctrl");
-        if (Mods.HasFlag(Mods.Alt)) parts.Add("alt");
-        if (Mods.HasFlag(Mods.Shift)) parts.Add("shift");
-        parts.Add(key);
-        return string.Join('+', parts);
-    }
-
-    static readonly Dictionary<int, string> GlazeOemNames = new()
-    {
-        [0xBA] = "oem_semicolon", [0xBB] = "oem_plus", [0xBC] = "oem_comma", [0xBD] = "oem_minus", [0xBE] = "oem_period",
-        [0xBF] = "oem_question", [0xC0] = "oem_tilde", [0xDB] = "oem_open_brackets", [0xDC] = "oem_pipe",
-        [0xDD] = "oem_close_brackets", [0xDE] = "oem_quotes", [0xDF] = "oem_8", [0xE2] = "oem_102",
-    };
 
     /// <summary>Label for people: "Win + Shift + Enter", with the character the active layout prints for physical keys.</summary>
     public string Display(IKeyboardLayout layout)

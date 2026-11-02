@@ -18,7 +18,6 @@ sealed class OverlayLook
     public required SolidColorBrush Accent { get; init; }
     public required SolidColorBrush Selection { get; init; }
     public required SolidColorBrush Divider { get; init; }
-    public required SolidColorBrush Scrim { get; init; }
 
     public static readonly FontFamily Mono = new("Cascadia Mono, Cascadia Code, Consolas");
 
@@ -35,7 +34,6 @@ sealed class OverlayLook
             Accent = Brush(accent),
             Selection = Brush(ColorMath.Mix(bg, accent, 0.2)),
             Divider = Brush(ColorMath.Mix(bg, p.Foreground, 0.2)),
-            Scrim = Brush("#000000", 0x59),
         };
     }
 

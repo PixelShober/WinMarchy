@@ -51,33 +51,12 @@ public class IntegrationTests
     }
 
     [Fact]
-    public void Zebar_startup_keeps_other_widgets_but_not_the_starter_bar()
+    public void Removing_the_old_zebar_bar_keeps_other_widgets()
     {
-        const string original = """{ "startupConfigs": [ { "pack": "glzr-io.starter", "widget": "vanilla", "preset": "default" }, { "pack": "me.clock", "widget": "clock", "preset": "default" } ] }""";
-        var on = Jsonc.ParseObject(ZebarPack.PatchSettings(original, enabled: true));
-        // Zebar's example bar would cover WinMarchy's and take its clicks.
-        Assert.Equal(new[] { ZebarPack.PackName, "me.clock" }, on["startupConfigs"]!.AsArray().Select(c => (string?)c!["pack"]));
-
-        var off = Jsonc.ParseObject(ZebarPack.PatchSettings(on.ToJsonString(), enabled: false));
+        const string original = """{ "startupConfigs": [ { "pack": "winmarchy", "widget": "bar", "preset": "default" }, { "pack": "me.clock", "widget": "clock", "preset": "default" } ] }""";
+        var off = Jsonc.ParseObject(ZebarPack.RemoveFromStartup(original));
         Assert.Equal("me.clock", (string?)Assert.Single(off["startupConfigs"]!.AsArray())!["pack"]);
-    }
-
-    [Fact]
-    public void Zebar_config_carries_the_chosen_entries()
-    {
-        var js = ZebarPack.ConfigJs(@"C:\WinMarchy\App\WinMarchy.exe", new UserSettings { BarModules = { ["cpu"] = false, ["memory"] = true } });
-        Assert.Contains("\"cpu\": false", js);
-        Assert.Contains("\"memory\": true", js);
-        Assert.Contains("\"battery\": true", js);
-    }
-
-    [Fact]
-    public void Zebar_manifest_only_allows_actions()
-    {
-        var manifest = ZebarPack.Manifest(@"C:\WinMarchy\App\WinMarchy.exe");
-        Assert.Contains("--action", manifest);
-        Assert.DoesNotContain("shell-exec", manifest);
-        Assert.NotNull(JsonNode.Parse(manifest));
+        Assert.Equal("{}", ZebarPack.RemoveFromStartup("{}"));
     }
 
     [Fact]
@@ -107,21 +86,5 @@ public class IntegrationTests
         Assert.Contains(GlazeConfig.OverlayTitle, yaml);
         // AutoHotkey owns the keys by default: GlazeWM gets no keybindings of its own.
         Assert.DoesNotContain("lwin+enter", yaml);
-    }
-
-    [Fact]
-    public void GlazeWM_engine_routes_non_window_actions_through_WinMarchy()
-    {
-        var set = HotkeySet.Build(false, new CustomHotkeys(), "glazewm");
-        var o = GlazeConfig.FromSettings(new UserSettings { HotkeyEngine = "glazewm" }, Tokyo, Bars.Height);
-        o.Keybindings = GlazeConfig.Keybindings(set, new UsKeyboardLayout(), @"C:\WinMarchy\App\WinMarchy.exe");
-        var yaml = GlazeConfig.Generate(o);
-        Assert.Contains("lwin+enter", yaml);
-        Assert.Contains(@"shell-exec --hide-window C:\WinMarchy\App\WinMarchy.exe --action app:terminal", yaml);
-        Assert.Contains("focus --workspace 1", yaml);
-        // Arrows stay GlazeWM's own: no process start per key press.
-        Assert.Contains("focus --direction left", yaml);
-        Assert.Contains("'move --workspace 3', 'focus --workspace 3'", yaml);
-        Assert.DoesNotContain("--action do:focus", yaml);
     }
 }

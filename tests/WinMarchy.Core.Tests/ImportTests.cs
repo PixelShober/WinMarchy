@@ -5,7 +5,7 @@ namespace WinMarchy.Core.Tests;
 
 public class ImportTests
 {
-    static HotkeySet Current() => HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
+    static HotkeySet Current() => HotkeySet.Build(personal: false, new CustomHotkeys());
 
     static IReadOnlyList<ImportCandidate> Read(string name, string text)
     {
@@ -113,11 +113,10 @@ public class ImportTests
         var set = Current();
         Assert.DoesNotContain("Hotkey(\"$#+s\"", AhkScript.Generate(set, ctx));
         Assert.Contains("Hotkey(\"$#+s\"", AhkScript.Generate(set, ctx with { Extra = extra }));
-        Assert.Contains(GlazeConfig.Keybindings(set, KeyboardLayouts.Current, "WinMarchy.exe", null, extra), k => k.Comment == "Greenshot");
 
         var custom = new CustomHotkeys();
         custom.Bindings.Add(new HotkeyBinding { Keys = "Win+Shift+S", Do = "app:notes", Group = "apps", Label = LocalizedText.Same("Notes") });
-        var own = HotkeySet.Build(personal: false, custom, "autohotkey");
+        var own = HotkeySet.Build(personal: false, custom);
         var script = AhkScript.Generate(own, ctx with { Extra = extra });
         Assert.Single(script.Split('\n'), l => l.StartsWith("Hotkey(\"$#+s\""));
         Assert.DoesNotContain("; Greenshot", script);

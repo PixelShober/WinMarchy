@@ -63,15 +63,15 @@ public sealed class HotkeySet
         }
     }
 
-    public static HotkeySet Build(bool personal, CustomHotkeys custom, string engine)
+    public static HotkeySet Build(bool personal, CustomHotkeys custom)
     {
         var layers = new List<IEnumerable<HotkeyBinding>> { LoadProfile("business").Bindings };
         if (personal) layers.Add(LoadProfile("personal").Bindings);
         layers.Add(custom.Bindings.Select(b => { var c = b.Copy(); c.Source = "custom"; return c; }));
-        return Compose(layers, custom.Disabled, engine, custom.Favorites);
+        return Compose(layers, custom.Disabled, custom.Favorites);
     }
 
-    internal static HotkeySet Compose(IEnumerable<IEnumerable<HotkeyBinding>> layers, IEnumerable<string> disabled, string engine,
+    internal static HotkeySet Compose(IEnumerable<IEnumerable<HotkeyBinding>> layers, IEnumerable<string> disabled,
         IReadOnlyDictionary<string, bool>? favorites = null)
     {
         var problems = new List<HotkeyProblem>();
@@ -103,11 +103,6 @@ public sealed class HotkeySet
                 if (!HotkeyAction.TryParse(b.Do, out _, out var actionError))
                 {
                     problems.Add(new HotkeyProblem(b.Keys, actionError, b.Source == "custom"));
-                    continue;
-                }
-                if (combo.IsWheel && engine == "glazewm")
-                {
-                    problems.Add(new HotkeyProblem(b.Keys, L.T("hotkeys.errors.wheelNeedsAhk"), false));
                     continue;
                 }
                 if (byKeys.TryGetValue(b.Keys, out var previous))

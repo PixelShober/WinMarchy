@@ -10,6 +10,12 @@ namespace WinMarchy.App.Ui;
 /// </summary>
 public sealed class Icon : FrameworkElement
 {
+    /// <summary>
+    /// The icon draws from its top left corner; stretched to a taller cell (next to a text box, in a
+    /// row) it would sit at the top, so it is centred unless said otherwise.
+    /// </summary>
+    static Icon() => VerticalAlignmentProperty.OverrideMetadata(typeof(Icon), new FrameworkPropertyMetadata(VerticalAlignment.Center));
+
     static readonly Dictionary<string, Geometry> Shapes = new()
     {
         ["home"] = G("M2.5 7.2 L8 2.5 L13.5 7.2 M4 6 V13.5 H12 V6"),

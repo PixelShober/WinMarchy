@@ -53,16 +53,6 @@ public class KeyComboTests
         Assert.Equal("^+{t}", KeyCombo.Parse("Ctrl+Shift+T").ToAhkSend());
     }
 
-    [Fact]
-    public void GlazeWM_names_follow_the_keyboard_layout()
-    {
-        var us = new UsKeyboardLayout();
-        Assert.Equal("lwin+shift+enter", KeyCombo.Parse("Win+Shift+Enter").ToGlaze(us));
-        Assert.Equal("lwin+oem_minus", KeyCombo.Parse("Win+Minus").ToGlaze(us));
-        Assert.Null(KeyCombo.Parse("Win+WheelUp").ToGlaze(us));
-        // On a German layout the key right of 0 is "ß", which Windows reports as VK_OEM_4.
-        Assert.Equal("lwin+oem_open_brackets", KeyCombo.Parse("Win+Minus").ToGlaze(new GermanKeyboardLayout()));
-    }
 }
 
 [Collection("Language")]
@@ -129,7 +119,7 @@ public class HotkeySetTests
     [Fact]
     public void Business_profile_has_no_problems()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
+        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
         Assert.Empty(set.Problems);
         Assert.Contains(set.Active, b => b.Keys == "Win+Enter" && b.Do == "app:terminal");
         Assert.Contains(set.Active, b => b.Keys == "Win+Shift+G" && b.Do == "app:stackfield");
@@ -143,7 +133,7 @@ public class HotkeySetTests
     [Fact]
     public void Personal_profile_replaces_business_bindings()
     {
-        var set = HotkeySet.Build(personal: true, new CustomHotkeys(), "autohotkey");
+        var set = HotkeySet.Build(personal: true, new CustomHotkeys());
         Assert.DoesNotContain(set.Problems, p => p.Blocking);
         Assert.Equal("web:https://chatgpt.com/", Assert.Single(set.Active, b => b.Keys == "Win+Shift+A").Do);
         var music = Assert.Single(set.Active, b => b.Keys == "Win+Shift+M");
@@ -158,7 +148,7 @@ public class HotkeySetTests
     [Fact]
     public void Workspace_bindings_expand_to_ten_workspaces()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
+        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
         Assert.Contains(set.Active, b => b.Keys == "Win+1" && b.Do == "wm:focus --workspace 1");
         Assert.Contains(set.Active, b => b.Keys == "Win+0" && b.Do == "wm:focus --workspace 10");
     }
@@ -171,7 +161,7 @@ public class HotkeySetTests
             Bindings = { new HotkeyBinding { Keys = "Win+Enter", Do = "app:editor" } },
             Disabled = { "Win+W" },
         };
-        var set = HotkeySet.Build(personal: false, custom, "autohotkey");
+        var set = HotkeySet.Build(personal: false, custom);
         Assert.Equal("app:editor", Assert.Single(set.Active, b => b.Keys == "Win+Enter").Do);
         Assert.DoesNotContain(set.Active, b => b.Keys == "Win+W");
     }
@@ -180,22 +170,14 @@ public class HotkeySetTests
     public void A_broken_custom_binding_blocks_applying()
     {
         var custom = new CustomHotkeys { Bindings = { new HotkeyBinding { Keys = "Win+L", Do = "app:terminal" } } };
-        Assert.True(HotkeySet.Build(false, custom, "autohotkey").HasBlockingProblems);
-    }
-
-    [Fact]
-    public void Mouse_wheel_bindings_are_left_out_with_the_glazewm_engine()
-    {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "glazewm");
-        Assert.DoesNotContain(set.Active, b => b.Keys.Contains("Wheel"));
-        Assert.Contains(set.Problems, p => p.Keys.Contains("Wheel") && !p.Blocking);
+        Assert.True(HotkeySet.Build(false, custom).HasBlockingProblems);
     }
 }
 
 public class AhkScriptTests
 {
     static string Script(bool winAlone = true) =>
-        AhkScript.Generate(HotkeySet.Build(true, new CustomHotkeys(), "autohotkey"),
+        AhkScript.Generate(HotkeySet.Build(true, new CustomHotkeys()),
             new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", @"C:\WinMarchy\Tools\glazewm\cli\glazewm.exe", winAlone));
 
     [Fact]

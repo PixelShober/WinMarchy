@@ -1,10 +1,12 @@
 # Tiling: Omarchys Layouts mit GlazeWM
 
-Omarchy kennt pro Workspace mehrere Layouts, `Super+L` schaltet durch, darunter **Dwindle** und **Scrolling**. GlazeWM hat von Haus aus nur ein Verhalten: Ein neues Fenster teilt den Container in die Richtung, die gerade eingestellt ist. WinMarchy baut die Layouts darauf auf; Scrolling übernimmt es ganz selbst.
+Omarchy kennt mehrere Layouts, `Super+L` schaltet durch, darunter **Dwindle** und **Scrolling**. GlazeWM hat von Haus aus nur ein Verhalten: Ein neues Fenster teilt den Container in die Richtung, die gerade eingestellt ist. WinMarchy baut die drei Layouts Dwindle, Spalten und Scrolling darauf auf; Scrolling übernimmt es ganz selbst. Schweben ist kein Layout, sondern etwas für einzelne Fenster (`Win+T`, siehe unten).
 
-WinMarchy hält dafür eine Verbindung zu GlazeWM offen (WebSocket auf `127.0.0.1:6123`), hört auf `focus_changed`, `window_managed` und `window_unmanaged` und gibt GlazeWM die passenden Befehle. Welcher Workspace welches Layout hat, steht in `C:\WinMarchy\Config\layouts.json`. Workspaces ohne Eintrag folgen dem Standard-Layout aus **Tiling**.
+Das Layout gehört zum Bildschirm, nicht zum Workspace. Es gibt mehr Workspaces als Bildschirme, und jeder Workspace folgt dem Layout des Bildschirms, auf dem er gerade steht. Eingestellt wird es unter **Tiling → Bildschirme, Layouts und Workspaces**, gleich neben den Workspaces des Bildschirms. Mit einem Bildschirm gibt es genau eine Zeile.
 
-`Win+Strg+J` schaltet weiter: Dwindle → Spalten → Scrolling → Dwindle. Ein Zurück braucht es bei drei Layouts nicht. Auf `Win+L` liegt unter Windows immer das Sperren. Oben rechts erscheint sofort, auf welches Layout der Workspace wechselt; das Umräumen läuft danach.
+WinMarchy hält dafür eine Verbindung zu GlazeWM offen (WebSocket auf `127.0.0.1:6123`), hört auf `focus_changed`, `window_managed` und `window_unmanaged` und gibt GlazeWM die passenden Befehle. In `C:\WinMarchy\Config\layouts.json` steht, wie die Fenster jedes Workspace gerade angeordnet sind. Passt das nicht mehr zum Layout seines Bildschirms (du hast es geändert, oder der Workspace ist auf einen anderen Bildschirm umgezogen), ordnet WinMarchy ihn neu, sobald er zu sehen ist. Versteckte Workspaces bleiben bis dahin, wie sie sind: Umräumen heißt ihre Fenster zu fokussieren, und das würde zu ihnen springen.
+
+`Win+Strg+J` schaltet das Layout des Bildschirms weiter, auf dem du gerade bist: Dwindle → Spalten → Scrolling → Dwindle. Ein Zurück braucht es bei drei Layouts nicht. Auf `Win+L` liegt unter Windows immer das Sperren. Oben rechts erscheint sofort, welches Layout der Bildschirm jetzt hat; das Umräumen läuft danach. Die Wahl landet auch in den Einstellungen, die Tiling-Seite zeigt sie beim nächsten Öffnen.
 
 GlazeWM ordnet nur neue Fenster nach einem Layout an. Damit ein Wechsel auf Dwindle oder Spalten sofort sichtbar ist, nimmt WinMarchy die Fenster des Workspace kurz heraus und setzt sie in der neuen Anordnung wieder ein: bei Spalten nebeneinander in der alten Reihenfolge, bei Dwindle jedes in die Hälfte des vorigen. Die Fenster warten dabei in einem eigenen versteckten Workspace (`winmarchy-stage`), nie im Scratchpad. Bleibt nach einem Absturz doch eines dort hängen, holt WinMarchy es beim nächsten Verbinden zurück.
 
@@ -32,18 +34,15 @@ Bei Omarchys Scrolling (Hyprlands `scrolling`-Layout, Niri-Stil) stehen die Fens
 
 Wechselst du auf ein anderes Layout, kommen die Fenster zurück in GlazeWMs Kacheln.
 
-## Floating
+Die Layouts „Schwebend“ und „Manuell“ früherer Versionen gibt es nicht mehr. Ein Workspace, der noch schwebend war, bekommt seine Fenster beim nächsten Verbinden zurück in die Kacheln; im Protokoll steht, welcher es war.
 
-Alle Fenster des Workspace schweben zentriert, neue ebenso. Wechselst du zurück auf ein gekacheltes Layout, holt WinMarchy genau die Fenster zurück ins Raster, die es selbst losgelöst hat. Fenster, die du vorher schon von Hand schweben ließt (`Win+T`), bleiben schwebend. Floating stellst du unter **Tiling** ein, `Win+Alt+L` lässt es aus.
+## Einzelne Fenster schweben lassen
 
-## Manuell
+- `Win+T`: Das Fenster verlässt das Layout und schwebt über den Kacheln, mittig und etwa so groß wie seine Kachel (mindestens 40 %, höchstens 70 % der Breite). Klickst du ein anderes Fenster an, bleibt es trotzdem sichtbar. Die übrigen Fenster schließen die Lücke.
+- Noch einmal `Win+T` auf dem schwebenden Fenster, und es kommt zurück ins Layout seines Bildschirms: bei Dwindle teilt es die Kachel, die zuletzt den Fokus hatte, entlang ihrer längeren Seite (ist sein alter Platz noch da, setzt GlazeWM es dorthin zurück), bei Spalten wird es eine weitere Spalte, bei Scrolling eine Spalte rechts neben der fokussierten.
+- `Win+O`: Wie Omarchys „Pop out“, nur in die Ecke: klein unten rechts, ein Drittel des Bildschirms, über allen anderen Fenstern. Gut für einen Anruf oder ein Video nebenher. Ein zweiter Druck setzt es zurück ins Layout.
 
-GlazeWM ohne Eingriff. Gut für Leute, die GlazeWM schon kennen.
-
-## Schwebend, Herauslösen, oben halten
-
-- `Win+T`: Das Fenster verlässt die Kacheln und schwebt in der Mitte. Andere Fenster können es überdecken, sobald du sie anklickst.
-- `Win+O`: Wie Omarchys „Pop out“: schwebt und bleibt über allen anderen Fenstern, bis du es noch einmal drückst. Gut für ein Video oder einen Rechner nebenher.
+Früher schickte `Win+T` nur GlazeWMs `toggle-floating`: Das Fenster verschwand hinter den Kacheln, sobald ein anderes den Fokus bekam, und zurück in den Kacheln sorgte niemand für das Layout. Im Scrolling-Layout lag es dann über dem ganzen Bildschirm. Der eigene Befehl `do:float-toggle` macht beides richtig.
 
 ## Was sonst noch fehlt und wie es gelöst ist
 
@@ -52,7 +51,7 @@ GlazeWM ohne Eingriff. Gut für Leute, die GlazeWM schon kennen.
 | Scratchpad (`Super+S`) | gibt es nicht | siehe unten |
 | Fokus von schwebenden Fenstern aus | nur links und rechts zwischen schwebenden | `Win+Pfeil` sucht das nächste Fenster in der Richtung auf dem Bildschirm, ob gekachelt oder schwebend |
 | Nächster/vorheriger Workspace | springt auch auf versteckte Workspaces | `Win+Tab` überspringt sie |
-| Workspaces fest pro Bildschirm (Plugin Screens) | `bind_to_monitor` in der Konfiguration | Karte **Bildschirme und Workspaces** unter Tiling, siehe unten |
+| Workspaces fest pro Bildschirm (Plugin Screens) | `bind_to_monitor` in der Konfiguration | Karte **Bildschirme, Layouts und Workspaces** unter Tiling, siehe unten |
 | Virtuelle Desktops über alle Bildschirme | Workspaces gehören je einem Monitor | Arbeitsmodi (`Win+Strg+D`, `Win+Strg+1` bis `3`) geben jedem Bildschirm einen frischen Workspace mit festen Programmen, `Win+Strg+Pfeil` schaltet alle zusammen weiter |
 | Minimieren | gibt es in Omarchy nicht | WinMarchy holt minimierte Fenster sofort in ihre Kachel zurück; `Win+M` holt alles zurück, was trotzdem minimiert ist |
 | Abstände aus (`Super+Umschalt+Backspace`) | nur per Konfiguration | WinMarchy schreibt die Konfiguration ohne Abstände und lädt sie neu; ein zweiter Druck stellt sie wieder her |
@@ -72,13 +71,13 @@ Herauslösen, so dass es wieder ein normales Fenster ist (die übrigen Scratchpa
 
 - `Win+Alt+S` auf einem eingeblendeten Scratchpad-Fenster setzt es zurück in die Kacheln des aktuellen Workspace.
 - `Win+Umschalt+1` … `0` schiebt es auf diesen Workspace, gekachelt.
-- `Win+T` macht es zu einem gekachelten Fenster; beim nächsten `Win+S` gehört es nicht mehr dazu.
+- `Win+T` setzt es ins Layout des aktuellen Workspace; beim nächsten `Win+S` gehört es nicht mehr dazu.
 
 Welche Fenster zum Scratchpad gehören, merkt sich WinMarchy in `C:\WinMarchy\Config\scratchpad.json`, nach Fenster-Handle. Ein Fenster kommt nur mit `Win+Alt+S` hinein. Liegt im versteckten Scratchpad-Workspace eines, das nie so hineinkam, holt WinMarchy es beim Verbinden auf den aktuellen Workspace zurück.
 
-## Bildschirme und Workspaces
+## Bildschirme, Layouts und Workspaces
 
-Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces, etwa der linke 1 bis 5 und der rechte 6 bis 10. „Gleichmäßig aufteilen“ macht genau das. WinMarchy schreibt die Zuordnung als `bind_to_monitor` in GlazeWMs Konfiguration:
+Jede Zeile der Karte ist ein Bildschirm: links sein Name und seine Auflösung, in der Mitte sein Layout (Dwindle, Spalten, Scrolling), rechts seine Workspaces. Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces, etwa der linke 1 bis 5 und der rechte 6 bis 10. „Gleichmäßig aufteilen“ macht genau das. WinMarchy schreibt die Zuordnung als `bind_to_monitor` in GlazeWMs Konfiguration:
 
 - `Win+3` öffnet Workspace 3 immer auf seinem Bildschirm, egal wo du gerade bist.
 - Ein Arbeitsmodus nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Sind die alle belegt, nimmt er einen freien, der keinem Bildschirm zugeordnet ist, oder einen, dessen Bildschirm gerade fehlt.
@@ -113,17 +112,17 @@ Jedes Programm gehört zu einem Bildschirm: das erste zum linken, das zweite zum
 | zwei Bildschirme | Bildschirm 1 | Bildschirm 2 | Bildschirm 2 |
 | ein Bildschirm | Bildschirm 1 | Bildschirm 1 | Bildschirm 1 |
 
-Teilen sich mehrere Programme einen Bildschirm, ordnet sie das Dwindle-Layout an: das erste links, das zweite rechts oben, das dritte rechts unten. Das gilt nur, solange dieser Workspace offen ist. Schließt GlazeWM ihn, weil sein letztes Fenster zu ist, hat der Workspace wieder sein Layout von vorher. Wählst du in der Zwischenzeit selbst ein Layout für ihn (`Win+Strg+J`), bleibt deins.
+Teilen sich mehrere Programme einen Bildschirm, ordnet sie das Dwindle-Layout an: das erste links, das zweite rechts oben, das dritte rechts unten, auch wenn der Bildschirm sonst Spalten oder Scrolling hat. Das gilt nur, solange dieser Workspace offen ist. Schließt GlazeWM ihn, weil sein letztes Fenster zu ist, gilt wieder das Layout des Bildschirms. Schaltest du in der Zwischenzeit mit `Win+Strg+J` das Layout des Bildschirms um, gilt das neue sofort auch für diesen Workspace.
 
 Auch sonst ist ein einzelner Bildschirm kein Sonderfall: Workspaces, die einem fehlenden Bildschirm zugeordnet sind, nimmt der vorhandene mit, und `Win+Strg+Pfeil` schaltet eben nur ihn weiter.
 
 ### Alle Bildschirme zusammen weiterschalten
 
-`Win+Strg+Rechts` und `Win+Strg+Links` schalten auf jedem Bildschirm zum nächsten oder vorigen Workspace, alle zusammen. Das Drei-Finger-Wischen auf dem Touchpad legst du unter **Einstellungen → Bluetooth und Geräte → Touchpad → Erweiterte Gesten** auf diese Kürzel (Tiling hat dafür einen Knopf). „Desktops wechseln“ lieber nicht wählen: Windows' eigene virtuelle Desktops vertragen sich nicht mit GlazeWM.
+`Win+Strg+Rechts` und `Win+Strg+Links` schalten auf jedem Bildschirm zum nächsten oder vorigen Workspace, alle zusammen. Das Drei-Finger-Wischen auf dem Touchpad lässt sich unter **Einstellungen → Bluetooth und Geräte → Touchpad → Erweiterte Gesten** auf diese Kürzel legen. „Desktops wechseln“ lieber nicht wählen: Windows' eigene virtuelle Desktops vertragen sich nicht mit GlazeWM.
 
 ## Minimieren
 
-Omarchy minimiert nicht; was aus dem Weg soll, kommt auf einen anderen Workspace oder ins Scratchpad. WinMarchy hält es genauso: Minimiert ein Fenster, das GlazeWM verwaltet, kommt es nach einer Viertelsekunde in seine Kachel zurück. Programme, die sich in den Infobereich verabschieden, bleiben dort. Falls doch etwas minimiert bleibt, holt `Win+M` alles zurück. Der Schalter „Minimieren verhindern“ unter **Tiling** stellt das Verhalten von Windows wieder her.
+Omarchy minimiert nicht; was aus dem Weg soll, kommt auf einen anderen Workspace oder ins Scratchpad. WinMarchy hält es genauso: Minimiert ein Fenster, das GlazeWM verwaltet, kommt es nach einer Viertelsekunde in seine Kachel zurück. Programme, die sich in den Infobereich verabschieden, bleiben dort. Falls doch etwas minimiert bleibt, holt `Win+M` alles zurück. Das ist immer so; einen Schalter dafür gibt es nicht mehr.
 
 ## Vollbild und neue Fenster
 

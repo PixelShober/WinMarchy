@@ -176,7 +176,7 @@ public sealed class ActionRunner
             AppLauncher.Open(YasbBar.NetworkListAction["open:".Length..]);
             return;
         }
-        if (Bars.Chosen(_host.Settings, Locations.Current) != Bars.Yasb || Process.GetProcessesByName("yasb").Length == 0)
+        if (Process.GetProcessesByName(Bars.Process).Length == 0)
         {
             _host.Notify(L.T("actions.barMenuNoYasb"));
             return;
@@ -250,16 +250,15 @@ public sealed class ActionRunner
         }
         switch (command)
         {
-            // Older profiles still have "layout back"; with three layouts it simply cycles too.
+            // Older profiles still have "layout back"; with three layouts it simply cycles too. Both act on the screen with the focus.
             case "layout-next":
             case "layout-prev":
                 await layouts.CycleAsync(ct);
                 break;
             case "layout":
-                var ws = await _host.Glaze.QueryAsync("workspaces", ct);
-                if (GlazeTree.FocusedWorkspace(ws) is { } f && GlazeTree.Str(f, "name") is { } name)
-                    await layouts.SetAsync(name, LayoutEngine.Parse(arg), ct);
+                await layouts.SetFocusedScreenAsync(LayoutEngine.Parse(arg), ct);
                 break;
+            case "float-toggle": await windows.FloatToggleAsync(corner: arg == "corner", ct); break;
             case "scratch-toggle": await windows.ScratchToggleAsync(ct); break;
             case "scratch-store": await windows.ScratchStoreAsync(ct); break;
             case "toggle-split": await windows.ToggleSplitAsync(ct); break;

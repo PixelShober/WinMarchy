@@ -36,7 +36,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
     {
         "terminal", "browser", "browser2", "browser-private", "files", "editor", "launcher", "calculator", "taskmanager",
         "settings", "explorer", "mail", "calendar", "teams", "notes", "word", "herdr", "winmarchy",
-        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi", "lunatask",
+        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi",
     };
 
     /// <summary>Apps that take web addresses: a new window with them as tabs.</summary>
@@ -49,7 +49,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         "layout-next", "layout-prev", "layout", "scratch-toggle", "scratch-store", "workspace-next", "workspace-prev",
         "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "gaps-toggle",
         "transparency-toggle", "move-window-monitor", "restore-minimized", "copy", "paste", "reload",
-        "toggle-split", "work-mode", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
+        "toggle-split", "float-toggle", "work-mode", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
         "focus", "swap", "to-workspace", "screenshot", "about", "bar-shortcut", "bar-menu",
     };
 

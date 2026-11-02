@@ -59,17 +59,11 @@ static class SelfTest
         var palette = ThemeCatalog.Default.Palette;
         foreach (var personal in new[] { false, true })
         {
-            var set = HotkeySet.Build(personal, new CustomHotkeys(), "autohotkey");
+            var set = HotkeySet.Build(personal, new CustomHotkeys());
             var name = personal ? "winmarchy-hotkeys-personal.ahk" : "winmarchy-hotkeys.ahk";
             File.WriteAllText(Path.Combine(outDir, name), AhkScript.Generate(set, new AhkContext(exe, cli, WinKeyOpensLauncher: true)), bom);
         }
         File.WriteAllText(Path.Combine(outDir, "glazewm-config.yaml"), GlazeConfig.Generate(GlazeConfig.FromSettings(settings, palette, Bars.Height)));
-        var glazeKeys = GlazeConfig.FromSettings(settings, palette, Bars.Height);
-        glazeKeys.Keybindings = GlazeConfig.Keybindings(HotkeySet.Build(true, new CustomHotkeys(), "glazewm"), new UsKeyboardLayout(), exe);
-        File.WriteAllText(Path.Combine(outDir, "glazewm-config-glazewm-engine.yaml"), GlazeConfig.Generate(glazeKeys));
-        File.WriteAllText(Path.Combine(outDir, "zpack.json"), ZebarPack.Manifest(exe));
-        File.WriteAllText(Path.Combine(outDir, "theme.css"), ZebarPack.ThemeCss(palette));
-        File.WriteAllText(Path.Combine(outDir, "config.js"), ZebarPack.ConfigJs(exe, settings));
         // YASB's bar with a shortcut of the user's own in the menu and as a button.
         var yasb = settings.Clone();
         yasb.BarShortcuts.Add(new BarShortcut { Title = "Ticket & Co. {neu}", Action = "web:https://example.com/?a=1&b=2", InBar = true });
@@ -80,7 +74,7 @@ static class SelfTest
         File.WriteAllText(Path.Combine(outDir, "shell-start.ps1"),
             ShellExtras.ShellScript(@"C:\WinMarchy\Tools\starship\starship.exe", @"C:\WinMarchy\Tools\fastfetch\fastfetch.exe"), bom);
         // Greenshot owns the Print keys when it is chosen; the script must still validate.
-        var greenshot = AhkScript.Generate(HotkeySet.Build(false, new CustomHotkeys(), "autohotkey"),
+        var greenshot = AhkScript.Generate(HotkeySet.Build(false, new CustomHotkeys()),
             new AhkContext(exe, cli, WinKeyOpensLauncher: true, LeaveAlone: WinMarchy.Core.Platform.Screenshots.GreenshotKeys.ToHashSet()));
         File.WriteAllText(Path.Combine(outDir, "winmarchy-hotkeys-greenshot.ahk"), greenshot, bom);
     }
@@ -111,7 +105,7 @@ static class SelfTest
                  {
                      ("menu", m => m.Root()), ("menu-system", m => m.Sub("system")), ("menu-style", m => m.Sub("style")),
                      ("themes-menu", m => m.Themes()), ("wallpaper-menu", m => m.Wallpapers()), ("keybindings", m => m.Bindings()),
-                     ("menu-search", m => m.Search("note")),
+                     ("menu-search", m => m.Search("note")), ("menu-screenshot", m => m.Screenshot()),
                  })
         {
             build(menu);

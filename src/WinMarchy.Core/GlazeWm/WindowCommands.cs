@@ -145,7 +145,7 @@ public sealed class WindowCommands
     /// <summary>
     /// Win+S, like Omarchy's special workspace: shows every scratchpad window over the current
     /// workspace, side by side in the middle of the screen, and hides them all on the next press.
-    /// Ways out: Win+Alt+S on the window, Win+Shift+1 … (to that workspace), or Win+T.
+    /// Ways out: Win+Alt+S on the window, Win+Shift+1 … (to that workspace), or Win+T (into the layout).
     /// </summary>
     public Task ScratchToggleAsync(CancellationToken ct) => Exclusive(async () =>
     {
@@ -352,7 +352,39 @@ public sealed class WindowCommands
         if (wasMember && source != target) await RearrangeLockedAsync(all.Where(w => w.Id != focused.Id).ToList(), source, ct);
         if (_layouts == null) return;
         if (fromScrolling && source != target) await _layouts.ArrangeLockedAsync(source, null, ct, focus: false);
-        if (_layouts.ModeOf(target) == LayoutMode.Scrolling) await _layouts.ArrangeLockedAsync(target, focused.Id, ct);
+        await _layouts.ArrivedLockedAsync(target, focused.Id, ct);
+    }, ct);
+
+    // ------------------------------------------------------------------ floating
+
+    /// <summary>
+    /// Win+T: the focused window leaves the layout and floats above the tiles, where nothing covers
+    /// it; pressed again, it goes back into the layout of its workspace (Dwindle, Columns or
+    /// Scrolling). A window of the shown scratchpad leaves the scratchpad that way. With
+    /// <paramref name="corner"/> (Win+O) it floats small in the bottom right corner instead.
+    /// </summary>
+    public Task FloatToggleAsync(bool corner, CancellationToken ct) => Exclusive(async () =>
+    {
+        if (_layouts == null) return;
+        var monitors = await _ipc.QueryAsync("monitors", ct);
+        var all = GlazeTree.WindowInfos(monitors);
+        Prune(all);
+        var focused = all.FirstOrDefault(w => w.Focused);
+        if (focused == null || !GlazeConfig.IsRegular(focused.Workspace)) return;
+        bool column = _layouts.StripOf(focused.Workspace)?.Ids.Contains(focused.Id) == true;
+        if (focused.State is "tiling" or "fullscreen" || column)
+        {
+            await _layouts.FloatLockedAsync(focused, corner, monitors, ct);
+            return;
+        }
+        if (IsMember(focused))
+        {
+            _pad.Members.Remove(focused.Handle);
+            _pad.Save();
+            _notify(L.T("scratchpad.released"));
+            await RearrangeLockedAsync(all.Where(w => w.Id != focused.Id).ToList(), focused.Workspace, ct);
+        }
+        await _layouts.TileLockedAsync(focused, monitors, ct);
     }, ct);
 
     // ------------------------------------------------------------------ split

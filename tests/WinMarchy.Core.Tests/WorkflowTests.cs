@@ -11,12 +11,12 @@ public class FavoriteTests
     [Fact]
     public void There_are_no_favourites_until_the_user_stars_some()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
+        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
         Assert.DoesNotContain(set.Active, b => b.Favorite);
         Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Optional);
 
         var custom = new CustomHotkeys { Favorites = { ["win+shift+backspace"] = true, ["Win+W"] = false } };
-        set = HotkeySet.Build(personal: false, custom, "autohotkey");
+        set = HotkeySet.Build(personal: false, custom);
         Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Favorite);
         Assert.False(Assert.Single(set.Active, b => b.Keys == "Win+W").Favorite);
     }
@@ -29,13 +29,13 @@ public class FavoriteTests
         new CustomHotkeys { Favorites = { ["Win+J"] = true } }.Save(file);
         var back = CustomHotkeys.Load(file);
         Assert.True(back.Favorites["Win+J"]);
-        Assert.True(Assert.Single(HotkeySet.Build(false, back, "autohotkey").Active, b => b.Keys == "Win+J").Favorite);
+        Assert.True(Assert.Single(HotkeySet.Build(false, back).Active, b => b.Keys == "Win+J").Favorite);
     }
 
     [Fact]
     public void The_business_profile_follows_the_wish_list()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
+        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
         Assert.Empty(set.Problems);
         // Gone: resizing, transparency, the silent move, monitors by direction, layout back, Teams, Copilot.
         Assert.DoesNotContain(set.Active, b => b.Do.StartsWith("wm:resize") || b.Do is "do:transparency-toggle" or "do:layout-prev" or "app:teams");
@@ -52,12 +52,16 @@ public class FavoriteTests
         Assert.Equal("app:browser2", Assert.Single(set.Active, b => b.Keys == "Win+Shift+Enter").Do);
         Assert.Equal("do:to-workspace 3", Assert.Single(set.Active, b => b.Keys == "Win+Shift+3").Do);
         Assert.Equal(10, set.Active.Count(b => b.Template == "Win+{n}"));
+        // Win+T and Win+O go through WinMarchy: back out of floating, the window joins the screen's layout.
+        Assert.Equal("do:float-toggle", Assert.Single(set.Active, b => b.Keys == "Win+T").Do);
+        Assert.Equal("do:float-toggle corner", Assert.Single(set.Active, b => b.Keys == "Win+O").Do);
+        Assert.DoesNotContain(set.Active, b => b.Do.Contains("toggle-floating"));
     }
 
     [Fact]
     public void Greenshot_keeps_its_print_keys()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys(), "autohotkey");
+        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
         var ctx = new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", "", true);
         Assert.Contains("Hotkey(\"$PrintScreen\"", AhkScript.Generate(set, ctx));
         var greenshot = AhkScript.Generate(set, ctx with { LeaveAlone = Screenshots.GreenshotKeys.ToHashSet() });
@@ -73,6 +77,45 @@ public class FavoriteTests
     [InlineData("[Core]\nFullscreenHotkey=nonsense\n", "screen", "Ctrl+PrintScreen")]
     public void Greenshot_hotkeys_come_from_its_ini(string? ini, string mode, string expected) =>
         Assert.Equal(expected, Screenshots.GreenshotHotkey(ini, mode));
+
+    [Fact]
+    public void Greenshot_sends_every_capture_to_the_clipboard_and_takes_it_back()
+    {
+        var fresh = Screenshots.GreenshotFixed(null, clipboard: true);
+        Assert.Equal("[Core]\r\nDestinations=Clipboard\r\n", fresh);
+        Assert.Null(Screenshots.GreenshotFixed(fresh, clipboard: false));
+        // Someone else's fixed settings stay; only the destination is WinMarchy's.
+        const string own = "[Core]\r\nDestinations=Picker\r\nLanguage=de-DE\r\n[Editor]\r\nMatchSize=True\r\n";
+        var on = Screenshots.GreenshotFixed(own, clipboard: true)!;
+        Assert.Equal("[Core]\r\nDestinations=Clipboard\r\nLanguage=de-DE\r\n[Editor]\r\nMatchSize=True\r\n", on);
+        Assert.Equal("[Core]\r\nLanguage=de-DE\r\n[Editor]\r\nMatchSize=True\r\n", Screenshots.GreenshotFixed(on, clipboard: false));
+        Assert.Equal(on, Screenshots.GreenshotFixed(on, clipboard: true));
+    }
+
+    [Fact]
+    public void Greenshot_looks_for_its_fixed_settings_where_it_reads_them()
+    {
+        using var temp = new TempDir();
+        var loc = Locations.Under(temp.Path);
+        var exe = temp.File(Path.Combine("Tools", "greenshot", "Greenshot.exe"));
+        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+        Assert.Equal(Path.Combine(loc.AppData, "Greenshot", "Greenshot-fixed.ini"), Screenshots.GreenshotFixedIni(exe, loc));
+        Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(exe)!, "App", "Greenshot"));
+        Assert.Equal(Path.Combine(Path.GetDirectoryName(exe)!, "Data", "Settings", "Greenshot-fixed.ini"), Screenshots.GreenshotFixedIni(exe, loc));
+    }
+
+    [Fact]
+    public void A_saved_screenshot_never_overwrites_another()
+    {
+        using var temp = new TempDir();
+        var at = new DateTime(2026, 11, 2, 9, 30, 5);
+        var first = Screenshots.NewFile(temp.Path, at);
+        File.WriteAllText(first, "");
+        var second = Screenshots.NewFile(temp.Path, at);
+        Assert.NotEqual(first, second);
+        Assert.EndsWith(" (2).png", second);
+        Assert.Contains("2026-11-02 09-30-05", first);
+    }
 }
 
 public class ScrollingTests

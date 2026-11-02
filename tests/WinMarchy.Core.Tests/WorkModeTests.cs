@@ -212,12 +212,64 @@ public class WorkModeTests
     }
 
     [Fact]
-    public void Layout_until_closed_survives_a_restart_with_the_layout_from_before()
+    public void A_work_modes_layout_survives_a_restart()
     {
-        var store = new LayoutStore { UntilClosed = { ["4"] = null, ["5"] = LayoutMode.Scrolling } };
-        var back = Json.Deserialize<LayoutStore>(Json.Serialize(store))!;
-        Assert.Null(back.UntilClosed["4"]);
-        Assert.Equal(LayoutMode.Scrolling, back.UntilClosed["5"]);
+        var store = new LayoutStore { Overrides = { ["4"] = LayoutMode.Dwindle }, Workspaces = { ["4"] = LayoutMode.Dwindle, ["5"] = LayoutMode.Scrolling } };
+        store.Columns["5"] = new List<long> { 11, 12 };
+        var back = LayoutStore.Parse(Json.Serialize(store));
+        Assert.Equal(LayoutMode.Dwindle, back.Overrides["4"]);
+        Assert.Equal(LayoutMode.Scrolling, back.Workspaces["5"]);
+        Assert.Equal(new long[] { 11, 12 }, back.Columns["5"]);
+    }
+
+    [Fact]
+    public void Layouts_json_of_older_versions_is_read()
+    {
+        // "untilClosed" held the layout from before a work mode; the one it used was in "workspaces".
+        const string old = """{ "workspaces": { "2": "floating", "3": "manual", "4": "dwindle", "5": "scrolling" }, "columns": { "5": [7] }, "untilClosed": { "4": null } }""";
+        var store = LayoutStore.Parse(old);
+        Assert.Equal(new[] { "4", "5" }, store.Workspaces.Keys.OrderBy(k => k));
+        Assert.Equal(LayoutMode.Dwindle, store.Overrides["4"]);
+        Assert.Contains("2", store.FormerlyFloating);
+        Assert.Equal(new long[] { 7 }, store.Columns["5"]);
+        Assert.Empty(LayoutStore.Parse("[]").Workspaces);
+    }
+
+    [Fact]
+    public void Each_screen_keeps_its_layout()
+    {
+        var s = new UserSettings { DefaultLayout = "columns" };
+        Assert.Equal(LayoutMode.Columns, s.ScreenLayoutOf(2));
+        s.SetScreenLayout(2, LayoutMode.Scrolling);
+        Assert.Equal(new[] { "columns", "columns", "scrolling" }, s.ScreenLayouts);
+        Assert.Equal(LayoutMode.Scrolling, s.ScreenLayoutOf(2));
+        Assert.Equal(LayoutMode.Dwindle, LayoutEngine.Next(LayoutMode.Scrolling));
+        Assert.Equal(LayoutMode.Columns, LayoutEngine.Next(LayoutMode.Dwindle));
+    }
+
+    [Fact]
+    public void Older_settings_lose_the_floating_layout_and_lunatask()
+    {
+        const string old = """
+            { "defaultLayout": "floating", "screenLayouts": ["manual", "scrolling"], "hotkeyEngine": "glazewm",
+              "barShortcuts": [ { "title": "Aufgaben", "action": "app:lunatask" } ], "workModes": [ { "apps": ["app:lunatask", "app:mail"] } ] }
+            """;
+        var s = Json.Deserialize<UserSettings>(old)!.Upgraded();
+        Assert.Equal("dwindle", s.DefaultLayout);
+        Assert.Equal(new[] { "dwindle", "scrolling" }, s.ScreenLayouts);
+        Assert.Empty(s.BarShortcuts);
+        Assert.Equal(new[] { "", "app:mail" }, s.WorkModeOf(1).Apps);
+    }
+
+    [Theory]
+    // A wide tile floats at 70 % of the screen, a narrow one at 40 %; the corner takes a third.
+    [InlineData(1900, 1000, false, 270, 100, 1260, 800)]
+    [InlineData(300, 300, false, 540, 250, 720, 500)]
+    [InlineData(800, 600, true, 1193, 660, 600, 333)]
+    public void A_floating_window_gets_a_sensible_place(int width, int height, bool corner, int x, int y, int w, int h)
+    {
+        var area = new WorkspaceArea("1", "id", 0, 0, 1800, 1000, 1.0, true, true);
+        Assert.Equal((x, y, w, h), LayoutEngine.FloatRect(area, width, height, corner, 7));
     }
 }
 
