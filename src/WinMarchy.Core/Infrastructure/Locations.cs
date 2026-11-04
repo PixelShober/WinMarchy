@@ -48,6 +48,8 @@ public sealed class Locations
     // GlazeWM and Zebar (glzr.io)
     public string GlzrDir => Path.Combine(UserProfile, ".glzr");
     public string GlazeWmConfig => Path.Combine(GlzrDir, "glazewm", "config.yaml");
+    /// <summary>GlazeWM writes its errors here (and nothing else), also why it would not start.</summary>
+    public string GlazeWmErrorLog => Path.Combine(GlzrDir, "glazewm", "errors.log");
     public string ZebarDir => Path.Combine(GlzrDir, "zebar");
     public string ZebarSettings => Path.Combine(ZebarDir, "settings.json");
     public string ZebarPackDir => Path.Combine(ZebarDir, "winmarchy");

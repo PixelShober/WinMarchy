@@ -136,7 +136,9 @@ Tut ein Kürzel nichts oder startet etwas nicht, hilft die Seite **Protokoll**:
 
 Fenstertitel, Passwörter und Inhalte schreibt WinMarchy in beides nicht.
 
-Beantwortet GlazeWM zwei Befehle hintereinander nicht, prüft WinMarchy über eine frische Verbindung, ob GlazeWM noch lebt. Antwortet es dort, hing nur die Verbindung, und WinMarchy verbindet sich neu. Antwortet es auch dort nicht, beendet WinMarchy GlazeWM und startet es neu, höchstens einmal in fünf Minuten. Der Wächter-Prozess von GlazeWM bleibt dabei stehen und holt Fenster von versteckten Workspaces zurück, so wie nach einem Absturz. „GlazeWM neu laden“ im Tray-Menü startet ein hängendes GlazeWM ebenfalls neu.
+Beantwortet GlazeWM zwei Befehle hintereinander nicht, prüft WinMarchy über eine frische Verbindung, ob GlazeWM noch lebt. Antwortet es dort, hing nur die Verbindung, und WinMarchy verbindet sich neu. Antwortet es auch dort nicht, beendet WinMarchy GlazeWM und startet es neu, höchstens einmal in fünf Minuten. Ist der Rechner gerade aufgewacht, entsperrt worden oder hat er seine Bildschirme gewechselt, wartet WinMarchy damit bis zu einer Minute: GlazeWM ist dann oft nur beschäftigt. Der neue Start kommt erst, wenn das alte GlazeWM wirklich weg ist (vorher weigert sich ein neues zu starten), und WinMarchy prüft danach, ob GlazeWM antwortet. Tut es das nach 20 Sekunden nicht, steht im Protokoll, was GlazeWMs eigenes Fehlerprotokoll (`%USERPROFILE%\.glzr\glazewm\errors.log`) dazu sagt, und es gibt einen zweiten Versuch. Der Wächter-Prozess von GlazeWM bleibt dabei stehen und holt Fenster von versteckten Workspaces zurück, so wie nach einem Absturz. „GlazeWM neu laden“ im Tray-Menü startet ein hängendes GlazeWM ebenfalls neu.
+
+Stürzt GlazeWM ab, startet WinMarchy es wieder, höchstens dreimal in zehn Minuten; danach sagt es nur noch Bescheid. Beendest du GlazeWM selbst über sein Tray-Menü, bleibt es aus, bis du „GlazeWM neu laden“ wählst. Der Diagnosebericht enthält die letzten Zeilen von GlazeWMs Fehlerprotokoll, ohne Fenstertitel.
 
 ## Für Entwickler
 

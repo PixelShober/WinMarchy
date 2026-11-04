@@ -262,6 +262,14 @@ public class WorkModeTests
     }
 
     [Theory]
+    [InlineData("Failed to set position for Window(id=1, process=msedge, class=Chrome_WidgetWin_1, title=Angebot Müller (1...): Zugriff verweigert",
+        "Failed to set position for Window(id=1, process=msedge, class=Chrome_WidgetWin_1, title=…): Zugriff verweigert")]
+    [InlineData("Window(id=2, process=notepad, class=Notepad, title=a.txt)", "Window(id=2, process=notepad, class=Notepad, title=…)")]
+    [InlineData("Another instance of the application is already running.", "Another instance of the application is already running.")]
+    public void Glazewm_errors_lose_their_window_titles(string line, string expected) =>
+        Assert.Equal(expected, Services.Components.WithoutTitles(line));
+
+    [Theory]
     // A wide tile floats at 70 % of the screen, a narrow one at 40 %; the corner takes a third.
     [InlineData(1900, 1000, false, 270, 100, 1260, 800)]
     [InlineData(300, 300, false, 540, 250, 720, 500)]

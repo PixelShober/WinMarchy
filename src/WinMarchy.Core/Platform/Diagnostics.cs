@@ -91,6 +91,13 @@ public static class Diagnostics
                 Line("query: " + Net.Describe(ex));
             }
         }
+        Guard("GlazeWM errors.log (last 30 lines)", () =>
+        {
+            var file = loc.GlazeWmErrorLog;
+            if (!File.Exists(file)) { Line(file + " missing (GlazeWM has logged no error)"); return; }
+            Line(file + ", " + File.GetLastWriteTime(file).ToString("yyyy-MM-dd HH:mm:ss"));
+            foreach (var l in Services.Components.GlazeErrors(loc, 30)) Line("  " + l);
+        });
         Guard("GlazeWM config", () =>
         {
             var file = loc.GlazeWmConfig;

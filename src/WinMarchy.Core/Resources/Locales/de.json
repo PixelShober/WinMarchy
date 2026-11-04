@@ -417,7 +417,7 @@
     "shortcutAdd": "Eintrag hinzufügen",
     "shortcutNoTitle": "Der Eintrag mit der Aktion {action} braucht einen Namen.",
     "newWindowEndsFullscreen": "Neues Fenster beendet Vollbild",
-    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland.",
+    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland. Schließt sich das neue wieder, bekommt es sein Vollbild zurück.",
     "oneMonitor": "Es ist nur ein Bildschirm angeschlossen.",
     "monitorAbsent": "nicht angeschlossen",
     "workModes": "Arbeitsmodi",
@@ -879,7 +879,18 @@
     "glazeEndFailed": "GlazeWM ließ sich nicht beenden: {detail}",
     "barMissing": "{tool} ist nicht installiert.",
     "glazeOtherEnded": "Statt des WinMarchy-Builds lief ein anderes GlazeWM ({path}). WinMarchy hat es beendet und startet seinen eigenen.",
-    "greenshotTakesOver": "Bildschirmfotos laufen jetzt über Greenshot: Das Bild liegt sofort in der Zwischenablage, ein Menü bietet das Speichern an."
+    "greenshotTakesOver": "Bildschirmfotos laufen jetzt über Greenshot: Das Bild liegt sofort in der Zwischenablage, ein Menü bietet das Speichern an.",
+    "glazeStarting": "GlazeWM startet: {path}",
+    "glazeStillRunning": "Das alte GlazeWM lässt sich nicht beenden, darum startet kein neues.",
+    "glazeBack": "GlazeWM antwortet wieder.",
+    "glazeNoAnswerAfterStart": "GlazeWM antwortet 20 Sekunden nach dem Start nicht. Sein Fehlerprotokoll sagt: {detail}",
+    "glazeNoErrors": "nichts (errors.log ist leer)",
+    "glazeStillDown": "GlazeWM antwortet auch nach dem zweiten Start nicht. Was GlazeWM dazu meldet, steht im Protokoll.",
+    "glazeQuit": "GlazeWM wurde über sein eigenes Menü beendet. WinMarchy startet es nicht von selbst; „GlazeWM neu laden“ (Win+Umschalt+Alt+R oder WinMarchy-Menü → Update) startet es wieder.",
+    "glazeCrashed": "GlazeWM ist abgestürzt (Code {code}), WinMarchy startet es neu. Sein Fehlerprotokoll sagt: {detail}",
+    "glazeRestartingCrash": "GlazeWM ist abgestürzt und startet neu. Deine Fenster bleiben offen.",
+    "glazeCrashesTooOften": "GlazeWM ist in zehn Minuten dreimal abgestürzt (zuletzt Code {code}). WinMarchy startet es nicht mehr von selbst; „GlazeWM neu laden“ startet es wieder.",
+    "glazeBusyAfterWake": "GlazeWM antwortet gerade nicht. Der Rechner ist eben aufgewacht, wurde entsperrt oder hat seine Bildschirme geändert; WinMarchy wartet noch bis zu einer Minute, bevor es GlazeWM neu startet."
   },
 
   "tray": {

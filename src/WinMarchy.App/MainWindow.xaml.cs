@@ -158,7 +158,7 @@ public partial class MainWindow : Window
             text = agent.StatusLine();
             brush = "Ok";
         }
-        else if (Core.Services.Components.IsRunning("glazewm"))
+        else if (Core.Services.Components.GlazeRunning)
         {
             // After two failed tries the reason is in the log; the line says so instead of "connecting".
             text = agent?.GlazeProblem != null ? L.T("status.glazeUnreachable") : L.T("status.glazeConnecting");

@@ -140,6 +140,11 @@ public sealed class LayoutEngine
     readonly Dictionary<string, ScrollStrip> _strips = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>The screen each workspace was on at the last look at the monitors.</summary>
     Dictionary<string, int> _screenOf = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Windows that left full screen for a new window, by id: their workspace, whether it was the
+    /// "maximized" full screen, and the windows that came since. Only touched while holding the gate.
+    /// </summary>
+    readonly Dictionary<string, (string Workspace, bool Maximized, HashSet<string> Newcomers)> _yielded = new();
     readonly SemaphoreSlim _busy;
 
     /// <param name="chooseScreen">Saves a screen's layout chosen with Win+Ctrl+J into the settings.</param>
@@ -251,6 +256,7 @@ public sealed class LayoutEngine
             if (e.Type == "window_unmanaged")
             {
                 var gone = GlazeTree.Str(e.Data, "unmanagedId");
+                if (gone != null) await GiveFullscreenBackLockedAsync(gone, ct);
                 foreach (var (owner, column) in _strips.ToList())
                 {
                     if (gone == null || !column.Ids.Remove(gone)) continue;
@@ -297,13 +303,22 @@ public sealed class LayoutEngine
         var mode = await ReconcileLockedAsync(name, monitors, ct);
 
         // A new window next to one in full screen: that one goes back to where it was (its tile, or
-        // floating), so the new one is not hidden behind it or lying over it.
-        if (eventType == "window_managed" && _settings().NewWindowEndsFullscreen && GlazeTree.WindowState(window) == "tiling")
+        // floating), so the new one is not hidden behind it or lying over it. Once the new window is
+        // closed again, the other gets its full screen back (GiveFullscreenBackLockedAsync).
+        if (eventType == "window_managed" && GlazeTree.WindowState(window) == "tiling")
         {
-            foreach (var other in GlazeTree.Windows(ws!.Value).Where(w => GlazeTree.WindowState(w) == "fullscreen" && GlazeTree.Str(w, "id") != id).ToList())
+            foreach (var waiting in _yielded.Values.Where(y => y.Workspace == name)) waiting.Newcomers.Add(id);
+            if (_settings().NewWindowEndsFullscreen)
             {
-                Log.Trace($"fullscreen: {GlazeTree.Str(other, "id")} leaves full screen for new window {id}", "layout");
-                await _ipc.CommandAsync("toggle-fullscreen", ct, GlazeTree.Str(other, "id"));
+                foreach (var other in GlazeTree.Windows(ws!.Value).Where(w => GlazeTree.WindowState(w) == "fullscreen" && GlazeTree.Str(w, "id") != id).ToList())
+                {
+                    if (GlazeTree.Str(other, "id") is not { } otherId) continue;
+                    Log.Trace($"fullscreen: {otherId} ({GlazeTree.Str(other, "processName")}) leaves full screen for new window {id} ({GlazeTree.Str(window, "processName")})", "layout");
+                    await _ipc.CommandAsync("toggle-fullscreen", ct, otherId);
+                    if (!_yielded.TryGetValue(otherId, out var yielded))
+                        _yielded[otherId] = yielded = (name, other.TryGetProperty("state", out var st) && GlazeTree.Bool(st, "maximized"), new HashSet<string>());
+                    yielded.Newcomers.Add(id);
+                }
             }
         }
 
@@ -338,6 +353,34 @@ public sealed class LayoutEngine
                 }
                 await ArrangeLockedAsync(name, id, ct);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// A window closed. If it was the last of those that came since a window left full screen for
+    /// them (a dialog, a pop-up, a window opened for a moment), that window gets its full screen back:
+    /// otherwise it would stay in half the screen. Not if it moved to another workspace or another
+    /// window is in full screen there now. Caller holds the gate.
+    /// </summary>
+    async Task GiveFullscreenBackLockedAsync(string gone, CancellationToken ct)
+    {
+        // The window that had left full screen closed itself.
+        if (_yielded.Remove(gone)) return;
+        var back = new List<string>();
+        foreach (var (id, yielded) in _yielded)
+            if (yielded.Newcomers.Remove(gone) && yielded.Newcomers.Count == 0) back.Add(id);
+        if (back.Count == 0) return;
+        var workspaces = await _ipc.QueryAsync("workspaces", ct);
+        foreach (var id in back)
+        {
+            var (workspace, maximized, _) = _yielded[id];
+            _yielded.Remove(id);
+            if (GlazeTree.WorkspaceOf(workspaces, id) is not { } ws || GlazeTree.Str(ws, "name") != workspace) continue;
+            var windows = GlazeTree.Windows(ws).ToList();
+            if (windows.Any(w => GlazeTree.WindowState(w) == "fullscreen")) continue;
+            if (windows.Any(w => GlazeTree.Str(w, "id") == id && GlazeTree.WindowState(w) == "minimized")) continue;
+            Log.Trace($"fullscreen: {id} gets its full screen back, the windows that came for it are closed", "layout");
+            await _ipc.CommandAsync("set-fullscreen" + (maximized ? " --maximized" : ""), ct, id);
         }
     }
 
@@ -529,6 +572,7 @@ public sealed class LayoutEngine
                 // A closed workspace has no windows: no arrangement, no columns, and a work mode's layout ends.
                 changed |= _store.Overrides.Remove(name) | _store.Workspaces.Remove(name) | _store.Columns.Remove(name);
                 _strips.Remove(name);
+                foreach (var id in _yielded.Where(y => y.Value.Workspace == name).Select(y => y.Key).ToList()) _yielded.Remove(id);
                 Log.Trace($"layout: workspace {name} closed", "layout");
             }
             if (changed) _store.Save();

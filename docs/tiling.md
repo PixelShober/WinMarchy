@@ -126,7 +126,9 @@ Omarchy minimiert nicht; was aus dem Weg soll, kommt auf einen anderen Workspace
 
 ## Vollbild und neue Fenster
 
-Öffnet sich auf einem Workspace ein neues Fenster, während dort eines im Vollbild ist, geht das Vollbild-Fenster zurück an seinen Platz (in seine Kachel oder schwebend), wie bei Hyprlands `new_window_takes_over_fullscreen`. So liegt das neue Fenster weder versteckt dahinter noch darüber. Abschalten lässt sich das unter **Tiling → Neues Fenster beendet Vollbild**. Dialoge, die schwebend aufgehen, beenden das Vollbild nicht.
+Öffnet sich auf einem Workspace ein neues Fenster, während dort eines im Vollbild ist, geht das Vollbild-Fenster zurück an seinen Platz (in seine Kachel oder schwebend), wie bei Hyprlands `new_window_takes_over_fullscreen`. So liegt das neue Fenster weder versteckt dahinter noch darüber. Dialoge, die schwebend aufgehen, beenden das Vollbild nicht.
+
+Schließt sich das neue Fenster wieder (und jedes, das seitdem auf dem Workspace dazukam), bekommt das andere sein Vollbild zurück. Vorher blieb es dann in seiner halben Kachel stehen, etwa nach einer Meldung oder einem kurzen Fenster, das ein Programm von selbst geöffnet hatte. Nicht zurück geht es, wenn du es inzwischen auf einen anderen Workspace geschoben hast oder dort schon ein anderes Fenster im Vollbild ist. Welche Programme das Vollbild beendet haben, steht mit ihrem Prozessnamen im ausführlichen Protokoll. Abschalten lässt sich das Ganze unter **Tiling → Neues Fenster beendet Vollbild**.
 
 ## Arbeitsmodi und das Scrolling-Layout
 

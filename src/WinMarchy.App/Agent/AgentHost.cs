@@ -43,6 +43,13 @@ public sealed class AgentHost : IAgentHost, IDisposable
     string? _lastGlazeError;
     DateTime _lastGlazeRestart = DateTime.MinValue;
     bool _hangReported;
+    /// <summary>The GlazeWM WinMarchy is connected to: when it ends, its exit code tells a crash from a quit.</summary>
+    System.Diagnostics.Process? _glazeProcess;
+    /// <summary>When WinMarchy started GlazeWM again after a crash, to stop after three in ten minutes.</summary>
+    readonly List<DateTime> _glazeCrashes = new();
+    /// <summary>Until then a GlazeWM that does not answer is waited for, not restarted: the PC just woke up, was unlocked or changed its screens.</summary>
+    DateTime _glazeGraceUntil = DateTime.MinValue;
+    bool _graceSaid;
 
     public AgentHost()
     {
@@ -72,6 +79,9 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _taskbarTimer.Tick += (_, _) => EnforceTaskbar();
         _taskbarTimer.Start();
         AppModel.SettingsChanged += EnforceTaskbar;
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        Microsoft.Win32.SystemEvents.SessionSwitch += OnSessionSwitch;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         _ = Task.Run(() => GlazeLoopAsync(_cts.Token));
 
         if (SetupDone)
@@ -114,7 +124,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
             if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
                 c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
             // Win opens Flow Launcher; after the setup it has never run yet.
-            Log.Trace($"components: glazewm {Core.Services.Components.IsRunning("glazewm")}, yasb {c.BarRunning}, " +
+            Log.Trace($"components: glazewm {Core.Services.Components.GlazeRunning}, yasb {c.BarRunning}, " +
                       $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, flow {Core.Services.Components.IsRunning("Flow.Launcher")}", "agent");
             if (c.StartFlow())
             {
@@ -180,6 +190,10 @@ public sealed class AgentHost : IAgentHost, IDisposable
     public void Dispose()
     {
         _cts.Cancel();
+        Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        Microsoft.Win32.SystemEvents.SessionSwitch -= OnSessionSwitch;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        _glazeProcess?.Dispose();
         _flowTimer.Stop();
         _guard.Dispose();
         _taskbarTimer.Stop();
@@ -285,11 +299,12 @@ public sealed class AgentHost : IAgentHost, IDisposable
                 var glaze = Glaze;
                 if (glaze is not { Connected: true })
                 {
-                    if (Core.Services.Components.IsRunning("glazewm")) await ConnectAsync(ct);
+                    if (Core.Services.Components.GlazeRunning) await ConnectAsync(ct);
                     else
                     {
                         _glazeFailures = 0;
                         GlazeProblem = null;
+                        await KeepGlazeRunningAsync(ct);
                     }
                 }
                 else if (glaze.Unanswered >= 2) await HandleStallAsync(glaze, ct);
@@ -343,6 +358,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _glazeFailures = 0;
         _lastGlazeError = null;
         GlazeProblem = null;
+        WatchGlazeProcess();
         Log.Info(L.T("agent.glazeConnected"));
         try
         {
@@ -357,13 +373,22 @@ public sealed class AgentHost : IAgentHost, IDisposable
     /// <summary>
     /// GlazeWM has left two requests in a row unanswered. If it answers on a new connection, only ours
     /// was stuck: connect again. If not, GlazeWM hangs and every shortcut would wait for nothing, so it
-    /// is restarted – at most once in five minutes; a second hang soon after is only reported.
+    /// is restarted – at most once in five minutes; a second hang soon after is only reported. Right
+    /// after the PC woke up, was unlocked or changed its screens, GlazeWM gets a minute first: it may
+    /// just be busy with that.
     /// </summary>
     async Task HandleStallAsync(GlazeIpc ipc, CancellationToken ct)
     {
         if (await GlazeIpc.ProbeAsync(ct))
         {
             Log.Warn(L.T("agent.glazeReconnecting"));
+            await ipc.DisposeAsync();
+            return;
+        }
+        if (DateTime.Now < _glazeGraceUntil)
+        {
+            if (!_graceSaid) Log.Info(L.T("agent.glazeBusyAfterWake"));
+            _graceSaid = true;
             await ipc.DisposeAsync();
             return;
         }
@@ -384,8 +409,144 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _hangReported = false;
         Log.Warn(L.T("agent.glazeHung"));
         Notify(L.T("agent.glazeRestarting"));
+        // WinMarchy ends this one itself: its end is no crash.
+        ForgetGlazeProcess();
         await ipc.DisposeAsync();
-        if (!await AppModel.Engine.Components.RestartGlazeAsync(ct)) Notify(L.T("actions.glazeMissing"));
+        if (!await AppModel.Engine.Components.RestartGlazeAsync(ct))
+        {
+            Notify(L.T("actions.glazeMissing"));
+            return;
+        }
+        await CheckGlazeAnswersAsync(ct);
+    }
+
+    /// <summary>
+    /// After a start: GlazeWM should answer within twenty seconds. If it does not, its errors.log
+    /// usually says why (another GlazeWM still held its lock, the configuration has an error); its
+    /// last lines go into the log, and GlazeWM gets one more start.
+    /// </summary>
+    async Task CheckGlazeAnswersAsync(CancellationToken ct, bool again = true)
+    {
+        var c = AppModel.Engine.Components;
+        for (int i = 0; i < 10; i++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            if (await GlazeIpc.ProbeAsync(ct))
+            {
+                Log.Info(L.T("agent.glazeBack"));
+                return;
+            }
+        }
+        // Its lines carry the time, so older ones among them are easy to tell apart.
+        var errors = c.GlazeErrors(3);
+        Log.Warn(L.T("agent.glazeNoAnswerAfterStart", ("detail", errors.Count > 0 ? string.Join(" | ", errors) : L.T("agent.glazeNoErrors"))));
+        if (!again)
+        {
+            Notify(L.T("agent.glazeStillDown"));
+            return;
+        }
+        if (!await c.RestartGlazeAsync(ct))
+        {
+            Notify(L.T("agent.glazeStillDown"));
+            return;
+        }
+        await CheckGlazeAnswersAsync(ct, again: false);
+    }
+
+    // ------------------------------------------------------------------ GlazeWM crashed
+
+    /// <summary>Keeps a handle to the GlazeWM WinMarchy is connected to, so its exit code can be read once it ends.</summary>
+    void WatchGlazeProcess()
+    {
+        var exe = AppModel.Engine.Components.GlazeExe;
+        var running = Core.Services.Components.GlazeProcesses();
+        var (pid, _) = running.FirstOrDefault(p => exe != null && string.Equals(p.Path, exe, StringComparison.OrdinalIgnoreCase));
+        if (pid == 0 && running.Count > 0) pid = running[0].Pid;
+        if (pid == 0 || _glazeProcess?.Id == pid) return;
+        ForgetGlazeProcess();
+        try
+        {
+            var p = System.Diagnostics.Process.GetProcessById(pid);
+            // Opens the handle now: only a handle taken while it runs can read the exit code later.
+            if (!p.HasExited) _glazeProcess = p;
+            else p.Dispose();
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Gone already, or not WinMarchy's to watch (elevated): then a crash is not noticed here.
+        }
+    }
+
+    void ForgetGlazeProcess()
+    {
+        _glazeProcess?.Dispose();
+        _glazeProcess = null;
+    }
+
+    /// <summary>
+    /// GlazeWM is gone. Ended by the user (its tray menu: exit code 0) it stays off; ended by
+    /// WinMarchy itself (setup, updates, restore, its own restart) nothing happens here either. A
+    /// crash gets a new start, at most three in ten minutes; after that WinMarchy only says so.
+    /// </summary>
+    async Task KeepGlazeRunningAsync(CancellationToken ct)
+    {
+        if (_glazeProcess is not { } gone) return;
+        int? code = null;
+        try
+        {
+            if (!gone.HasExited) return;
+            code = gone.ExitCode;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+        ForgetGlazeProcess();
+        if (code == 0)
+        {
+            Log.Info(L.T("agent.glazeQuit"));
+            return;
+        }
+        if (!SetupDone || _restoring || AppModel.Jobs.AnyRunning || App.ExitRequested) return;
+        var now = DateTime.Now;
+        _glazeCrashes.RemoveAll(t => now - t > TimeSpan.FromMinutes(10));
+        var detail = code is { } c ? "0x" + c.ToString("X8") : "?";
+        if (_glazeCrashes.Count >= 3)
+        {
+            Log.Warn(L.T("agent.glazeCrashesTooOften", ("code", detail)));
+            Notify(L.T("agent.glazeCrashesTooOften", ("code", detail)));
+            return;
+        }
+        _glazeCrashes.Add(now);
+        var errors = AppModel.Engine.Components.GlazeErrors(3);
+        Log.Warn(L.T("agent.glazeCrashed", ("code", detail), ("detail", errors.Count > 0 ? string.Join(" | ", errors) : L.T("agent.glazeNoErrors"))));
+        Notify(L.T("agent.glazeRestartingCrash"));
+        await Task.Delay(TimeSpan.FromSeconds(1), ct);
+        if (!AppModel.Engine.Components.StartGlaze())
+        {
+            Notify(L.T("actions.glazeMissing"));
+            return;
+        }
+        await CheckGlazeAnswersAsync(ct);
+    }
+
+    // ------------------------------------------------------------------ waking up
+
+    void OnPowerModeChanged(object? sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Resume) GiveGlazeTime("resume");
+    }
+
+    void OnSessionSwitch(object? sender, Microsoft.Win32.SessionSwitchEventArgs e)
+    {
+        if (e.Reason is Microsoft.Win32.SessionSwitchReason.SessionUnlock or Microsoft.Win32.SessionSwitchReason.ConsoleConnect
+            or Microsoft.Win32.SessionSwitchReason.RemoteConnect) GiveGlazeTime(e.Reason.ToString());
+    }
+
+    void OnDisplaySettingsChanged(object? sender, EventArgs e) => GiveGlazeTime("display");
+
+    void GiveGlazeTime(string why)
+    {
+        _glazeGraceUntil = DateTime.Now.AddMinutes(1);
+        _graceSaid = false;
+        Log.Trace("glazewm: a minute's patience after " + why, "agent");
     }
 
     /// <summary>Each new reason goes to the log once; the window shows it from the second failure on.</summary>
@@ -413,7 +574,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
     public async Task ReloadGlazeAsync(CancellationToken ct)
     {
-        if (!Core.Services.Components.IsRunning("glazewm"))
+        if (!Core.Services.Components.GlazeRunning)
         {
             if (!AppModel.Engine.Components.StartGlaze()) Notify(L.T("actions.glazeMissing"));
             return;

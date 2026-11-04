@@ -417,7 +417,7 @@
     "shortcutAdd": "Add entry",
     "shortcutNoTitle": "The entry with the action {action} needs a name.",
     "newWindowEndsFullscreen": "A new window ends full screen",
-    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, the full-screen window goes back into its tile, as in Hyprland.",
+    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, that one goes back into its tile, as in Hyprland. Once the new window closes again, it gets its full screen back.",
     "oneMonitor": "Only one monitor is connected.",
     "monitorAbsent": "not connected",
     "workModes": "Work modes",
@@ -879,7 +879,18 @@
     "glazeEndFailed": "Could not end GlazeWM: {detail}",
     "barMissing": "{tool} is not installed.",
     "glazeOtherEnded": "Another GlazeWM ran instead of the WinMarchy build ({path}). WinMarchy ended it and starts its own.",
-    "greenshotTakesOver": "Screenshots now go through Greenshot: the picture is in the clipboard right away, and a menu offers to save it."
+    "greenshotTakesOver": "Screenshots now go through Greenshot: the picture is in the clipboard right away, and a menu offers to save it.",
+    "glazeStarting": "Starting GlazeWM: {path}",
+    "glazeStillRunning": "The old GlazeWM does not end, so no new one starts.",
+    "glazeBack": "GlazeWM answers again.",
+    "glazeNoAnswerAfterStart": "GlazeWM does not answer 20 seconds after starting. Its error log says: {detail}",
+    "glazeNoErrors": "nothing (errors.log is empty)",
+    "glazeStillDown": "GlazeWM does not answer after a second start either. What GlazeWM reports about it is in the log.",
+    "glazeQuit": "GlazeWM was quit from its own menu. WinMarchy does not start it by itself; \"Reload GlazeWM\" (Win+Shift+Alt+R or WinMarchy menu → Update) starts it again.",
+    "glazeCrashed": "GlazeWM crashed (code {code}), WinMarchy starts it again. Its error log says: {detail}",
+    "glazeRestartingCrash": "GlazeWM crashed and starts again. Your windows stay open.",
+    "glazeCrashesTooOften": "GlazeWM crashed three times in ten minutes (last code {code}). WinMarchy no longer starts it by itself; \"Reload GlazeWM\" starts it again.",
+    "glazeBusyAfterWake": "GlazeWM does not answer right now. The PC just woke up, was unlocked or changed its screens; WinMarchy waits up to a minute before restarting GlazeWM."
   },
 
   "tray": {

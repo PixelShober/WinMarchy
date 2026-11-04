@@ -36,6 +36,40 @@ public sealed class Components
 
     public static bool IsRunning(string processName) => Process.GetProcessesByName(processName).Length > 0;
 
+    // ------------------------------------------------------------------ GlazeWM processes
+
+    /// <summary>
+    /// The window manager's processes that still run, with their exe (null where Windows does not
+    /// say). Left out: GlazeWM's command line (cli\glazewm.exe, also called glazewm), and a process
+    /// that has ended but is still listed for a moment because its watcher holds on to it. Counting
+    /// such a one as running would keep a restart from starting GlazeWM at all.
+    /// </summary>
+    public static List<(int Pid, string? Path)> GlazeProcesses()
+    {
+        var list = new List<(int, string?)>();
+        foreach (var p in Process.GetProcessesByName("glazewm"))
+        {
+            using (p)
+            {
+                try
+                {
+                    if (p.HasExited) continue;
+                }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
+                {
+                    // Not allowed to look (elevated): it runs.
+                }
+                var path = ImagePath(p.Id);
+                if (path != null && path.Contains(Path.DirectorySeparatorChar + "cli" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
+                list.Add((p.Id, path));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>Whether the window manager runs (see <see cref="GlazeProcesses"/>).</summary>
+    public static bool GlazeRunning => GlazeProcesses().Count > 0;
+
     /// <summary>
     /// Starts GlazeWM unless it runs already. Once WinMarchy's build is installed, another GlazeWM
     /// that runs instead (an official release installed on its own) is ended first: it lacks what
@@ -44,74 +78,122 @@ public sealed class Components
     public bool StartGlaze()
     {
         var exe = GlazeExe;
-        if (exe == null) return IsRunning("glazewm");
-        bool running = false;
-        foreach (var p in Process.GetProcessesByName("glazewm"))
+        var running = GlazeProcesses();
+        if (exe == null) return running.Count > 0;
+        bool fork = ToolCatalog.IsWinMarchyBuild(exe);
+        bool own = false;
+        foreach (var (pid, path) in running)
         {
-            using (p)
+            // A path Windows does not tell (an elevated process) counts as WinMarchy's own.
+            if (path == null || path.Equals(exe, StringComparison.OrdinalIgnoreCase) || !fork)
             {
-                string? path = null;
-                try { path = p.MainModule?.FileName; } catch { }
-                // The command line (cli\glazewm.exe) is not the window manager.
-                if (path != null && path.Contains(Path.DirectorySeparatorChar + "cli" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) continue;
-                // A path Windows does not tell (an elevated process) counts as WinMarchy's own.
-                if (path == null || path.Equals(exe, StringComparison.OrdinalIgnoreCase) || !ToolCatalog.IsWinMarchyBuild(exe))
-                {
-                    running = true;
-                    continue;
-                }
-                try
-                {
-                    p.Kill();
-                    p.WaitForExit(3000);
-                    Log.Info(L.T("agent.glazeOtherEnded", ("path", path)));
-                }
-                catch (Exception ex)
-                {
-                    running = true;
-                    Log.Warn(L.T("agent.glazeEndFailed", ("detail", Net.Describe(ex))));
-                }
+                own = true;
+                continue;
             }
+            if (EndProcess(pid)) Log.Info(L.T("agent.glazeOtherEnded", ("path", path)));
+            else own = true;
         }
-        return running || Platform.AppLauncher.Start(exe, "start");
+        if (own) return true;
+        Log.Info(L.T("agent.glazeStarting", ("path", exe)));
+        return Platform.AppLauncher.Start(exe, "start");
     }
 
     /// <summary>
-    /// Ends a GlazeWM that no longer answers and starts it again. Only the window manager itself is
-    /// ended: its watcher (glazewm-watcher.exe) stays and shows the windows GlazeWM had hidden on
-    /// other workspaces, as it does after a crash. GlazeWM then takes them on again.
+    /// Ends GlazeWM and starts it again, for a GlazeWM that no longer answers. Only the window manager
+    /// itself is ended: its watcher (glazewm-watcher.exe) stays and shows the windows GlazeWM had
+    /// hidden on other workspaces, as it does after a crash; GlazeWM then takes them on again. The new
+    /// one starts only once the old one is really gone: while it still holds its lock, a new GlazeWM
+    /// refuses to run.
     /// </summary>
     public async Task<bool> RestartGlazeAsync(CancellationToken ct)
     {
-        var exe = GlazeExe;
-        foreach (var p in Process.GetProcessesByName("glazewm"))
+        foreach (var (pid, _) in GlazeProcesses())
+            if (EndProcess(pid)) Log.Info(L.T("agent.glazeEnded", ("pid", pid)));
+        for (int i = 0; i < 50 && GlazeRunning; i++) await Task.Delay(100, ct);
+        if (GlazeRunning)
         {
-            using (p)
-            {
-                string? path = null;
-                try { path = p.MainModule?.FileName; } catch { }
-                // Not the command line (cli\glazewm.exe), if it happens to run.
-                if (path != null && exe != null && !path.Equals(exe, StringComparison.OrdinalIgnoreCase)) continue;
-                try
-                {
-                    p.Kill();
-                    p.WaitForExit(3000);
-                    Log.Info(L.T("agent.glazeEnded", ("pid", p.Id)));
-                }
-                catch (Exception ex)
-                {
-                    Log.Warn(L.T("agent.glazeEndFailed", ("detail", Net.Describe(ex))));
-                }
-            }
+            Log.Warn(L.T("agent.glazeStillRunning"));
+            return false;
         }
-        await Task.Delay(1500, ct);
+        await Task.Delay(1000, ct);
         return StartGlaze();
     }
+
+    /// <summary>Ends a process and waits for it a moment. False if Windows does not let it end.</summary>
+    static bool EndProcess(int pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            p.Kill();
+            p.WaitForExit(3000);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return true;    // gone already
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
+        {
+            Log.Warn(L.T("agent.glazeEndFailed", ("detail", Net.Describe(ex))));
+            return false;
+        }
+    }
+
+    /// <summary>The last lines GlazeWM wrote into its errors.log (%USERPROFILE%\.glzr\glazewm), newest last.</summary>
+    public IReadOnlyList<string> GlazeErrors(int lines) => GlazeErrors(_loc, lines);
+
+    /// <summary>
+    /// The last lines of GlazeWM's errors.log, newest last. GlazeWM names windows with the start of
+    /// their title; that part is left out, the log and the diagnostic report carry no window titles.
+    /// </summary>
+    public static IReadOnlyList<string> GlazeErrors(Locations loc, int lines)
+    {
+        var file = loc.GlazeWmErrorLog;
+        if (!File.Exists(file)) return Array.Empty<string>();
+        try
+        {
+            return FileSafety.ReadShared(file).Split('\n').Select(l => WithoutTitles(l.TrimEnd())).Where(l => l.Length > 0).TakeLast(lines).ToList();
+        }
+        catch (IOException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>
+    /// "Window(id=…, process=msedge, class=…, title=Angebot Müller ...)" → "…, title=…)". GlazeWM cuts
+    /// a title to 17 characters and "...", or leaves it as it is if it is short.
+    /// </summary>
+    public static string WithoutTitles(string line) =>
+        System.Text.RegularExpressions.Regex.Replace(line, @"title=(?:.{0,17}\.\.\.|.{0,20}?)\)", "title=…)");
+
+    /// <summary>The exe of a process, also for one that runs elevated; null if Windows does not say.</summary>
+    static string? ImagePath(int pid)
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        var handle = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, pid);
+        if (handle == IntPtr.Zero) return null;
+        try
+        {
+            var buffer = new StringBuilder(1024);
+            int size = buffer.Capacity;
+            return QueryFullProcessImageName(handle, 0, buffer, ref size) ? buffer.ToString(0, size) : null;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder name, ref int size);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
 
     /// <summary>Reload through the open connection, else through GlazeWM's command line.</summary>
     public async Task ReloadGlazeAsync(GlazeIpc? ipc, CancellationToken ct)
     {
-        if (!IsRunning("glazewm")) return;
+        if (!GlazeRunning) return;
         if (ipc is { Connected: true })
         {
             await ipc.CommandAsync("wm-reload-config", ct);
