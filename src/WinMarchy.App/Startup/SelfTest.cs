@@ -57,12 +57,8 @@ static class SelfTest
         var cli = @"C:\WinMarchy\Tools\glazewm\cli\glazewm.exe";
         var settings = new UserSettings();
         var palette = ThemeCatalog.Default.Palette;
-        foreach (var personal in new[] { false, true })
-        {
-            var set = HotkeySet.Build(personal, new CustomHotkeys());
-            var name = personal ? "winmarchy-hotkeys-personal.ahk" : "winmarchy-hotkeys.ahk";
-            File.WriteAllText(Path.Combine(outDir, name), AhkScript.Generate(set, new AhkContext(exe, cli, WinKeyOpensLauncher: true)), bom);
-        }
+        File.WriteAllText(Path.Combine(outDir, "winmarchy-hotkeys.ahk"),
+            AhkScript.Generate(HotkeySet.Build(new CustomHotkeys()), new AhkContext(exe, cli, WinKeyOpensLauncher: true)), bom);
         File.WriteAllText(Path.Combine(outDir, "glazewm-config.yaml"), GlazeConfig.Generate(GlazeConfig.FromSettings(settings, palette, Bars.Height)));
         // YASB's bar with a shortcut of the user's own in the menu and as a button.
         var yasb = settings.Clone();
@@ -74,7 +70,7 @@ static class SelfTest
         File.WriteAllText(Path.Combine(outDir, "shell-start.ps1"),
             ShellExtras.ShellScript(@"C:\WinMarchy\Tools\starship\starship.exe", @"C:\WinMarchy\Tools\fastfetch\fastfetch.exe"), bom);
         // Greenshot owns the Print keys when it is chosen; the script must still validate.
-        var greenshot = AhkScript.Generate(HotkeySet.Build(false, new CustomHotkeys()),
+        var greenshot = AhkScript.Generate(HotkeySet.Build(new CustomHotkeys()),
             new AhkContext(exe, cli, WinKeyOpensLauncher: true, LeaveAlone: WinMarchy.Core.Platform.Screenshots.GreenshotKeys.ToHashSet()));
         File.WriteAllText(Path.Combine(outDir, "winmarchy-hotkeys-greenshot.ahk"), greenshot, bom);
     }

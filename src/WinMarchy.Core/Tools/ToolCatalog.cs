@@ -58,16 +58,12 @@ public static class ToolCatalog
         glazeExe != null && Path.GetDirectoryName(glazeExe) is { } dir && File.Exists(Path.Combine(dir, "WINMARCHY.md"));
 
     /// <summary>
-    /// The bar at the top since WinMarchy switched away from Zebar: GlazeWM workspaces, and small
+    /// The bar at the top: GlazeWM workspaces, and small
     /// menus that drop down from it (calendar, sound, Wi-Fi, the menu under the logo). The MSI is
     /// for all users; WinMarchy only unpacks it, so no admin rights are needed.
     /// </summary>
     public static readonly ToolDef Yasb = new("yasb", "YASB", "MIT", "https://github.com/amnweb/yasb",
         "amnweb/yasb", @"^yasb-[\d.]+-x64\.msi$", InstallKind.MsiExtract, "yasb.exe", Required: false);
-
-    /// <summary>The bar of WinMarchy versions before YASB. Never installed any more; Settings removes what is left of it.</summary>
-    public static readonly ToolDef Zebar = new("zebar", "Zebar", "GPL-3.0", "https://github.com/glzr-io/zebar",
-        null, null, InstallKind.None, "zebar.exe", Required: false);
 
     public static readonly ToolDef AutoHotkey = new("autohotkey", "AutoHotkey v2", "GPL-2.0", "https://www.autohotkey.com",
         "AutoHotkey/AutoHotkey", @"^AutoHotkey_2[\d.]+\.zip$", InstallKind.Zip, "AutoHotkey64.exe", Required: false);
@@ -116,7 +112,7 @@ public static class ToolCatalog
 
     public static IReadOnlyList<ToolDef> All { get; } = new[]
     {
-        GlazeWm, Yasb, Zebar, AutoHotkey, Flow, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Terminal, Files, VsCode,
+        GlazeWm, Yasb, AutoHotkey, Flow, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Terminal, Files, VsCode,
     };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
@@ -136,11 +132,6 @@ public static class ToolCatalog
     {
         "glazewm" => new[] { Path.Combine(loc.ProgramFiles, "glzr.io", "GlazeWM", "glazewm.exe") },
         "yasb" => new[] { Path.Combine(loc.ProgramFiles, "YASB", "yasb.exe") },
-        "zebar" => new[]
-        {
-            Path.Combine(loc.ProgramFiles, "glzr.io", "Zebar", "zebar.exe"), Path.Combine(loc.ProgramFiles, "Zebar", "zebar.exe"),
-            Path.Combine(loc.LocalAppData, "Programs", "Zebar", "zebar.exe"),
-        },
         "autohotkey" => new[]
         {
             Path.Combine(loc.ProgramFiles, "AutoHotkey", "v2", "AutoHotkey64.exe"),

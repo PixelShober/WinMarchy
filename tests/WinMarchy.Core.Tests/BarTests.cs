@@ -7,7 +7,7 @@ using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Tests;
 
-/// <summary>YASB as the bar, Zebar until the user switches, and the extras around it.</summary>
+/// <summary>YASB as the bar, and the extras around it.</summary>
 public class BarTests
 {
     const string Exe = @"C:\WinMarchy\App\WinMarchy.exe";
@@ -97,39 +97,18 @@ public class BarTests
     }
 
     [Fact]
-    public void The_bar_is_yasb_and_zebar_is_never_installed()
+    public void The_bar_is_yasb()
     {
         Assert.Same(ToolCatalog.Yasb, Bars.Tool);
-        Assert.Null(ToolCatalog.Zebar.Repo);
-        Assert.Throws<WinMarchyException>(() => ToolInstaller.InstallAsync(ToolCatalog.Zebar, new SetupStep("zebar", (_, _) => Task.CompletedTask), CancellationToken.None).GetAwaiter().GetResult());
+        Assert.DoesNotContain(ToolCatalog.All, t => t.Id == "zebar");
     }
 
     [Fact]
-    public void Removing_the_zebar_pack_can_be_undone()
-    {
-        using var temp = new TempDir();
-        var loc = Locations.Under(temp.Path);
-        Directory.CreateDirectory(loc.ZebarPackDir);
-        File.WriteAllText(Path.Combine(loc.ZebarPackDir, "zpack.json"), "{}");
-        File.WriteAllText(loc.ZebarSettings, $$"""{ "startupConfigs": [ { "pack": "{{ZebarPack.PackName}}", "widget": "bar", "preset": "default" } ] }""");
-        var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
-        var point = store.Begin("zebar-remove", "Zebar");
-
-        ZebarPack.Uninstall(new IntegrationContext(loc, store, point, new UserSettings()));
-        Assert.False(ZebarPack.IsInstalled(loc));
-        Assert.DoesNotContain(ZebarPack.PackName, File.ReadAllText(loc.ZebarSettings));
-
-        store.Restore(point);
-        Assert.True(ZebarPack.IsInstalled(loc));
-        Assert.Contains(ZebarPack.PackName, File.ReadAllText(loc.ZebarSettings));
-    }
-
-    [Fact]
-    public void Glazewm_leaves_the_bar_and_an_old_zebar_alone()
+    public void Glazewm_leaves_the_bar_alone()
     {
         var yaml = GlazeConfig.Generate(GlazeConfig.FromSettings(new UserSettings(), Tokyo, Bars.Height));
         Assert.Contains("window_process: { equals: 'yasb' }", yaml);
-        Assert.Contains("window_process: { equals: 'zebar' }", yaml);
+        Assert.DoesNotContain("zebar", yaml);
     }
 
     [Fact]

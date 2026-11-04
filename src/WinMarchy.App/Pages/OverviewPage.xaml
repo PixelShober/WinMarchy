@@ -36,7 +36,14 @@
 
       <Border Style="{StaticResource Card}" Grid.Column="0" VerticalAlignment="Top">
         <StackPanel>
-          <TextBlock Text="{ui:T overview.programs}" Style="{StaticResource H2}" Margin="0,0,0,12" />
+          <DockPanel Margin="0,0,0,12">
+            <Button x:Name="UpdateAll" DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Click="OnUpdateAll" VerticalAlignment="Top" Visibility="Collapsed" Margin="12,0,0,0" />
+            <StackPanel>
+              <TextBlock Text="{ui:T overview.programs}" Style="{StaticResource H2}" />
+              <TextBlock x:Name="VersionsChecked" Style="{StaticResource Small}" Margin="0,2,0,0" />
+            </StackPanel>
+          </DockPanel>
+          <ui:JobView x:Name="UpdateJob" Margin="0,0,0,12" />
           <Grid x:Name="ToolTable" />
           <TextBlock Text="{ui:T overview.programsHint}" Style="{StaticResource Small}" Margin="0,12,0,0" />
         </StackPanel>

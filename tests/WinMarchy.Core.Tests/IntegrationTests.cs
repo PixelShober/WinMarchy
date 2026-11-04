@@ -51,15 +51,6 @@ public class IntegrationTests
     }
 
     [Fact]
-    public void Removing_the_old_zebar_bar_keeps_other_widgets()
-    {
-        const string original = """{ "startupConfigs": [ { "pack": "winmarchy", "widget": "bar", "preset": "default" }, { "pack": "me.clock", "widget": "clock", "preset": "default" } ] }""";
-        var off = Jsonc.ParseObject(ZebarPack.RemoveFromStartup(original));
-        Assert.Equal("me.clock", (string?)Assert.Single(off["startupConfigs"]!.AsArray())!["pack"]);
-        Assert.Equal("{}", ZebarPack.RemoveFromStartup("{}"));
-    }
-
-    [Fact]
     public void VsCode_falls_back_to_built_in_themes_and_takes_its_colours_back()
     {
         var theme = ThemeCatalog.Default;

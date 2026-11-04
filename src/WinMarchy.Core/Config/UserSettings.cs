@@ -85,9 +85,6 @@ public sealed class UserSettings
 
     public ThemeTargets ThemeTargets { get; set; } = new();
 
-    /// <summary>Adds the "Persönlich" profile (consumer apps, bindings.lua) on top of "Business".</summary>
-    public bool PersonalProfile { get; set; }
-
     /// <summary>Tapping the left Windows key alone opens the launcher (AutoHotkey only).</summary>
     public bool WinKeyOpensLauncher { get; set; } = true;
 
@@ -126,11 +123,11 @@ public sealed class UserSettings
     /// <summary>A window that opens next to one in full screen ends the full screen, as in Hyprland.</summary>
     public bool NewWindowEndsFullscreen { get; set; } = true;
 
-    /// <summary>How many columns the scrolling layout shows side by side (1 to 3).</summary>
-    public int ScrollingColumns { get; set; } = 2;
-
     /// <summary>Workspace "1" … "10" → monitor index (0 = leftmost). Missing: any monitor.</summary>
     public Dictionary<string, int> WorkspaceMonitors { get; set; } = new();
+
+    /// <summary>The main screen by index (0 = leftmost), which gets workspaces 1 and 2. Null: Windows' main screen.</summary>
+    public int? MainScreen { get; set; }
 
     /// <summary>Win+Ctrl+D and Win+Ctrl+1 to 3, in that order. Missing modes start nothing.</summary>
     public List<WorkMode> WorkModes { get; set; } = new();

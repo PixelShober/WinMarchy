@@ -265,7 +265,9 @@ public sealed class WindowCommands
     /// Win+Arrow. In the shown scratchpad the arrows move between its windows; past the last one the
     /// scratchpad hides and the workspace has the focus again. In the scrolling layout they move along
     /// the columns. From any other floating window they go to the nearest window that way on the
-    /// screen; GlazeWM itself only knows left and right there.
+    /// screen; GlazeWM itself only knows left and right there, and goes round in circles. Past the
+    /// last column or floating window, the focus goes to the next screen that way, as it does from
+    /// tiles.
     /// </summary>
     public Task FocusAsync(string direction, CancellationToken ct) => Exclusive(async () =>
     {
@@ -292,11 +294,34 @@ public sealed class WindowCommands
                 await Cmd($"focus --container-id {near.Id}", ct);
                 return;
             }
+            await FocusNextScreenLockedAsync(focused.Workspace, direction, ct);
+            return;
         }
         await Cmd($"focus --direction {direction}", ct);
     }, ct);
 
-    /// <summary>Win+Shift+Arrow: swaps tiles, columns of the scrolling layout, or windows of the shown scratchpad.</summary>
+    /// <summary>
+    /// The focus goes to the screen next to the one with <paramref name="from"/>: to the window there
+    /// nearest the edge it comes in at, or to the workspace if it has none. Caller holds the gate.
+    /// </summary>
+    async Task FocusNextScreenLockedAsync(string from, string direction, CancellationToken ct)
+    {
+        var monitors = await _ipc.QueryAsync("monitors", ct);
+        if (GlazeTree.WorkspaceInDirection(monitors, from, direction) is not { } target)
+        {
+            Log.Trace($"focus {direction}: no screen that way from {from}", "tiling");
+            return;
+        }
+        var there = GlazeTree.WindowInfos(monitors).Where(w => w.Workspace == target && w.State is "tiling" or "floating");
+        if (GlazeTree.EntryWindow(there, direction) is { } entry) await Cmd($"focus --container-id {entry.Id}", ct);
+        else await Cmd($"focus --workspace {target}", ct);
+    }
+
+    /// <summary>
+    /// Win+Shift+Arrow: swaps tiles, columns of the scrolling layout, or windows of the shown
+    /// scratchpad. At the edge of the screen a tile or column goes to the next screen that way and
+    /// takes on the layout of the workspace shown there.
+    /// </summary>
     public Task SwapAsync(string direction, CancellationToken ct) => Exclusive(async () =>
     {
         var (all, here) = await SnapshotAsync(ct);
@@ -316,7 +341,20 @@ public sealed class WindowCommands
             return;
         }
         if (here != null && _layouts != null && await _layouts.ScrollSwapLockedAsync(here, direction, focused?.Id, ct)) return;
+        // A column at the end of its strip floats for GlazeWM, which would only nudge it.
+        if (focused != null && _layouts?.StripOf(focused.Workspace)?.Ids.Contains(focused.Id) == true)
+        {
+            var monitors = await _ipc.QueryAsync("monitors", ct);
+            if (GlazeTree.WorkspaceInDirection(monitors, focused.Workspace, direction) is { } target)
+                await MoveToWorkspaceLockedAsync(all, focused, target, ct);
+            return;
+        }
         await Cmd($"move --direction {direction}", ct);
+        // At the edge GlazeWM takes the tile to the next screen; a scrolling workspace there makes it a column.
+        if (focused == null || _layouts == null) return;
+        var (after, _) = await SnapshotAsync(ct);
+        if (after.FirstOrDefault(w => w.Id == focused.Id) is { } moved && moved.Workspace != focused.Workspace && GlazeConfig.IsRegular(moved.Workspace))
+            await _layouts.ArrivedLockedAsync(moved.Workspace, moved.Id, ct);
     }, ct);
 
     /// <summary>
@@ -333,6 +371,16 @@ public sealed class WindowCommands
             await Cmd($"focus --workspace {target}", ct);
             return;
         }
+        await MoveToWorkspaceLockedAsync(all, focused, target, ct);
+    }, ct);
+
+    /// <summary>
+    /// <paramref name="window"/> goes to workspace <paramref name="target"/> and the focus follows. It
+    /// leaves the scratchpad or the scrolling strip it was in, and takes on the target's layout.
+    /// Caller holds the gate.
+    /// </summary>
+    async Task MoveToWorkspaceLockedAsync(List<WindowInfo> all, WindowInfo focused, string target, CancellationToken ct)
+    {
         var source = focused.Workspace;
         bool fromScrolling = _layouts?.StripOf(source) != null;
         bool wasMember = IsMember(focused);
@@ -353,7 +401,7 @@ public sealed class WindowCommands
         if (_layouts == null) return;
         if (fromScrolling && source != target) await _layouts.ArrangeLockedAsync(source, null, ct, focus: false);
         await _layouts.ArrivedLockedAsync(target, focused.Id, ct);
-    }, ct);
+    }
 
     // ------------------------------------------------------------------ floating
 
@@ -667,32 +715,24 @@ public sealed class WindowCommands
         if (moved && monitors.Count > 1) await Cmd($"focus --monitor {focusedMonitor}", ct);
     }, ct);
 
-    /// <summary>Win+Shift+Ctrl+Arrow (older profiles): the focused window goes to the workspace shown on the neighbouring monitor.</summary>
-    public async Task MoveWindowToMonitorAsync(string direction, CancellationToken ct)
+    /// <summary>
+    /// Win+Shift+Ctrl+Arrow (older profiles): the focused window goes to the workspace shown on the
+    /// neighbouring monitor, whatever its place on its own screen.
+    /// </summary>
+    public Task MoveWindowToMonitorAsync(string direction, CancellationToken ct) => Exclusive(async () =>
     {
-        var data = await _ipc.QueryAsync("monitors", ct);
-        var monitors = GlazeTree.List(data, "monitors").ToList();
-        if (monitors.Count < 2)
+        var monitors = await _ipc.QueryAsync("monitors", ct);
+        if (GlazeTree.List(monitors, "monitors").Count() < 2)
         {
             _notify(L.T("tiling.oneMonitor"));
             return;
         }
-        var current = monitors.Cast<JsonElement?>().FirstOrDefault(m => GlazeTree.Bool(m!.Value, "hasFocus"));
-        if (current is not { } cur) return;
-        double Cx(JsonElement m) => GlazeTree.Int(m, "x") + GlazeTree.Int(m, "width") / 2.0;
-        double Cy(JsonElement m) => GlazeTree.Int(m, "y") + GlazeTree.Int(m, "height") / 2.0;
-        var candidates = monitors.Where(m => GlazeTree.Str(m, "id") != GlazeTree.Str(cur, "id")).Where(m => direction switch
-        {
-            "left" => Cx(m) < Cx(cur),
-            "right" => Cx(m) > Cx(cur),
-            "up" => Cy(m) < Cy(cur),
-            _ => Cy(m) > Cy(cur),
-        }).OrderBy(m => Math.Abs(Cx(m) - Cx(cur)) + Math.Abs(Cy(m) - Cy(cur))).ToList();
-        if (candidates.Count == 0) return;
-        var target = GlazeTree.Children(candidates[0]).Cast<JsonElement?>().FirstOrDefault(w => GlazeTree.Bool(w!.Value, "isDisplayed"));
-        if (target is { } t && GlazeTree.Str(t, "name") is { } name)
-            await Cmd($"move --workspace {name}", ct);
-    }
+        var all = GlazeTree.WindowInfos(monitors);
+        Prune(all);
+        if (all.FirstOrDefault(w => w.Focused) is not { } focused || !GlazeConfig.IsRegular(focused.Workspace)) return;
+        if (GlazeTree.WorkspaceInDirection(monitors, focused.Workspace, direction) is { } target)
+            await MoveToWorkspaceLockedAsync(all, focused, target, ct);
+    }, ct);
 
     // ------------------------------------------------------------------ single windows
 

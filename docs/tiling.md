@@ -26,9 +26,9 @@ Der Workspace bleibt horizontal, jedes neue Fenster wird eine weitere Spalte, al
 
 Bei Omarchys Scrolling (Hyprlands `scrolling`-Layout, Niri-Stil) stehen die Fenster als Spalten in einer Reihe, die breiter sein darf als der Bildschirm. GlazeWM zeichnet gekachelte Fenster immer innerhalb des Monitors, deshalb übernimmt WinMarchy hier das Platzieren:
 
-- Die Fenster des Workspace schweben (in GlazeWM „floating“), WinMarchy setzt Größe und Lage. Zwei Spalten stehen nebeneinander auf dem Bildschirm; unter **Tiling** lässt sich eine, zwei oder drei einstellen.
-- `Win+Links` und `Win+Rechts` gehen eine Spalte weiter. Liegt sie außerhalb, rollt die Reihe um genau so viel, dass sie ganz zu sehen ist.
-- `Win+Umschalt+Links` und `Win+Umschalt+Rechts` tauschen die Spalte mit ihrer Nachbarin.
+- Die Fenster des Workspace schweben (in GlazeWM „floating“), WinMarchy setzt Größe und Lage. Zwei Spalten stehen nebeneinander auf dem Bildschirm.
+- `Win+Links` und `Win+Rechts` gehen eine Spalte weiter. Liegt sie außerhalb, rollt die Reihe um genau so viel, dass sie ganz zu sehen ist. Am Ende der Reihe geht der Fokus auf den Bildschirm daneben, wie bei Kacheln.
+- `Win+Umschalt+Links` und `Win+Umschalt+Rechts` tauschen die Spalte mit ihrer Nachbarin. Am Ende der Reihe wandert die Spalte auf den Bildschirm daneben und nimmt dort dessen Layout an, egal welche Nummer der Workspace dort hat. Für GlazeWM schweben die Spalten, es würde sie nur ein Stück verschieben.
 - Ein neues Fenster kommt rechts neben das fokussierte. Ein geschlossenes hinterlässt keine Lücke.
 - Spalten außerhalb des Bildschirms warten unsichtbar im versteckten Workspace `winmarchy-stage`, bis die Reihe zu ihnen rollt. Nichts liegt hinter einer sichtbaren Spalte und schimmert durch, nichts ragt auf den Nachbarmonitor. Welche Fenster zur Reihe gehören, merkt sich WinMarchy nach Fenster-Handle, damit wartende Spalten beim Verbinden nicht als verirrt gelten.
 
@@ -77,12 +77,12 @@ Welche Fenster zum Scratchpad gehören, merkt sich WinMarchy in `C:\WinMarchy\Co
 
 ## Bildschirme, Layouts und Workspaces
 
-Jede Zeile der Karte ist ein Bildschirm: links sein Name und seine Auflösung, in der Mitte sein Layout (Dwindle, Spalten, Scrolling), rechts seine Workspaces. Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces, etwa der linke 1 bis 5 und der rechte 6 bis 10. „Gleichmäßig aufteilen“ macht genau das. WinMarchy schreibt die Zuordnung als `bind_to_monitor` in GlazeWMs Konfiguration:
+Jede Zeile der Karte ist ein Bildschirm: links sein Name, wie Windows ihn kennt (der eingebaute heißt „Laptop-Bildschirm“, zwei gleiche Monitore bekommen „(1)“ und „(2)“), seine Auflösung und ob er der Hauptbildschirm ist; in der Mitte sein Layout (Dwindle, Spalten, Scrolling), rechts seine Workspaces. Wie im Omarchy-Plugin Screens bekommt jeder Bildschirm feste Workspaces. Der Hauptbildschirm hat 1 und 2, die anderen teilen sich den Rest gleichmäßig von links nach rechts. Ohne Vorgabe ist der Hauptbildschirm der von Windows. Wählst du einen anderen, bekommt er 1 und 2, und die übrigen werden neu verteilt; „Neu aufteilen“ macht dasselbe. Danach lässt sich jede Zeile von Hand ändern. Solange noch nichts festgelegt ist, zeigt die Karte diese Aufteilung als Vorschlag, und erst **Übernehmen** macht sie fest. WinMarchy schreibt die Zuordnung als `bind_to_monitor` in GlazeWMs Konfiguration:
 
 - `Win+3` öffnet Workspace 3 immer auf seinem Bildschirm, egal wo du gerade bist.
 - Ein Arbeitsmodus nimmt für jeden Bildschirm den nächsten freien seiner eigenen Workspaces. Sind die alle belegt, nimmt er einen freien, der keinem Bildschirm zugeordnet ist, oder einen, dessen Bildschirm gerade fehlt.
 - Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um und kommen zurück, wenn er wieder da ist.
-- Am Laptop ohne Dock stehen die abgesteckten Bildschirme weiter in der Karte, als „nicht angeschlossen“. Ihre Workspaces bleiben ihnen zugeordnet, bis du die Zeile leerst; „Gleichmäßig aufteilen“ zählt sie mit.
+- Am Laptop ohne Dock stehen die abgesteckten Bildschirme weiter in der Karte, als „nicht angeschlossen“. Ihre Namen merkt sich WinMarchy vom letzten Mal. Ihre Workspaces bleiben ihnen zugeordnet, bis du die Zeile leerst; „Neu aufteilen“ zählt sie mit.
 
 GlazeWM beachtet `bind_to_monitor` nur, wenn ein Workspace neu angelegt wird. Steht einer schon auf dem falschen Bildschirm, bleibt er dort. WinMarchy schiebt deshalb beim Verbinden und nach jedem **Übernehmen** unter Tiling jeden zugeordneten Workspace selbst auf seinen Bildschirm. Klappt das nicht, steht eine Warnung im Protokoll; mit dem ausführlichen Protokoll steht dort jeder Schritt.
 

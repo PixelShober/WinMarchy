@@ -120,7 +120,7 @@ public sealed class Engine
     static IReadOnlyCollection<string>? LeaveAlone(UserSettings s) =>
         s.ScreenshotTool == Platform.Screenshots.Greenshot ? Platform.Screenshots.GreenshotKeys.ToHashSet() : null;
 
-    public HotkeySet CurrentHotkeys() => HotkeySet.Build(S.PersonalProfile, CustomHotkeys.Load(Paths.HotkeysFile));
+    public HotkeySet CurrentHotkeys() => HotkeySet.Build(CustomHotkeys.Load(Paths.HotkeysFile));
 
     async Task ApplyHotkeysAsync(IntegrationContext ctx, SetupStep step, CancellationToken ct)
     {
@@ -417,42 +417,6 @@ public sealed class Engine
         return Task.CompletedTask;
     }, () => Components.BarExe == null ? L.T("steps.barMissing", ("tool", Bars.Tool.Name)) : null);
 
-    /// <summary>
-    /// Settings → Remove Zebar: it is ended, WinMarchy's widget pack and its startup entry go
-    /// (both in the restore point), and the program goes if WinMarchy installed it. A Zebar installed
-    /// some other way stays; the step says where it is.
-    /// </summary>
-    public List<SetupStep> RemoveZebarSteps()
-    {
-        RestorePoint? point = null;
-        return new List<SetupStep>
-        {
-            BeginStep("zebar-remove", L.T("jobs.zebarRemove"), p => point = p),
-            new(L.T("steps.zebarRemove"), (step, _) =>
-            {
-                foreach (var p in Process.GetProcessesByName("zebar"))
-                {
-                    using (p)
-                    {
-                        try { p.Kill(entireProcessTree: true); p.WaitForExit(3000); } catch { }
-                    }
-                }
-                ZebarPack.Uninstall(Context(point!, step));
-                var status = Components.Status(ToolCatalog.Zebar);
-                if (status.InstalledByWinMarchy)
-                {
-                    ToolInstaller.Remove(ToolCatalog.Zebar, _loc);
-                    step.Report(L.T("tools.removed", ("tool", ToolCatalog.Zebar.Name)));
-                }
-                else if (status.Path != null)
-                {
-                    step.Report(L.T("bar.zebarElsewhere", ("path", status.Path)));
-                }
-                return Task.CompletedTask;
-            }),
-        };
-    }
-
     // ------------------------------------------------------------------ extras
 
     /// <summary>Starship or Fastfetch as installed by WinMarchy (one found elsewhere is the user's own and stays untouched).</summary>
@@ -527,21 +491,38 @@ public sealed class Engine
     // ------------------------------------------------------------------ program updates
 
     /// <summary>
-    /// Settings → Updates → Update programs: every program WinMarchy installed itself, from its
-    /// vendor's latest release, if that is newer. Programs that run are ended for the swap and
-    /// started again; a terminal or agent that is open keeps its program until it is closed. Flow
-    /// Launcher updates itself. Only C:\WinMarchy\Tools changes, so no restore point.
+    /// Start → Update: the given programs (all WinMarchy can update if none are given), each from its
+    /// vendor's latest release if that is newer (<see cref="ToolUpdates.Updatable"/>). Programs that
+    /// run are ended for the swap and started again; a terminal or agent that is open keeps its
+    /// program until it is closed. Only C:\WinMarchy\Tools changes, so no restore point.
     /// </summary>
-    public List<SetupStep> ToolUpdateSteps()
+    public List<SetupStep> ToolUpdateSteps(IEnumerable<ToolDef>? only = null)
     {
-        var installed = AppState.Load().InstalledTools;
-        return ToolCatalog.All
-            .Where(t => installed.Contains(t.Id) && t.Kind is InstallKind.Zip or InstallKind.MsiExtract)
+        var tools = ToolUpdates.Updatable(AppState.Load());
+        if (only != null) tools = tools.Intersect(only).ToList();
+        return tools
             .Select(t => new SetupStep(L.T("steps.update", ("tool", t.Name)), (step, ct) => UpdateToolAsync(t, step, ct)))
             .ToList();
     }
 
-    async Task UpdateToolAsync(ToolDef tool, SetupStep step, CancellationToken ct)
+    /// <summary>
+    /// At every start of WinMarchy, GlazeWM as WinMarchy needs it: an official build found in place
+    /// of WinMarchy's is replaced by it (<see cref="GlazeForkSteps"/>), and with
+    /// <paramref name="updates"/> WinMarchy's build is updated when a newer release is out. Null when
+    /// there is nothing to do. Asks GitHub, so it belongs in the background.
+    /// </summary>
+    public async Task<(string Title, List<SetupStep> Steps)?> GlazeUpkeepAsync(bool updates, CancellationToken ct)
+    {
+        var glaze = ToolCatalog.GlazeWm;
+        var status = Components.Status(glaze);
+        if (!ToolCatalog.IsWinMarchyBuild(status.Path)) return (L.T("jobs.glazeBuild"), GlazeForkSteps());
+        if (!updates || await ToolInstaller.NewerReleaseAsync(glaze, status.Version, ct) is not { } release) return null;
+        return (L.T("jobs.glazeUpdate", ("version", release.Tag)),
+            new List<SetupStep> { new(L.T("steps.update", ("tool", glaze.Name)), (step, ct2) => UpdateToolAsync(glaze, step, ct2, release)) });
+    }
+
+    /// <param name="known">The latest release, if the caller looked it up already.</param>
+    async Task UpdateToolAsync(ToolDef tool, SetupStep step, CancellationToken ct, ReleaseInfo? known = null)
     {
         var status = Components.Status(tool);
         try
@@ -549,7 +530,10 @@ public sealed class Engine
             step.Report(L.T("tools.lookup", ("tool", tool.Name)));
             // An official GlazeWM in WinMarchy's folder (from older versions) is replaced by WinMarchy's build, whatever its version.
             bool replace = tool == ToolCatalog.GlazeWm && !ToolCatalog.IsWinMarchyBuild(status.Path);
-            if ((replace ? await ToolInstaller.LatestReleaseAsync(tool, ct) : await ToolInstaller.NewerReleaseAsync(tool, status.Version, ct)) is not { } release)
+            var release = known ?? await ToolInstaller.LatestReleaseAsync(tool, ct);
+            if (release == null) return;
+            ToolUpdates.Remember(tool, release.Tag);
+            if (!replace && ToolInstaller.IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), status.Version))
             {
                 step.Report(L.T("tools.upToDate", ("tool", tool.Name), ("version", status.Version ?? "?")));
                 return;
@@ -673,7 +657,6 @@ public sealed class Engine
         steps.AddRange(ThemeChanges(CurrentTheme, o.DownloadWallpapers, () => point!));
         steps.Add(new SetupStep(L.T("steps.bar"), (step, _) =>
         {
-            // A Zebar from older WinMarchy versions must not run next to YASB.
             Components.StopBar();
             if (S.ShowBar) Components.StartBar();
             AppState.Update(st => st.SetupDone = true);

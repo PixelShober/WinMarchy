@@ -11,9 +11,6 @@ public static class Bars
     /// <summary>The bar's process name (also used for GlazeWM's ignore rule).</summary>
     public const string Process = "yasb";
 
-    /// <summary>The bar of WinMarchy versions before YASB. Only its leftovers are taken care of (Settings).</summary>
-    public const string OldZebar = "zebar";
-
     /// <summary>Height of the bar in pixels. GlazeWM leaves this much room through its top gap.</summary>
     public const int Height = 26;
 

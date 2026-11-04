@@ -114,7 +114,7 @@ public sealed class BackupStore
 
     public void CaptureFile(RestorePoint point, string path) => Capture(point, "file", Path.GetFullPath(path), () => CaptureFileState(path));
 
-    /// <summary>A whole folder that WinMarchy owns (the Zebar pack): kept as a zip.</summary>
+    /// <summary>A whole folder that WinMarchy owns: kept as a zip.</summary>
     public void CaptureDirectory(RestorePoint point, string path) => Capture(point, "dir", Path.GetFullPath(path), () => CaptureDirectoryState(path));
 
     public void CaptureRegistry(RestorePoint point, string key, string name) =>

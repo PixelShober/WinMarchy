@@ -62,6 +62,11 @@ public sealed class ActionRunner
                 case ActionKind.Do: await DoAsync(action.Value, ct); break;
             }
         }
+        catch (WinMarchyException ex) when (ex.Code is "glazeNotConnected" or "glazeNoAnswer")
+        {
+            // GlazeWM hangs or restarts: the agent says so once and takes care of it; every key pressed meanwhile would only repeat it.
+            Log.Debug(L.T("actions.failed", ("action", text), ("detail", ex.Message)));
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Warn(L.T("actions.failed", ("action", text), ("detail", Net.Describe(ex))));

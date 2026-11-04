@@ -119,7 +119,7 @@ public class HotkeySetTests
     [Fact]
     public void Business_profile_has_no_problems()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
+        var set = HotkeySet.Build(new CustomHotkeys());
         Assert.Empty(set.Problems);
         Assert.Contains(set.Active, b => b.Keys == "Win+Enter" && b.Do == "app:terminal");
         Assert.Contains(set.Active, b => b.Keys == "Win+Shift+G" && b.Do == "app:stackfield");
@@ -131,24 +131,9 @@ public class HotkeySetTests
     }
 
     [Fact]
-    public void Personal_profile_replaces_business_bindings()
-    {
-        var set = HotkeySet.Build(personal: true, new CustomHotkeys());
-        Assert.DoesNotContain(set.Problems, p => p.Blocking);
-        Assert.Equal("web:https://chatgpt.com/", Assert.Single(set.Active, b => b.Keys == "Win+Shift+A").Do);
-        var music = Assert.Single(set.Active, b => b.Keys == "Win+Shift+M");
-        Assert.Equal("app:spotify", music.Do);
-        Assert.Equal("web:https://open.spotify.com/", music.Replaces?.Do);
-        // Win+Ctrl+T stays the theme menu; the personal script moved one key over.
-        Assert.Equal("do:theme-menu", Assert.Single(set.Active, b => b.Keys == "Win+Ctrl+T").Do);
-        // Win+Shift+G stays Stackfield with the personal profile too; Signal moved.
-        Assert.Equal("app:stackfield", Assert.Single(set.Active, b => b.Keys == "Win+Shift+G").Do);
-    }
-
-    [Fact]
     public void Workspace_bindings_expand_to_ten_workspaces()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
+        var set = HotkeySet.Build(new CustomHotkeys());
         Assert.Contains(set.Active, b => b.Keys == "Win+1" && b.Do == "wm:focus --workspace 1");
         Assert.Contains(set.Active, b => b.Keys == "Win+0" && b.Do == "wm:focus --workspace 10");
     }
@@ -161,7 +146,7 @@ public class HotkeySetTests
             Bindings = { new HotkeyBinding { Keys = "Win+Enter", Do = "app:editor" } },
             Disabled = { "Win+W" },
         };
-        var set = HotkeySet.Build(personal: false, custom);
+        var set = HotkeySet.Build(custom);
         Assert.Equal("app:editor", Assert.Single(set.Active, b => b.Keys == "Win+Enter").Do);
         Assert.DoesNotContain(set.Active, b => b.Keys == "Win+W");
     }
@@ -170,14 +155,14 @@ public class HotkeySetTests
     public void A_broken_custom_binding_blocks_applying()
     {
         var custom = new CustomHotkeys { Bindings = { new HotkeyBinding { Keys = "Win+L", Do = "app:terminal" } } };
-        Assert.True(HotkeySet.Build(false, custom).HasBlockingProblems);
+        Assert.True(HotkeySet.Build(custom).HasBlockingProblems);
     }
 }
 
 public class AhkScriptTests
 {
     static string Script(bool winAlone = true) =>
-        AhkScript.Generate(HotkeySet.Build(true, new CustomHotkeys()),
+        AhkScript.Generate(HotkeySet.Build(new CustomHotkeys()),
             new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", @"C:\WinMarchy\Tools\glazewm\cli\glazewm.exe", winAlone));
 
     [Fact]

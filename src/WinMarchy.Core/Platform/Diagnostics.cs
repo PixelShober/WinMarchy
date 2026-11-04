@@ -36,7 +36,7 @@ public static class Diagnostics
 
         Guard("Processes and tools", () =>
         {
-            foreach (var name in new[] { "glazewm", "yasb", "zebar", "AutoHotkey64", "AutoHotkey32", "AutoHotkey", "Flow.Launcher", "Greenshot", "WinMarchy" })
+            foreach (var name in new[] { "glazewm", "yasb", "AutoHotkey64", "AutoHotkey32", "AutoHotkey", "Flow.Launcher", "Greenshot", "WinMarchy" })
                 foreach (var p in Process.GetProcessesByName(name))
                 {
                     string started = "", path = "";
@@ -149,7 +149,7 @@ public static class Diagnostics
         });
         Guard("Bar", () =>
         {
-            Line($"shown: {s.ShowBar} · Zebar left over: {(Integrations.ZebarPack.IsInstalled(loc) ? "yes" : "no")}");
+            Line($"shown: {s.ShowBar}");
             Line($"YASB config: {(Integrations.YasbBar.IsInstalled(loc) ? "WinMarchy's" : File.Exists(loc.YasbConfig) ? "someone else's" : "missing")} · {loc.YasbDir}");
             // YASB writes what it did not like in its config into its own log.
             var yasbLog = Path.Combine(loc.YasbDir, "yasb.log");

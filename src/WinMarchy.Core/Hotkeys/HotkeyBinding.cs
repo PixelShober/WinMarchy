@@ -56,7 +56,7 @@ public sealed class HotkeyBinding
     [JsonIgnore]
     public LocalizedText? TemplateLabel { get; set; }
 
-    /// <summary>"business", "personal" or "custom".</summary>
+    /// <summary>"business" (WinMarchy's) or "custom" (the user's own).</summary>
     [JsonIgnore]
     public string Source { get; set; } = "custom";
 

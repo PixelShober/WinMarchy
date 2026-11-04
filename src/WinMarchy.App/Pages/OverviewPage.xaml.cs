@@ -9,13 +9,23 @@ namespace WinMarchy.App.Pages;
 
 public partial class OverviewPage : UserControl, IPage
 {
+    /// <summary>A lookup of the latest releases is under way.</summary>
+    bool _checking;
+    /// <summary>The programs with a newer release, for "Update all".</summary>
+    List<ToolDef> _newer = new();
+
     public OverviewPage()
     {
         InitializeComponent();
         AppModel.SettingsChanged += () => Dispatcher.InvokeAsync(Refresh);
+        ToolUpdates.Changed += () => Dispatcher.InvokeAsync(() => { if (IsVisible) RenderTools(); });
     }
 
-    public void OnShown() => Refresh();
+    public void OnShown()
+    {
+        Refresh();
+        _ = CheckVersionsAsync(ToolUpdates.MaxAge);
+    }
 
     void Refresh()
     {
@@ -33,15 +43,16 @@ public partial class OverviewPage : UserControl, IPage
         ToolTable.Children.Clear();
         ToolTable.RowDefinitions.Clear();
         ToolTable.ColumnDefinitions.Clear();
-        foreach (var w in new[] { "Auto", "*", "Auto" })
+        foreach (var w in new[] { "Auto", "*", "Auto", "Auto" })
             ToolTable.ColumnDefinitions.Add(new ColumnDefinition { Width = (GridLength)new GridLengthConverter().ConvertFromString(w)! });
 
+        var state = AppState.Load();
+        var updatable = ToolUpdates.Updatable(state);
+        var newer = new List<ToolDef>();
         int row = 0;
         foreach (var tool in ToolCatalog.All)
         {
             var status = AppModel.Engine.Components.Status(tool);
-            // Zebar only while it is still there; new setups have YASB.
-            if (tool == ToolCatalog.Zebar && !status.Installed) continue;
             ToolTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var name = new StackPanel { Margin = new Thickness(0, 0, 18, 12) };
@@ -59,6 +70,16 @@ public partial class OverviewPage : UserControl, IPage
             Grid.SetColumn(where, 1);
             ToolTable.Children.Add(where);
 
+            if (updatable.Contains(tool) && VersionCell(status, state) is { } version)
+            {
+                if (ToolUpdates.NewerTag(status, state) != null) newer.Add(tool);
+                version.Margin = new Thickness(0, 0, 12, 12);
+                version.VerticalAlignment = VerticalAlignment.Top;
+                Grid.SetRow(version, row);
+                Grid.SetColumn(version, 2);
+                ToolTable.Children.Add(version);
+            }
+
             var badge = status.Running ? UiKit.Badge(L.T("tools.running"), "ok")
                 : status.Installed ? UiKit.Badge(L.T("tools.installedBadge"), "muted")
                 : tool.Required ? UiKit.Badge(L.T("tools.missing"), "warn")
@@ -66,10 +87,80 @@ public partial class OverviewPage : UserControl, IPage
             badge.Margin = new Thickness(0, 2, 0, 12);
             badge.VerticalAlignment = VerticalAlignment.Top;
             Grid.SetRow(badge, row);
-            Grid.SetColumn(badge, 2);
+            Grid.SetColumn(badge, 3);
             ToolTable.Children.Add(badge);
             row++;
         }
+
+        _newer = newer;
+        UpdateAll.Content = L.T("overview.updateAll", ("count", newer.Count));
+        UpdateAll.Visibility = newer.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        UpdateAll.IsEnabled = !AppModel.Jobs.IsRunning("setup");
+        VersionsChecked.Text = _checking ? L.T("overview.versionsChecking")
+            : updatable.Count == 0 ? L.T("overview.versionsNone")
+            : ToolUpdates.CheckedUtc(state) is { } checkedUtc ? L.T("overview.versionsChecked", ("date", checkedUtc.ToLocalTime().ToString("g", L.Culture)))
+            : L.T("overview.versionsUnknown");
+    }
+
+    /// <summary>"Update to 1.2.3" for a newer release, "Current" for the latest one; null while it was never looked up.</summary>
+    FrameworkElement? VersionCell(ToolStatus status, AppState state)
+    {
+        if (ToolUpdates.NewerTag(status, state) is { } tag)
+        {
+            var button = UiKit.IconTextButton("download", L.T("overview.updateTo", ("version", tag)));
+            button.ToolTip = L.T("overview.updateToHint", ("tool", status.Tool.Name));
+            button.IsEnabled = !AppModel.Jobs.IsRunning("setup");
+            button.Click += (_, _) => RunUpdates(new[] { status.Tool }, L.T("jobs.toolUpdate", ("tool", status.Tool.Name)));
+            return button;
+        }
+        if (!ToolUpdates.IsCurrent(status, state)) return null;
+        var current = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+        var check = new Icon { Kind = "check", Size = 13, VerticalAlignment = VerticalAlignment.Center };
+        check.SetResourceReference(Icon.ForegroundProperty, "Ok");
+        current.Children.Add(check);
+        current.Children.Add(UiKit.Text(L.T("overview.current"), "Small", new Thickness(5, 0, 0, 0)));
+        return current;
+    }
+
+    /// <summary>Looks up the programs' latest releases unless that was done within <paramref name="maxAge"/>.</summary>
+    async Task CheckVersionsAsync(TimeSpan maxAge)
+    {
+        if (_checking) return;
+        _checking = true;
+        RenderTools();
+        try
+        {
+            await ToolUpdates.RefreshAsync(maxAge, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(Net.Describe(ex));
+        }
+        finally
+        {
+            _checking = false;
+            RenderTools();
+        }
+    }
+
+    void OnUpdateAll(object sender, RoutedEventArgs e) => RunUpdates(_newer, L.T("jobs.toolUpdates"));
+
+    /// <summary>Updates the programs one after the other; running ones are ended for the swap and started again.</summary>
+    void RunUpdates(IEnumerable<ToolDef> tools, string title)
+    {
+        var steps = AppModel.Engine.ToolUpdateSteps(tools);
+        if (steps.Count == 0) return;
+        var job = AppModel.Run("tool-updates", "setup", title, steps, async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error, j.State == JobState.Done ? L.T("overview.updatesDone") : j.Status);
+                RenderTools();
+            });
+        });
+        if (job == null) return;
+        UpdateJob.Follow(job.Id);
+        RenderTools();
     }
 
     static string Shorten(string path)
@@ -108,9 +199,10 @@ public partial class OverviewPage : UserControl, IPage
         }
     }
 
-    void OnRefresh(object sender, RoutedEventArgs e)
+    async void OnRefresh(object sender, RoutedEventArgs e)
     {
         Refresh();
+        await CheckVersionsAsync(TimeSpan.Zero);
         Toasts.Show(ToastKind.Ok, L.T("overview.refreshed"));
     }
 

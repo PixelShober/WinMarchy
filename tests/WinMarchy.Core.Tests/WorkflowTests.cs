@@ -11,12 +11,12 @@ public class FavoriteTests
     [Fact]
     public void There_are_no_favourites_until_the_user_stars_some()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
+        var set = HotkeySet.Build(new CustomHotkeys());
         Assert.DoesNotContain(set.Active, b => b.Favorite);
         Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Optional);
 
         var custom = new CustomHotkeys { Favorites = { ["win+shift+backspace"] = true, ["Win+W"] = false } };
-        set = HotkeySet.Build(personal: false, custom);
+        set = HotkeySet.Build(custom);
         Assert.True(Assert.Single(set.Active, b => b.Keys == "Win+Shift+Backspace").Favorite);
         Assert.False(Assert.Single(set.Active, b => b.Keys == "Win+W").Favorite);
     }
@@ -29,13 +29,13 @@ public class FavoriteTests
         new CustomHotkeys { Favorites = { ["Win+J"] = true } }.Save(file);
         var back = CustomHotkeys.Load(file);
         Assert.True(back.Favorites["Win+J"]);
-        Assert.True(Assert.Single(HotkeySet.Build(false, back).Active, b => b.Keys == "Win+J").Favorite);
+        Assert.True(Assert.Single(HotkeySet.Build(back).Active, b => b.Keys == "Win+J").Favorite);
     }
 
     [Fact]
     public void The_business_profile_follows_the_wish_list()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
+        var set = HotkeySet.Build(new CustomHotkeys());
         Assert.Empty(set.Problems);
         // Gone: resizing, transparency, the silent move, monitors by direction, layout back, Teams, Copilot.
         Assert.DoesNotContain(set.Active, b => b.Do.StartsWith("wm:resize") || b.Do is "do:transparency-toggle" or "do:layout-prev" or "app:teams");
@@ -61,7 +61,7 @@ public class FavoriteTests
     [Fact]
     public void Greenshot_keeps_its_print_keys()
     {
-        var set = HotkeySet.Build(personal: false, new CustomHotkeys());
+        var set = HotkeySet.Build(new CustomHotkeys());
         var ctx = new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", "", true);
         Assert.Contains("Hotkey(\"$PrintScreen\"", AhkScript.Generate(set, ctx));
         var greenshot = AhkScript.Generate(set, ctx with { LeaveAlone = Screenshots.GreenshotKeys.ToHashSet() });

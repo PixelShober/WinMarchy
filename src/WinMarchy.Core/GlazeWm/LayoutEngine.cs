@@ -189,7 +189,8 @@ public sealed class LayoutEngine
     /// <summary>The next layout of Win+Ctrl+J: Dwindle → Columns → Scrolling → Dwindle.</summary>
     public static LayoutMode Next(LayoutMode mode) => Cycle[(Array.IndexOf(Cycle, mode) + 1) % Cycle.Length];
 
-    int Visible => Math.Clamp(_settings().ScrollingColumns, 1, 3);
+    /// <summary>Columns side by side on the screen in the scrolling layout.</summary>
+    const int Visible = 2;
 
     int _holding;
 
@@ -686,7 +687,8 @@ public sealed class LayoutEngine
     /// <summary>
     /// Win+Left/Right on a scrolling workspace. It starts from the window that has the focus in
     /// GlazeWM (<paramref name="focusedId"/>), not from the remembered column: a click or a skipped
-    /// event may have moved it. Caller holds the gate.
+    /// event may have moved it. False when there is no column that way (the caller goes on to the
+    /// next screen) or the workspace does not scroll. Caller holds the gate.
     /// </summary>
     internal async Task<bool> ScrollFocusLockedAsync(string workspace, string direction, string? focusedId, CancellationToken ct)
     {
@@ -696,20 +698,24 @@ public sealed class LayoutEngine
         if (next < 0 || next >= strip.Ids.Count)
         {
             Log.Trace($"scrolling {workspace}: column {strip.Focus + 1} of {strip.Ids.Count} is the last one {direction}", "layout");
-            return true;
+            return false;
         }
         // Named, or the arrangement would take the focus back to the window GlazeWM still focuses.
         await ArrangeLockedAsync(workspace, strip.Ids[next], ct);
         return true;
     }
 
-    /// <summary>Win+Shift+Left/Right on a scrolling workspace: the column changes places. Caller holds the gate.</summary>
+    /// <summary>
+    /// Win+Shift+Left/Right on a scrolling workspace: the column changes places. False at the end of
+    /// the strip (the caller takes the column to the next screen) or if the workspace does not scroll.
+    /// Caller holds the gate.
+    /// </summary>
     internal async Task<bool> ScrollSwapLockedAsync(string workspace, string direction, string? focusedId, CancellationToken ct)
     {
         if (direction is not ("left" or "right") || await EnsureStripAsync(workspace, ct) is not { } strip) return false;
         if (focusedId != null && strip.Ids.IndexOf(focusedId) is var at and >= 0) strip.Focus = at;
         var other = strip.Focus + (direction == "left" ? -1 : 1);
-        if (other < 0 || other >= strip.Ids.Count) return true;
+        if (other < 0 || other >= strip.Ids.Count) return false;
         var moving = strip.Ids[strip.Focus];
         (strip.Ids[strip.Focus], strip.Ids[other]) = (strip.Ids[other], moving);
         await ArrangeLockedAsync(workspace, moving, ct);

@@ -219,7 +219,7 @@ public sealed class Components
     /// <summary>Starts the bar. False if it is not installed.</summary>
     public bool StartBar() => BarExe is { } exe && Platform.AppLauncher.Start(exe);
 
-    /// <summary>Ends the bar, and a Zebar left over from older WinMarchy versions with it.</summary>
+    /// <summary>Ends the bar.</summary>
     public void StopBar()
     {
         // YASB first through its own command line, so it can let go of the tray icons; whatever still runs is ended.
@@ -235,14 +235,11 @@ public sealed class Components
                 Log.Debug("yasbc stop: " + ex.Message);
             }
         }
-        foreach (var name in new[] { Bars.Process, Bars.OldZebar })
+        foreach (var p in Process.GetProcessesByName(Bars.Process))
         {
-            foreach (var p in Process.GetProcessesByName(name))
+            using (p)
             {
-                using (p)
-                {
-                    try { p.Kill(entireProcessTree: true); } catch { }
-                }
+                try { p.Kill(entireProcessTree: true); } catch { }
             }
         }
     }

@@ -75,6 +75,8 @@ public sealed class MenuWindow : Window
     /// keys move; the row that ends up under a resting mouse must not take the selection back.
     /// </summary>
     System.Drawing.Point _mouse;
+    /// <summary>The work area the window covers, in pixels.</summary>
+    System.Drawing.Rectangle? _area;
 
     internal MenuWindow()
     {
@@ -153,6 +155,11 @@ public sealed class MenuWindow : Window
         Deactivated += (_, _) => Dismiss();
         PreviewKeyDown += OnKey;
         SizeChanged += (_, _) => _scroll.MaxHeight = Math.Max(200, ActualHeight * 0.66);
+        // A scaling change resizes the window by the ratio of the two scalings; it has to cover the work area again.
+        DpiChanged += (_, _) => Dispatcher.InvokeAsync(() =>
+        {
+            if (_area is { } a && !_closing) Placement.MovePixels(this, a.Left, a.Top, a.Width, a.Height, activate: false);
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     static ControlTemplate FilterTemplate()
@@ -167,11 +174,21 @@ public sealed class MenuWindow : Window
         return t;
     }
 
+    /// <summary>
+    /// Covers the work area of the screen with the mouse; the card sits in its middle. The window is
+    /// moved there before it shows: a new window starts on some other screen, and with another
+    /// scaling there, Windows would shrink it on the way over and leave the card off-centre.
+    /// </summary>
     void Present()
     {
         var area = Placement.CursorWorkArea();
+        _area = area;
         _mouse = System.Windows.Forms.Cursor.Position;
-        if (!IsVisible) Show();
+        if (!IsVisible)
+        {
+            Placement.MovePixels(this, area.Left, area.Top, area.Width, area.Height, activate: false);
+            Show();
+        }
         Placement.MovePixels(this, area.Left, area.Top, area.Width, area.Height, activate: true);
         Placement.ForceForeground(this);
         _filter.Focus();
@@ -194,7 +211,8 @@ public sealed class MenuWindow : Window
         _mode = Mode.Menu;
         _menu = menu;
         _card.Width = 360;
-        _all = menu == MenuModel.Root ? MenuModel.Entries(menu).Concat(FavoriteRows(withHeader: true)).ToList() : MenuModel.Entries(menu);
+        // Favourites are found through the search, not listed here.
+        _all = MenuModel.Entries(menu);
         SetTitle(MenuModel.Title(menu));
         Reset(index);
         if (menu == MenuModel.Root)
@@ -495,7 +513,7 @@ public sealed class MenuWindow : Window
     /// <summary>The main menu's search: starred shortcuts first, then programs from the Start menu, then WinMarchy's own entries.</summary>
     static List<MenuEntry> SearchEverything(string q, Func<MenuEntry, bool> matches)
     {
-        var favorites = FavoriteRows(withHeader: false).Where(matches).ToList();
+        var favorites = FavoriteRows().Where(matches).ToList();
         var apps = Core.Platform.StartApps.Search(Core.Platform.StartApps.Current, q)
             .Select(a => new MenuEntry("grid", a.Name) { Run = () => Core.Platform.StartApps.Launch(a) }).ToList();
         var own = MenuModel.Searchable().Where(matches).ToList();
@@ -517,15 +535,13 @@ public sealed class MenuWindow : Window
     /// The starred shortcuts as rows that run them, with their keys on the right. "Win+1 … 0" and
     /// the like are left out: they do one thing per key.
     /// </summary>
-    static List<MenuEntry> FavoriteRows(bool withHeader)
+    static List<MenuEntry> FavoriteRows()
     {
         var layout = KeyboardLayouts.Current;
-        var rows = AppModel.Engine.CurrentHotkeys().Active
+        return AppModel.Engine.CurrentHotkeys().Active
             .Where(b => b.Favorite && b.Template == null)
             .Select(b => new MenuEntry("star", b.Describe()) { Action = b.Do, Keys = b.Combo?.Display(layout) ?? b.Keys })
             .ToList();
-        if (withHeader && rows.Count > 0) rows.Insert(0, MenuEntry.Section(L.T("menu.sectionFavorites")));
-        return rows;
     }
 
     /// <summary>The next row that can be selected from <paramref name="from"/> on (headers are skipped).</summary>

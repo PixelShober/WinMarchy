@@ -53,18 +53,26 @@
     "notSetUpLegacy": "Winarchy Lite ist auf diesem Rechner schon im Einsatz. Die Einrichtung übernimmt dessen Themes und Hintergründe, beendet das alte Tastenkürzel-Skript und entfernt seinen Autostart. Alles davon lässt sich zurückspielen.",
     "setupNow": "Jetzt einrichten",
     "programs": "Programme",
-    "programsHint": "Fehlt etwas? Unter Einrichtung lädt WinMarchy es direkt vom Hersteller.",
+    "programsHint": "WinMarchy sucht alle sechs Stunden nach neuen Versionen der Programme, die es selbst installiert hat. Flow Launcher aktualisiert sich selbst. Fehlt etwas, lädt es die Einrichtung direkt vom Hersteller.",
     "theme": "Theme",
     "changeTheme": "Ändern",
     "workspace": "Workspace",
     "workspaceHint": "Win+Strg+J wechselt das Layout dieses Workspace, Win+K zeigt alle Kürzel.",
-    "glazeHint": "Ohne GlazeWM gibt es kein Tiling und keine Workspaces. Win+Shift+Alt+R startet es."
+    "glazeHint": "Ohne GlazeWM gibt es kein Tiling und keine Workspaces. Win+Shift+Alt+R startet es.",
+    "updateAll": "Alle aktualisieren ({count})",
+    "versionsChecking": "Sucht nach neuen Versionen …",
+    "versionsNone": "WinMarchy hat noch keine Programme selbst installiert, also gibt es nichts zu aktualisieren.",
+    "versionsChecked": "Versionen zuletzt geprüft: {date}",
+    "versionsUnknown": "Neue Versionen wurden noch nicht gesucht.",
+    "updateTo": "Auf {version}",
+    "updateToHint": "{tool} beendet sich kurz, wird ausgetauscht und startet wieder.",
+    "current": "Aktuell",
+    "updatesDone": "Programme sind aktualisiert."
   },
 
   "tools": {
     "roles": {
       "glazewm": "Fenster kacheln",
-      "zebar": "Leiste oben (früher)",
       "autohotkey": "Tastenkürzel",
       "flow": "Programme suchen",
       "pwsh": "Shell",
@@ -95,7 +103,8 @@
     "upToDate": "{tool} ist aktuell ({version}).",
     "updateFailed": "{tool} ließ sich nicht aktualisieren: {detail}",
     "updateInUse": "{tool} ist eingeschaltet und von Explorer geladen. Zum Aktualisieren unter Einstellungen ausschalten, abmelden und wieder einschalten.",
-    "updateRunning": "{tool} läuft gerade und bleibt, wie es ist. Schließe es und aktualisiere noch einmal."
+    "updateRunning": "{tool} läuft gerade und bleibt, wie es ist. Schließe es und aktualisiere noch einmal.",
+    "lookupFailed": "Die aktuelle Version von {tool} ließ sich nicht abfragen: {detail}"
   },
 
   "setup": {
@@ -373,7 +382,7 @@
   "tiling": {
     "title": "Tiling",
     "subtitle": "Wie GlazeWM deine Fenster anordnet. Jeder Bildschirm hat sein Layout, und jeder Workspace darauf folgt ihm.",
-    "scrollingNote": "Scrolling stellt die Fenster als Spalten in eine Reihe, die breiter sein darf als der Bildschirm. Win+Pfeil links und rechts scrollt, Win+Umschalt+Pfeil verschiebt die Spalte. Spalten außerhalb des Bildschirms warten unsichtbar, bis die Reihe zu ihnen rollt. GlazeWM kann das nicht selbst, darum setzt WinMarchy diese Fenster (sie schweben dafür).",
+    "scrollingNote": "Scrolling stellt die Fenster als Spalten in eine Reihe, die breiter sein darf als der Bildschirm; zwei Spalten sind zu sehen. Win+Pfeil links und rechts scrollt, Win+Umschalt+Pfeil verschiebt die Spalte, am Ende der Reihe auf den Bildschirm daneben. Spalten außerhalb des Bildschirms warten unsichtbar, bis die Reihe zu ihnen rollt. GlazeWM kann das nicht selbst, darum setzt WinMarchy diese Fenster (sie schweben dafür).",
     "look": "Aussehen",
     "innerGap": "Abstand zwischen Fenstern",
     "outerGap": "Abstand zum Rand",
@@ -391,17 +400,14 @@
     "applied": "GlazeWM hat die neuen Einstellungen.",
     "splitNext": "Die Teilung gilt ab dem nächsten Fenster.",
     "allTaken": "Alle {count} Workspaces sind belegt.",
-    "scrollingColumns": "Scrolling zeigt",
-    "columnsCount": "{count} nebeneinander",
     "barModules": "Die Leiste zeigt",
     "monitors": "Bildschirme, Layouts und Workspaces",
     "monitorsText": "Wie im Omarchy-Plugin Screens: Jeder Bildschirm bekommt sein Layout und feste Workspaces. Win+3 öffnet Workspace 3 immer auf seinem Bildschirm und in dessen Layout, und ein Arbeitsmodus nimmt dort nur Workspaces dieses Bildschirms.",
     "monitorsHint": "Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um. Seine Zeile bleibt hier stehen, bis du sie leerst, damit die Aufteilung am Dock wieder passt.",
-    "monitorsSplit": "Gleichmäßig aufteilen",
-    "monitorsInvalid": "Bildschirm {number}: nur Workspace-Nummern von 1 bis 10, etwa 1-5 oder 6, 7.",
-    "monitorsTwice": "Workspace {workspace} steht bei Bildschirm {a} und {b}. Jeder Workspace gehört zu einem Bildschirm.",
+    "monitorsSplit": "Neu aufteilen",
+    "monitorsInvalid": "{name}: nur Workspace-Nummern von 1 bis 10, etwa 1-5 oder 6, 7.",
+    "monitorsTwice": "Workspace {workspace} steht bei {a} und bei {b}. Jeder Workspace gehört zu einem Bildschirm.",
     "monitorName": "Bildschirm {number}",
-    "monitorPrimary": "Hauptbildschirm · {width} × {height}",
     "monitorSize": "{width} × {height}",
     "monitorWorkspaces": "Workspaces",
     "monitorWorkspacesHint": "Zum Beispiel 1-5 oder 6, 7, 8. Leer: Dieser Bildschirm nimmt, was frei ist.",
@@ -425,19 +431,23 @@
     "workModesHint": "Ein Programm pro Bildschirm. Fehlt ein Bildschirm, kommt sein Programm auf den letzten, der angeschlossen ist. An einem einzelnen Bildschirm teilen sich alle Programme des Modus den Platz, im Dwindle-Layout. Der Browser nimmt Adressen mit und öffnet sie als Tabs eines neuen Fensters: app:browser https://seite-eins.de https://seite-zwei.de",
     "workModeName": "Name",
     "workModeNameHint": "Steht in der Meldung beim Wechseln. Leer: Arbeitsmodus 1, 2 oder 3.",
-    "workModeApp": "Arbeitsmodus {mode}, Bildschirm {number}",
+    "workModeApp": "Arbeitsmodus {mode}, {name}",
     "workModeAppHint": "Was hier startet, geschrieben wie die Aktion eines Tastenkürzels. Leer: nichts.",
     "workModeNoKeys": "kein Tastenkürzel",
-    "workModeInvalid": "{mode}, Bildschirm {number}: {detail}",
+    "workModeInvalid": "{mode}, {name}: {detail}",
     "layouts": "Layouts",
     "layoutsText": "Welches Layout ein Bildschirm hat, stellst du unten bei den Bildschirmen ein. Win+Strg+J schaltet den Bildschirm, auf dem du gerade bist, weiter: Dwindle, Spalten, Scrolling.",
     "floatingNote": "Schweben ist kein Layout: Win+T löst ein einzelnes Fenster heraus, es schwebt dann über den Kacheln, und nichts deckt es zu. Noch einmal Win+T, und es kommt zurück ins Layout des Bildschirms. Win+O legt es klein in die rechte untere Ecke.",
-    "monitorLayout": "Bildschirm {number}: {layout}",
+    "monitorLayout": "{name}: {layout}",
     "layoutsFailed": "Die Layouts der Bildschirme ließen sich nicht anwenden: {detail}",
     "unsavedTitle": "Änderungen übernehmen?",
     "unsavedText": "Auf der Tiling-Seite ist etwas geändert, aber noch nicht übernommen.",
     "unsavedStay": "Hierbleiben",
-    "unsavedDiscard": "Verwerfen"
+    "unsavedDiscard": "Verwerfen",
+    "mainScreen": "Hauptbildschirm",
+    "mainScreenHint": "Bekommt Workspace 1 und 2. Wechselst du ihn, teilen sich die anderen Bildschirme den Rest gleichmäßig.",
+    "monitorsSuggested": "Noch ist nichts festgelegt, das hier ist der Vorschlag: der Hauptbildschirm 1 und 2, die anderen den Rest. Mit „Übernehmen“ gilt er. Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt.",
+    "monitorWorkspacesOf": "Workspaces von {name}"
   },
 
   "layouts": {
@@ -500,8 +510,6 @@
   "settings": {
     "title": "Einstellungen",
     "subtitle": "Gespeichert in {path}",
-    "appearance": "Darstellung",
-    "appearanceText": "Gilt für dieses Fenster. Die Akzentfarbe kommt vom aktiven Theme.",
     "language": "Sprache",
     "languages": {
       "auto": "Wie Windows",
@@ -518,7 +526,7 @@
     "prerelease": "Testversion, aktualisiert sich nicht selbst",
     "checkUpdates": "Jetzt prüfen",
     "autoUpdate": "Automatisch aktualisieren",
-    "autoUpdateHint": "WinMarchy lädt neue Versionen von GitHub, prüft sie und tauscht sich aus, wenn das Fenster zu ist.",
+    "autoUpdateHint": "WinMarchy lädt neue Versionen von GitHub, prüft sie und tauscht sich aus, wenn das Fenster zu ist. GlazeWM wird beim Start von WinMarchy ebenfalls aktualisiert.",
     "paths": "Pfade",
     "choose": "Auswählen …",
     "filesPath": "Einstellungsdatei von Files",
@@ -540,7 +548,7 @@
     "filesDefaultMissing": "Files ist nicht installiert. Es ist kostenlos im Microsoft Store und unter files.community.",
     "filesDefaultOn": "Files ist jetzt der Standard-Dateimanager.",
     "filesDefaultOff": "Der Explorer ist wieder der Standard-Dateimanager.",
-    "browsers": "Browser und private Programme",
+    "browsers": "Browser",
     "browsersText": "Zwei Kürzel, zwei Browser: etwa Edge für die Arbeit und Firefox für den Rest. Web-Apps wie Spotify öffnen im ersten, wenn er auf Chromium beruht, sonst in Edge.",
     "browser1": "Win+Umschalt+B und Web-Apps",
     "browser2": "Win+Umschalt+Eingabe",
@@ -561,12 +569,6 @@
     "glazeInstalled": "Installiert: WinMarchy-Build, Version {version}.",
     "glazeMissing": "Noch kein GlazeWM installiert.",
     "glazeDone": "GlazeWM läuft jetzt als WinMarchy-Build.",
-    "zebarStillThere": "Ältere WinMarchy-Versionen hatten Zebar als Leiste. Es ist noch auf dem Rechner und kann weg, die Leiste ist jetzt YASB.",
-    "zebarElsewhere": "Zebar ist außerhalb von WinMarchy installiert ({path}). WinMarchy nimmt nur seine eigene Leiste heraus; das Programm selbst entfernst du unter Windows-Einstellungen → Apps.",
-    "zebarRemove": "Zebar entfernen",
-    "zebarRemoveTitle": "Zebar entfernen?",
-    "zebarRemoveConfirm": "WinMarchy beendet Zebar, nimmt seine Leiste aus Zebars Autostart und löscht Zebar aus C:\\WinMarchy\\Tools. Die Dateien der Leiste liegen danach in einem Wiederherstellungspunkt.",
-    "zebarRemoved": "Zebar ist entfernt.",
     "explorerBlurText": "Unschärfe hinter Explorer, eingefärbt mit dem Theme. Explorer lädt dafür eine DLL; WinMarchy trägt sie nur für dein Konto ein, ohne Administratorrechte, und Ausschalten macht es rückgängig. Experimentell: Ein Windows-Update kann sie stören, und manche Firmen lassen Explorer-Erweiterungen nur zu, wenn sie für alle Benutzer eingetragen sind.",
     "explorerBlurSwitch": "ExplorerBlurMica einschalten",
     "explorerBlurTitle": "ExplorerBlurMica einschalten?",
@@ -575,15 +577,9 @@
     "explorerBlurOffHint": "Aus. Beim Einschalten lädt WinMarchy ExplorerBlurMica, falls es noch fehlt.",
     "explorerBlurOn": "ExplorerBlurMica ist an. Öffne ein neues Explorer-Fenster.",
     "explorerBlurOff": "ExplorerBlurMica ist aus. Ganz weg ist es nach der nächsten Anmeldung.",
-    "toolUpdates": "Programme aktualisieren",
-    "toolUpdatesHint": "GlazeWM, YASB, AutoHotkey und die Extras, die WinMarchy installiert hat, kommen in der neuesten Version vom Hersteller. Laufende Programme werden dafür kurz beendet. Flow Launcher aktualisiert sich selbst.",
-    "toolUpdatesNone": "WinMarchy hat noch keine Programme installiert.",
-    "toolUpdatesDone": "Programme sind auf dem neuesten Stand.",
     "glazeOfficialFound": "Gefunden: ein offizielles Release ({path}). Ihm fehlt, was WinMarchy braucht. Der Knopf installiert den WinMarchy-Build nach C:\\WinMarchy\\Tools und startet ihn an seiner Stelle. Das offizielle bleibt installiert, läuft aber nicht mehr.",
     "glazeForkInstall": "WinMarchy-Build installieren",
-    "zebar": "Zebar von früher",
-    "personal": "Private Kürzel dazu",
-    "personalHint": "Spotify, WhatsApp, Telegram und deine Kürzel aus der bindings.lua, zusätzlich zu den Business-Kürzeln. Wo eins eine Business-Taste belegt, gewinnt es. Gilt sofort."
+    "languageText": "Sprache dieses Fensters, des WinMarchy-Menüs und der Meldungen."
   },
 
   "log": {
@@ -610,9 +606,11 @@
     "diagnoseFile": "diagnose",
     "diagnoseWritten": "Diagnosebericht geschrieben: {path}",
     "verbose": "Ausführlich protokollieren",
-    "verboseHint": "Für die Fehlersuche: jedes Tastenkürzel, jeder GlazeWM-Befehl und was Flow, Taskleiste, Scratchpad, Scrolling und die Arbeitsmodi tun. Zu sehen unter „Alles“. Danach wieder ausschalten, es wird viel.",
+    "verboseHint": "Für die Fehlersuche: jedes Tastenkürzel, jeder GlazeWM-Befehl und was Flow, Taskleiste, Scratchpad, Scrolling und die Arbeitsmodi tun. Zu sehen unter „Alles“. Beim Ausschalten kommt die Protokolldatei von heute in die Zwischenablage, und ihr Ordner geht auf.",
     "verboseOn": "Ausführliches Protokoll ist an.",
-    "verboseOff": "Ausführliches Protokoll ist aus."
+    "verboseOff": "Ausführliches Protokoll ist aus.",
+    "verboseOffCopied": "Ausführliches Protokoll ist aus. {file} liegt in der Zwischenablage, der Ordner ist geöffnet.",
+    "verboseOffOpened": "Ausführliches Protokoll ist aus. Der Ordner mit {file} ist geöffnet; in die Zwischenablage ging die Datei nicht."
   },
 
   "jobs": {
@@ -648,10 +646,11 @@
     "hotkeysImport": "Tastenkürzel importieren",
     "screenshots": "Bildschirmfotos umstellen",
     "glazeBuild": "WinMarchy-Build von GlazeWM installieren",
-    "zebarRemove": "Zebar entfernen",
     "explorerBlurOn": "ExplorerBlurMica einschalten",
     "explorerBlurOff": "ExplorerBlurMica ausschalten",
-    "toolUpdates": "Programme aktualisieren"
+    "toolUpdates": "Programme aktualisieren",
+    "glazeUpdate": "GlazeWM auf {version} aktualisieren",
+    "toolUpdate": "{tool} aktualisieren"
   },
 
   "steps": {
@@ -696,7 +695,6 @@
     "fastfetch": "Fastfetch einfärben",
     "shellTheme": "Starship und Fastfetch einfärben",
     "notSetUp": "nicht eingerichtet",
-    "zebarRemove": "Zebar entfernen",
     "update": "{tool} aktualisieren",
     "greenshot": "Greenshot für Bildschirmfotos einrichten",
     "greenshotFixed": "Greenshot zurückstellen",
@@ -824,8 +822,7 @@
       "system": "Einstellungen",
       "about": "Über diesen PC",
       "taskManager": "Task-Manager"
-    },
-    "zebarElsewhere": "Zebar hat nicht WinMarchy installiert, es bleibt: {path}. Entfernen kannst du es unter Windows-Einstellungen → Apps."
+    }
   },
 
   "actions": {
@@ -890,7 +887,9 @@
     "glazeCrashed": "GlazeWM ist abgestürzt (Code {code}), WinMarchy startet es neu. Sein Fehlerprotokoll sagt: {detail}",
     "glazeRestartingCrash": "GlazeWM ist abgestürzt und startet neu. Deine Fenster bleiben offen.",
     "glazeCrashesTooOften": "GlazeWM ist in zehn Minuten dreimal abgestürzt (zuletzt Code {code}). WinMarchy startet es nicht mehr von selbst; „GlazeWM neu laden“ startet es wieder.",
-    "glazeBusyAfterWake": "GlazeWM antwortet gerade nicht. Der Rechner ist eben aufgewacht, wurde entsperrt oder hat seine Bildschirme geändert; WinMarchy wartet noch bis zu einer Minute, bevor es GlazeWM neu startet."
+    "glazeBusyAfterWake": "GlazeWM antwortet gerade nicht. Der Rechner ist eben aufgewacht, wurde entsperrt oder hat seine Bildschirme geändert; WinMarchy wartet noch bis zu einer Minute, bevor es GlazeWM neu startet.",
+    "glazeUpToDate": "GlazeWM läuft jetzt in Version {version}.",
+    "glazeUpkeepFailed": "GlazeWM ließ sich beim Start nicht aktualisieren: {detail}"
   },
 
   "tray": {
@@ -1173,5 +1172,9 @@
     "skipped": "Arbeitsmodus „{name}“ lässt ein Programm aus: {detail}",
     "notAProgram": "„{action}“ öffnet kein Fenster. Ein Arbeitsmodus startet Programme: app:, web:, run: oder open:.",
     "unknown": "Einen Arbeitsmodus „{mode}“ gibt es nicht, nur 1 bis 3."
+  },
+
+  "screens": {
+    "builtIn": "Laptop-Bildschirm"
   }
 }

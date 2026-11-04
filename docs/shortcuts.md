@@ -4,16 +4,13 @@ Omarchy bindet fast alles an Super. Unter Windows übernimmt die Win-Taste diese
 
 Tasten mit Satzzeichen sind nach ihrer **Position** benannt, wie Omarchy sie über den Keycode bindet. `Win+Minus` ist die Taste rechts neben der 0, auf einer deutschen Tastatur also `ß`. Die Finger machen unter Linux und Windows dasselbe.
 
-Zwei Profile:
+Die Kürzel kommen aus einem Profil für die Arbeit: Statt HEY, Signal und Obsidian öffnet es Outlook, OneNote, Word und Stackfield. Fehlt ein Programm, nimmt WinMarchy die Web-Version im eigenen Browserfenster.
 
-- **Business** ist immer aktiv. Statt HEY, Signal und Obsidian öffnet es Outlook, OneNote, Word und Stackfield. Fehlt ein Programm, nimmt WinMarchy die Web-Version im eigenen Browserfenster.
-- **Persönlich** schaltest du unter **Einstellungen → Browser und private Programme** dazu („Private Kürzel dazu“). Es bringt Omarchys private Web-Apps und deine Kürzel aus der `bindings.lua`. Wo es eine Business-Taste belegt, gewinnt das persönliche Kürzel; die Liste zeigt das als „ersetzt …“ an.
-
-Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotkeys.json`, schlagen beide Profile und gelten, sobald du sie speicherst. Updates lassen die Datei in Ruhe. **Exportieren** nimmt sie auf einen anderen Rechner mit.
+Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotkeys.json`, schlagen die mitgelieferten Kürzel auf derselben Taste und gelten, sobald du sie speicherst. Updates lassen die Datei in Ruhe. **Exportieren** nimmt sie auf einen anderen Rechner mit.
 
 **Importieren** liest einen WinMarchy-Export, Omarchys `bindings.lua` oder Hyprlands `bindings.conf`. Danach zeigt WinMarchy jedes Kürzel aus der Datei mit dem, was daraus würde, und du hakst an, was du übernimmst. Vorausgewählt ist, was neu ist und keine belegte Taste nimmt. Linux-Befehle übersetzt WinMarchy, wo Windows dasselbe kann: Web-Apps, Spotify-Links und bekannte Programme. Was kein Gegenstück hat, steht ausgegraut dabei. Vor dem Übernehmen legt WinMarchy einen Sicherungspunkt an.
 
-**Favoriten:** Am Anfang gibt es keine. Mit dem Stern auf der Seite **Tastenkürzel** markierst du welche; `Win+K` zeigt sie dann ganz oben, darunter alle anderen und zuletzt den Abschnitt „Optional“. Im WinMarchy-Menü (`Win+Space`) stehen sie unter den Menüpunkten, und die Suche dort findet sie zuerst. Eigene Kürzel hat die Seite **Tastenkürzel** in einem eigenen Tab. Was in den Tabellen unten *optional* heißt, steht dort. Die Sterne liegen mit den eigenen Kürzeln in `hotkeys.json` und überstehen Updates.
+**Favoriten:** Am Anfang gibt es keine. Mit dem Stern auf der Seite **Tastenkürzel** markierst du welche; `Win+K` zeigt sie dann ganz oben, darunter alle anderen und zuletzt den Abschnitt „Optional“. Im WinMarchy-Menü (`Win+Space`) findet die Suche sie zuerst; in der Liste des Menüs stehen sie nicht. Eigene Kürzel hat die Seite **Tastenkürzel** in einem eigenen Tab. Was in den Tabellen unten *optional* heißt, steht dort. Die Sterne liegen mit den eigenen Kürzeln in `hotkeys.json` und überstehen Updates.
 
 ## Was sich nicht 1:1 übertragen lässt
 
@@ -32,38 +29,13 @@ Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotk
 
 ## Aus deiner bindings.lua
 
-Diese Kürzel stehen im Profil **Persönlich**:
+Private Kürzel (ChatGPT, Spotify, Signal, WhatsApp und Co.) bringt WinMarchy nicht mehr mit. Wer sie haben will, importiert seine `bindings.lua` unter **Tastenkürzel → Importieren**; sie stehen danach bei den eigenen Kürzeln und lassen sich dort ändern.
 
-| Windows | Was passiert | Herkunft |
-|-|-|-|
-| `Win+Umschalt+A` | ChatGPT | Omarchy-Standard |
-| `Win+Umschalt+Alt+A` | Grok | Omarchy-Standard |
-| `Win+Umschalt+Y` | YouTube | Omarchy-Standard |
-| `Win+Umschalt+P` | Google Fotos | Omarchy-Standard |
-| `Win+Umschalt+X` | X | Omarchy-Standard |
-| `Win+Umschalt+Alt+X` | X-Beitrag | Omarchy-Standard |
-| `Win+Umschalt+Alt+S` | Signal (Win+Umschalt+G ist Stackfield.) | bindings.lua: Super + Umschalt + G |
-| `Win+Umschalt+O` | Obsidian | Omarchy-Standard |
-| `Win+Umschalt+Alt+G` | WhatsApp Web | Omarchy-Standard |
-| `Win+Umschalt+Strg+G` | Google Messages | Omarchy-Standard |
-| `Win+Umschalt+Slash` | Passwörter (Bitwarden) | Super + Umschalt + SLASH (1Password) |
-| `Win+Umschalt+T` | Telegram | bindings.lua: Super + Umschalt + T |
-| `Win+Umschalt+M` | Spotify | bindings.lua: Super + Umschalt + M |
-| `Win+Alt+W` | Spotify: Discover Weekly (Öffnet die Playlist in Spotify; abspielen startest du dort.) | bindings.lua: Super + Alt + W |
-| `Win+Alt+R` | Spotify: Release Radar | bindings.lua: Super + Alt + R |
-| `Win+Umschalt+Q` | WhatsApp | bindings.lua: Super + Umschalt + Q |
-| `Win+Alt+M` | Google Maps | bindings.lua: Super + Alt + M |
-| `Win+Alt+N` | Benachrichtigungen | bindings.lua: Super + Alt + N |
-| `Win+Alt+B` | Bluetooth | bindings.lua: Super + Alt + B |
-| `Win+Alt+V` | VPN | bindings.lua: Super + Alt + V |
-| `Win+Alt+C` | Smartphone-Link | bindings.lua: Super + Alt + C (omaconnect) |
-| `Win+Alt+Y` | Bildschirme | bindings.lua: Super + Alt + Y (screens) |
-
-`Win+Shift+S` bleibt im Profil frei: Du hattest Super+Shift+S auf das Bildschirmfoto gelegt, und unter Windows macht genau diese Taste das schon. Ist unter **Einstellungen** Greenshot gewählt, fängt WinMarchy die Taste ab und öffnet Greenshots Bereichsauswahl statt des Snipping Tools, solange du nichts Eigenes darauf legst. `Win+Alt+P` (bei dir Omaplug) öffnet WinMarchy selbst. Signal liegt auf `Win+Umschalt+Alt+S`, weil `Win+Umschalt+G` jetzt Stackfield öffnet, in beiden Profilen.
+`Win+Shift+S` bleibt frei: Unter Windows macht genau diese Taste schon das Bildschirmfoto. Ist unter **Einstellungen** Greenshot gewählt, fängt WinMarchy die Taste ab und öffnet Greenshots Bereichsauswahl statt des Snipping Tools, solange du nichts Eigenes darauf legst. `Win+Alt+P` (bei dir Omaplug) öffnet WinMarchy selbst.
 
 Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte laufen unter der Ausführungsrichtlinie des Rechners; WinMarchy umgeht sie nicht.
 
-## Business-Profil
+## Alle Kürzel
 
 ### Fenster
 

@@ -9,6 +9,12 @@ public sealed class AppState
     /// <summary>The release tag each program was installed from (for "update programs").</summary>
     public Dictionary<string, string> ToolTags { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The vendor's latest release per program, as last looked up (Start page, program updates).</summary>
+    public Dictionary<string, Tools.LatestRelease> LatestReleases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The names of the screens by index (0 = leftmost) as they were when last connected, for the Tiling page.</summary>
+    public List<string> ScreenNames { get; set; } = new();
+
     /// <summary>Folders of removed programs that were still in use (a DLL Explorer had loaded); deleted at the next start.</summary>
     public List<string> LeftoverDirs { get; set; } = new();
 

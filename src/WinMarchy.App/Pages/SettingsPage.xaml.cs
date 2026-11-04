@@ -33,14 +33,12 @@ public partial class SettingsPage : UserControl, IPage
             Folders.Children.Add(b);
         }
         AppModel.Updater.Changed += _ => Dispatcher.InvokeAsync(ShowUpdate);
-        ThemeManager.Changed += () => Dispatcher.InvokeAsync(SelectScheme);
     }
 
     public void OnShown()
     {
         _loading = true;
         var s = AppModel.Settings;
-        SelectScheme();
         LanguageBox.SelectedItem = LanguageBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => string.Equals((string)i.Tag, s.Language, StringComparison.OrdinalIgnoreCase))
                                    ?? LanguageBox.Items[0];
         AutoUpdate.IsChecked = s.AutoUpdate;
@@ -48,11 +46,9 @@ public partial class SettingsPage : UserControl, IPage
         ShowFilesDefault();
         FillBrowsers(Browser1, s.Browser);
         FillBrowsers(Browser2, s.Browser2);
-        Personal.IsChecked = s.PersonalProfile;
         (s.ScreenshotTool == Core.Platform.Screenshots.Greenshot ? ShotGreenshot : ShotWindows).IsChecked = true;
         ShowScreenshotHint();
         ShowGlaze();
-        ShowZebar();
         ShowExplorerBlur();
         _loading = false;
         ShowUpdate();
@@ -162,31 +158,6 @@ public partial class SettingsPage : UserControl, IPage
         else OnShown();
     }
 
-    // ------------------------------------------------------------------ Zebar leftovers
-
-    /// <summary>The card shows only while an older WinMarchy's Zebar is still there.</summary>
-    void ShowZebar()
-    {
-        var zebar = AppModel.Engine.Components.Status(ToolCatalog.Zebar);
-        bool there = zebar.Installed || ZebarPack.IsInstalled(Locations.Current);
-        ZebarCard.Visibility = there ? Visibility.Visible : Visibility.Collapsed;
-        ZebarHint.Text = zebar.Installed && !zebar.InstalledByWinMarchy ? L.T("settings.zebarElsewhere", ("path", zebar.Path)) : L.T("settings.zebarStillThere");
-    }
-
-    async void OnRemoveZebar(object sender, RoutedEventArgs e)
-    {
-        if (!await Dialogs.ConfirmAsync(L.T("settings.zebarRemoveTitle"), L.T("settings.zebarRemoveConfirm"), L.T("settings.zebarRemove"), danger: true)) return;
-        var job = AppModel.Run("zebar-remove", "setup", L.T("jobs.zebarRemove"), AppModel.Engine.RemoveZebarSteps(), async j =>
-        {
-            await Dispatcher.InvokeAsync(() =>
-            {
-                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error, j.State == JobState.Done ? L.T("settings.zebarRemoved") : j.Status);
-                OnShown();
-            });
-        });
-        if (job != null) BarJob.Follow(job.Id);
-    }
-
     // ------------------------------------------------------------------ ExplorerBlurMica
 
     void ShowExplorerBlur()
@@ -245,25 +216,6 @@ public partial class SettingsPage : UserControl, IPage
         if (job == null) ShowFilesDefault();
     }
 
-    void SelectScheme()
-    {
-        var was = _loading;
-        _loading = true;
-        (AppModel.Settings.ColorScheme switch { "light" => CardLight, "dark" => CardDark, _ => CardSystem }).IsChecked = true;
-        _loading = was;
-    }
-
-    void OnScheme(object sender, RoutedEventArgs e)
-    {
-        if (_loading || sender is not RadioButton { Tag: string scheme } b || scheme == AppModel.Settings.ColorScheme) return;
-        if (Window.GetWindow(this) is MainWindow w)
-            ThemeManager.SwitchWithReveal(w.Root, w.OverlayHost, b, () =>
-            {
-                ThemeManager.Set(scheme);
-                AppModel.Update(s => s.ColorScheme = scheme);
-            });
-    }
-
     void OnLanguage(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || LanguageBox.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
@@ -290,42 +242,7 @@ public partial class SettingsPage : UserControl, IPage
         if (u.Error == null) Toasts.Show(ToastKind.Ok, u.Available ? L.T("settings.updateAvailable", ("version", u.Latest)) : L.T("settings.upToDate"));
     }
 
-    /// <summary>The programs WinMarchy installed, each from its vendor's latest release if that is newer.</summary>
-    void OnToolUpdates(object sender, RoutedEventArgs e)
-    {
-        var steps = AppModel.Engine.ToolUpdateSteps();
-        if (steps.Count == 0)
-        {
-            Toasts.Show(ToastKind.Ok, L.T("settings.toolUpdatesNone"));
-            return;
-        }
-        var job = AppModel.Run("tool-updates", "setup", L.T("jobs.toolUpdates"), steps, async j =>
-        {
-            await Dispatcher.InvokeAsync(() =>
-            {
-                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error, j.State == JobState.Done ? L.T("settings.toolUpdatesDone") : j.Status);
-                OnShown();
-            });
-        });
-        if (job != null) ToolsJob.Follow(job.Id);
-    }
-
     void OnAutoUpdate(object sender, RoutedEventArgs e) => AppModel.Update(s => s.AutoUpdate = AutoUpdate.IsChecked == true);
-
-    /// <summary>The private shortcuts on top of the business ones; they take effect at once.</summary>
-    void OnPersonal(object sender, RoutedEventArgs e)
-    {
-        if (_loading) return;
-        AppModel.Update(s => s.PersonalProfile = Personal.IsChecked == true);
-        var job = AppModel.Run("hotkeys", "hotkeys", L.T("jobs.hotkeys"), AppModel.Engine.HotkeySteps(), async j =>
-        {
-            await Dispatcher.InvokeAsync(() =>
-            {
-                if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("hotkeys.applied"));
-            });
-        });
-        if (job != null) PersonalJob.Follow(job.Id);
-    }
 
     void OnPathsChanged(object sender, RoutedEventArgs e)
     {

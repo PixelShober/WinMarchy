@@ -45,14 +45,11 @@ public sealed class Locations
     public string Startup { get; }
     public string ProgramFiles { get; }
 
-    // GlazeWM and Zebar (glzr.io)
+    // GlazeWM (glzr.io)
     public string GlzrDir => Path.Combine(UserProfile, ".glzr");
     public string GlazeWmConfig => Path.Combine(GlzrDir, "glazewm", "config.yaml");
     /// <summary>GlazeWM writes its errors here (and nothing else), also why it would not start.</summary>
     public string GlazeWmErrorLog => Path.Combine(GlzrDir, "glazewm", "errors.log");
-    public string ZebarDir => Path.Combine(GlzrDir, "zebar");
-    public string ZebarSettings => Path.Combine(ZebarDir, "settings.json");
-    public string ZebarPackDir => Path.Combine(ZebarDir, "winmarchy");
 
     // YASB, the bar. YASB_CONFIG_HOME moves its folder, as it does for YASB itself.
     public string YasbDir => Environment.GetEnvironmentVariable("YASB_CONFIG_HOME") is { Length: > 0 } home ? home : Path.Combine(UserProfile, ".config", "yasb");

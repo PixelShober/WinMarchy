@@ -5,7 +5,7 @@ namespace WinMarchy.Core.Tests;
 
 public class ImportTests
 {
-    static HotkeySet Current() => HotkeySet.Build(personal: false, new CustomHotkeys());
+    static HotkeySet Current() => HotkeySet.Build(new CustomHotkeys());
 
     static IReadOnlyList<ImportCandidate> Read(string name, string text)
     {
@@ -116,7 +116,7 @@ public class ImportTests
 
         var custom = new CustomHotkeys();
         custom.Bindings.Add(new HotkeyBinding { Keys = "Win+Shift+S", Do = "app:notes", Group = "apps", Label = LocalizedText.Same("Notes") });
-        var own = HotkeySet.Build(personal: false, custom);
+        var own = HotkeySet.Build(custom);
         var script = AhkScript.Generate(own, ctx with { Extra = extra });
         Assert.Single(script.Split('\n'), l => l.StartsWith("Hotkey(\"$#+s\""));
         Assert.DoesNotContain("; Greenshot", script);

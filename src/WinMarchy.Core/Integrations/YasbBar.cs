@@ -151,7 +151,7 @@ public static class YasbBar
             ["alignment"] = new JsonObject { ["position"] = "top", ["align"] = "center" },
             ["blur_effect"] = new JsonObject { ["enabled"] = false, ["round_corners"] = false, ["border_color"] = "None" },
             ["animation"] = new JsonObject { ["enabled"] = false },
-            // GlazeWM leaves room through its top gap, as for Zebar; no app bar reservation.
+            // GlazeWM leaves room through its top gap; no app bar reservation.
             ["window_flags"] = new JsonObject { ["always_on_top"] = false, ["windows_app_bar"] = false, ["hide_on_fullscreen"] = true },
             ["dimensions"] = new JsonObject { ["width"] = "100%", ["height"] = Bars.Height },
             ["padding"] = new JsonObject { ["top"] = 0, ["left"] = 6, ["bottom"] = 0, ["right"] = 6 },

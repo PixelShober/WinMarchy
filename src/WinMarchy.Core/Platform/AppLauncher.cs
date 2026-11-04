@@ -43,7 +43,9 @@ public sealed class AppLauncher
             case "browser2": return Browser(_settings().Browser2, privateWindow: false, urls);
             case "browser-private": return Browser(_settings().Browser, privateWindow: true, urls);
             case "files":
-                return First(Alias("files-stable.exe"), Alias("files.exe"), Alias("files-preview.exe"), Alias("files-dev.exe")) is { } files
+                // The file manager chosen under Settings → File manager: Files while it is the default, else Explorer.
+                return Integrations.FilesDefault.IsOn(UserRegistry.Current) &&
+                       First(Alias("files-stable.exe"), Alias("files.exe"), Alias("files-preview.exe"), Alias("files-dev.exe")) is { } files
                     ? Start(files) : Start("explorer.exe");
             case "editor":
                 return Tool(ToolCatalog.VsCode) is { } code ? Start(code) : Start("notepad.exe");

@@ -63,11 +63,14 @@ public sealed class HotkeySet
         }
     }
 
-    public static HotkeySet Build(bool personal, CustomHotkeys custom)
+    /// <summary>WinMarchy's shortcuts with the user's own on top (an own one on the same keys wins).</summary>
+    public static HotkeySet Build(CustomHotkeys custom)
     {
-        var layers = new List<IEnumerable<HotkeyBinding>> { LoadProfile("business").Bindings };
-        if (personal) layers.Add(LoadProfile("personal").Bindings);
-        layers.Add(custom.Bindings.Select(b => { var c = b.Copy(); c.Source = "custom"; return c; }));
+        var layers = new List<IEnumerable<HotkeyBinding>>
+        {
+            LoadProfile("business").Bindings,
+            custom.Bindings.Select(b => { var c = b.Copy(); c.Source = "custom"; return c; }),
+        };
         return Compose(layers, custom.Disabled, custom.Favorites);
     }
 

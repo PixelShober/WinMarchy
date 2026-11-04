@@ -21,7 +21,13 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         "app:files", "app:editor", "app:notes", "app:word", "app:stackfield", "app:obsidian", "app:herdr", "run:",
     };
     readonly CheckBox _square, _titleBars, _dim, _focusFollows, _taskbar, _bar, _fullscreen;
-    readonly List<(TextBox Workspaces, List<RadioButton> Layout)> _monitorRows = new();
+    readonly List<(RadioButton Main, TextBox Workspaces, List<RadioButton> Layout)> _monitorRows = new();
+    /// <summary>The rows' screen names, in the rows' order.</summary>
+    List<string> _screenNames = new();
+    /// <summary>The screen names of the work modes' program boxes, in their order.</summary>
+    List<string> _slotNames = new();
+    /// <summary>The monitor rows are being built: a main screen ticked meanwhile is no choice of the user's.</summary>
+    bool _rendering;
     readonly List<(TextBox Name, List<TextBox> Apps)> _modeRows = new();
     readonly Dictionary<string, CheckBox> _barModules = new();
     readonly StackPanel _shortcutRows = new();
@@ -69,7 +75,6 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         foreach (var c in new[] { _square, _titleBars, _dim, _focusFollows, _fullscreen }) Look.Children.Add(c);
         _taskbar = UiKit.Switch(L.T("setup.taskbar"), s.HideTaskbar, L.T("tiling.taskbarHint"));
         _bar = UiKit.Switch(L.T("setup.bar"), s.ShowBar, L.T("setup.barHint"));
-        for (int c = 1; c <= 3; c++) ScrollingColumns.Items.Add(new ComboBoxItem { Content = L.T("tiling.columnsCount", ("count", c)), Tag = c });
         Desktop.Children.Add(_taskbar);
         Desktop.Children.Add(_bar);
         // Which entries the bar shows; each one can be clicked.
@@ -126,7 +131,6 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         var s = AppModel.Settings;
         Select(InnerGap, s.InnerGap);
         Select(OuterGap, s.OuterGap);
-        Select(ScrollingColumns, s.ScrollingColumns);
         foreach (var (box, on) in new[] { (_square, s.SquareCorners), (_titleBars, s.HideTitleBars), (_dim, s.DimInactive), (_focusFollows, s.FocusFollowsCursor),
                      (_fullscreen, s.NewWindowEndsFullscreen), (_taskbar, s.HideTaskbar), (_bar, s.ShowBar) })
             box.IsChecked = on;
@@ -147,8 +151,8 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
     {
         var parts = new List<string?>
         {
-            (ScrollingColumns.SelectedItem as ComboBoxItem)?.Tag?.ToString(), (InnerGap.SelectedItem as ComboBoxItem)?.Tag?.ToString(),
-            (OuterGap.SelectedItem as ComboBoxItem)?.Tag?.ToString(),
+            (InnerGap.SelectedItem as ComboBoxItem)?.Tag?.ToString(), (OuterGap.SelectedItem as ComboBoxItem)?.Tag?.ToString(),
+            "main=" + MainRow(),
         };
         parts.AddRange(new[] { _square, _titleBars, _dim, _focusFollows, _fullscreen, _taskbar, _bar }.Select(b => b.IsChecked?.ToString()));
         parts.AddRange(_barModules.Select(m => m.Key + "=" + m.Value.IsChecked));
@@ -267,18 +271,24 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         System.Windows.Forms.Screen.AllScreens.OrderBy(m => m.Bounds.X).ThenBy(m => m.Bounds.Y).ToList();
 
     /// <summary>
-    /// A row per screen: its layout and its workspaces. The connected screens, and those that still
-    /// have workspaces from another setup (the docking station at work), so a laptop on its own keeps
-    /// them for the next time.
+    /// A row per screen: its name, whether it is the main screen, its layout and its workspaces. The
+    /// connected screens, and those that still have workspaces from another setup (the docking
+    /// station at work), so a laptop on its own keeps them for the next time. Without any workspaces
+    /// given yet, the rows show the suggestion: the main screen 1 and 2, the others the rest.
     /// </summary>
     void RenderMonitors()
     {
+        _rendering = true;
         Monitors.Children.Clear();
         _monitorRows.Clear();
         MonitorsError.Visibility = Visibility.Collapsed;
         var s = AppModel.Settings;
         var screens = Screens();
         int rows = Math.Clamp(new[] { screens.Count, s.WorkspaceMonitors.Values.DefaultIfEmpty(-1).Max() + 1, s.ScreenLayouts.Count }.Max(), 1, MaxScreens);
+        _screenNames = RowNames(screens, rows);
+        int main = Math.Clamp(s.MainScreen ?? Math.Max(0, screens.FindIndex(m => m.Primary)), 0, rows - 1);
+        bool suggest = s.WorkspaceMonitors.Count == 0 && rows > 1;
+        var plan = ScreenPlan.Split(rows, main);
         for (int i = 0; i < rows; i++)
         {
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
@@ -288,9 +298,16 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
 
             var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            name.Children.Add(UiKit.Text(L.T("tiling.monitorName", ("number", i + 1)), "H3"));
+            name.Children.Add(UiKit.Text(_screenNames[i], "H3"));
             name.Children.Add(UiKit.Text(i >= screens.Count ? L.T("tiling.monitorAbsent")
-                : L.T(screens[i].Primary ? "tiling.monitorPrimary" : "tiling.monitorSize", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height)), "Small"));
+                : L.T("tiling.monitorSize", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height)), "Small"));
+            var isMain = new RadioButton
+            {
+                Content = L.T("tiling.mainScreen"), GroupName = "main-screen", IsChecked = i == main, Tag = i,
+                ToolTip = L.T("tiling.mainScreenHint"), Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Left,
+            };
+            isMain.Checked += OnMainScreen;
+            name.Children.Add(isMain);
             grid.Children.Add(name);
 
             // The screen's layout: every workspace shown on it follows.
@@ -300,7 +317,7 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             foreach (var mode in Modes)
             {
                 var b = new RadioButton { Style = UiKit.S("Segment"), GroupName = "screen-layout-" + i, Content = LayoutEngine.Name(mode), IsChecked = mode == current, Tag = mode };
-                System.Windows.Automation.AutomationProperties.SetName(b, L.T("tiling.monitorLayout", ("number", i + 1), ("layout", LayoutEngine.Name(mode))));
+                System.Windows.Automation.AutomationProperties.SetName(b, L.T("tiling.monitorLayout", ("name", _screenNames[i]), ("layout", LayoutEngine.Name(mode))));
                 buttons.Add(b);
                 segments.Children.Add(b);
             }
@@ -308,18 +325,58 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             Grid.SetColumn(group, 1);
             grid.Children.Add(group);
 
-            var mine = s.WorkspaceMonitors.Where(p => p.Value == i).Select(p => int.TryParse(p.Key, out var n) ? n : 0).Where(n => n > 0).OrderBy(n => n);
+            var mine = suggest ? plan[i]
+                : s.WorkspaceMonitors.Where(p => p.Value == i).Select(p => int.TryParse(p.Key, out var n) ? n : 0).Where(n => n > 0).OrderBy(n => n).ToList();
             var workspaces = new TextBox { Style = UiKit.S("MonoBox"), Text = Ranges(mine), ToolTip = L.T("tiling.monitorWorkspacesHint"), VerticalAlignment = VerticalAlignment.Center };
-            System.Windows.Automation.AutomationProperties.SetName(workspaces, L.T("tiling.monitorWorkspaces"));
+            System.Windows.Automation.AutomationProperties.SetName(workspaces, L.T("tiling.monitorWorkspacesOf", ("name", _screenNames[i])));
             Grid.SetColumn(workspaces, 3);
             grid.Children.Add(workspaces);
 
             Monitors.Children.Add(grid);
-            _monitorRows.Add((workspaces, buttons));
+            _monitorRows.Add((isMain, workspaces, buttons));
         }
-        var hint = UiKit.Text(L.T("tiling.monitorsHint"), "Small");
+        var hint = UiKit.Text(L.T(suggest ? "tiling.monitorsSuggested" : "tiling.monitorsHint"), "Small");
         hint.TextWrapping = TextWrapping.Wrap;
         Monitors.Children.Add(hint);
+        _rendering = false;
+    }
+
+    /// <summary>
+    /// The rows' names: what the connected screens are called, and for the others the name they had
+    /// when they were last connected (remembered in state.json).
+    /// </summary>
+    static List<string> RowNames(List<System.Windows.Forms.Screen> screens, int rows)
+    {
+        var connected = Core.Platform.ScreenNames.Of(screens.Select(m => m.DeviceName).ToList());
+        var remembered = AppState.Load().ScreenNames;
+        if (connected.Count > 0 && !remembered.Take(connected.Count).SequenceEqual(connected))
+            AppState.Update(st =>
+            {
+                for (int i = 0; i < connected.Count; i++)
+                {
+                    if (i < st.ScreenNames.Count) st.ScreenNames[i] = connected[i];
+                    else st.ScreenNames.Add(connected[i]);
+                }
+            });
+        return Enumerable.Range(0, rows)
+            .Select(i => i < connected.Count ? connected[i]
+                : i < remembered.Count ? remembered[i] : L.T("tiling.monitorName", ("number", i + 1)))
+            .ToList();
+    }
+
+    /// <summary>The row ticked as the main screen.</summary>
+    int MainRow() => Math.Max(0, _monitorRows.FindIndex(r => r.Main.IsChecked == true));
+
+    /// <summary>A new main screen gets workspaces 1 and 2, the other screens share the rest evenly.</summary>
+    void OnMainScreen(object sender, RoutedEventArgs e)
+    {
+        if (_rendering) return;
+        FillWorkspaces(ScreenPlan.Split(_monitorRows.Count, MainRow()));
+    }
+
+    void FillWorkspaces(List<List<int>> plan)
+    {
+        for (int i = 0; i < _monitorRows.Count && i < plan.Count; i++) _monitorRows[i].Workspaces.Text = Ranges(plan[i]);
     }
 
     /// <summary>Each row's layout, as settings.json writes it.</summary>
@@ -336,7 +393,11 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         _modeRows.Clear();
         WorkModesError.Visibility = Visibility.Collapsed;
         var s = AppModel.Settings;
-        int slots = Math.Clamp(new[] { 3, Screens().Count, s.WorkModes.Select(m => m.Apps.Count).DefaultIfEmpty(0).Max() }.Max(), 1, MaxScreens);
+        var screens = Screens();
+        int slots = Math.Clamp(new[] { 3, screens.Count, s.WorkModes.Select(m => m.Apps.Count).DefaultIfEmpty(0).Max() }.Max(), 1, MaxScreens);
+        // Slot k is the k-th screen from the left, as for the workspaces.
+        var names = RowNames(screens, slots);
+        _slotNames = names;
         var active = AppModel.Engine.CurrentHotkeys().Active;
         for (int n = 1; n <= WorkMode.Count; n++)
         {
@@ -356,8 +417,9 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             for (int k = 0; k < slots; k++)
             {
                 var box = new TextBox { Style = UiKit.S("MonoBox"), Text = k < mode.Apps.Count ? mode.Apps[k] : "", ToolTip = L.T("tiling.workModeAppHint") };
-                System.Windows.Automation.AutomationProperties.SetName(box, L.T("tiling.workModeApp", ("mode", n), ("number", k + 1)));
-                panel.Children.Add(ModeRow(L.T("tiling.monitorName", ("number", k + 1)), box, TemplatePicker(box, ModeSuggestions)));
+                var screen = k < names.Count ? names[k] : L.T("tiling.monitorName", ("number", k + 1));
+                System.Windows.Automation.AutomationProperties.SetName(box, L.T("tiling.workModeApp", ("mode", n), ("name", screen)));
+                panel.Children.Add(ModeRow(screen, box, TemplatePicker(box, ModeSuggestions)));
                 apps.Add(box);
             }
             WorkModesPanel.Children.Add(panel);
@@ -415,7 +477,7 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             {
                 if (mode.Apps[k].Length == 0) continue;
                 WorkModePlan.Startable(mode.Apps[k], out var error);
-                if (error != null) return (modes, L.T("tiling.workModeInvalid", ("mode", mode.Title(n + 1)), ("number", k + 1), ("detail", error)));
+                if (error != null) return (modes, L.T("tiling.workModeInvalid", ("mode", mode.Title(n + 1)), ("name", _slotNames.ElementAtOrDefault(k) ?? L.T("tiling.monitorName", ("number", k + 1))), ("detail", error)));
             }
             while (mode.Apps.Count > 0 && mode.Apps[^1].Length == 0) mode.Apps.RemoveAt(mode.Apps.Count - 1);
             modes.Add(mode);
@@ -455,20 +517,12 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
     }
 
     /// <summary>
-    /// Workspaces 1–10 shared out evenly, left to right (two screens: 1–5 and 6–10), over every row:
-    /// also screens that are not connected right now keep their share.
+    /// The main screen 1 and 2, the rest shared out evenly over the other rows, left to right: also
+    /// screens that are not connected right now keep their share.
     /// </summary>
     void OnSplitWorkspaces(object sender, RoutedEventArgs e)
     {
-        int count = _monitorRows.Count;
-        if (count == 0) return;
-        int per = GlazeConfig.WorkspaceCount / count, extra = GlazeConfig.WorkspaceCount % count, next = 1;
-        for (int i = 0; i < count; i++)
-        {
-            int take = per + (i < extra ? 1 : 0);
-            _monitorRows[i].Workspaces.Text = take == 0 ? "" : Ranges(Enumerable.Range(next, take));
-            next += take;
-        }
+        if (_monitorRows.Count > 0) FillWorkspaces(ScreenPlan.Split(_monitorRows.Count, MainRow()));
     }
 
     /// <summary>The page's choice, or an error text when a workspace is given to two screens.</summary>
@@ -478,11 +532,11 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         for (int i = 0; i < _monitorRows.Count; i++)
         {
             var numbers = ParseRanges(_monitorRows[i].Workspaces.Text);
-            if (numbers == null) return (map, L.T("tiling.monitorsInvalid", ("number", i + 1)));
+            if (numbers == null) return (map, L.T("tiling.monitorsInvalid", ("name", _screenNames[i])));
             foreach (var n in numbers)
             {
                 if (map.TryGetValue(n.ToString(), out var other))
-                    return (map, L.T("tiling.monitorsTwice", ("workspace", n), ("a", other + 1), ("b", i + 1)));
+                    return (map, L.T("tiling.monitorsTwice", ("workspace", n), ("a", _screenNames[other]), ("b", _screenNames[i])));
                 map[n.ToString()] = i;
             }
         }
@@ -513,7 +567,7 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             s.WorkspaceMonitors = map;
             s.ScreenLayouts = layouts;
             s.WorkModes = modes;
-            s.ScrollingColumns = ScrollingColumns.SelectedItem is ComboBoxItem { Tag: int c } ? c : s.ScrollingColumns;
+            s.MainScreen = MainRow();
             s.InnerGap = InnerGap.SelectedItem is ComboBoxItem { Tag: int i } ? i : s.InnerGap;
             s.OuterGap = OuterGap.SelectedItem is ComboBoxItem { Tag: int o } ? o : s.OuterGap;
             s.SquareCorners = _square.IsChecked == true;

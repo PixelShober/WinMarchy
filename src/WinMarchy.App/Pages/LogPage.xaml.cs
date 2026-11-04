@@ -212,13 +212,43 @@ public partial class LogPage : UserControl, IPage
         if (_policyReport != null && File.Exists(_policyReport)) AppLauncher.Start(_policyReport);
     }
 
-    /// <summary>Every shortcut and GlazeWM command into the log; the "all" filter shows them.</summary>
+    /// <summary>
+    /// Every shortcut and GlazeWM command into the log; the "all" filter shows them. Switched off, the
+    /// fault is usually caught: the day's log file goes to the clipboard and Explorer shows it.
+    /// </summary>
     void OnVerbose(object sender, RoutedEventArgs e)
     {
         var on = Verbose.IsChecked == true;
         AppModel.Update(s => s.VerboseLog = on);
         Log.Info(L.T(on ? "log.verboseOn" : "log.verboseOff"));
-        Toasts.Show(ToastKind.Info, L.T(on ? "log.verboseOn" : "log.verboseOff"));
+        if (on || !HandOverLog()) Toasts.Show(ToastKind.Info, L.T(on ? "log.verboseOn" : "log.verboseOff"));
+    }
+
+    /// <summary>
+    /// Today's log file into the clipboard, as a file to paste into a mail or a chat (its path as text,
+    /// for where no file can go), and its folder open with the file selected. False if there is no file.
+    /// </summary>
+    bool HandOverLog()
+    {
+        var file = Log.CurrentFile;
+        if (!File.Exists(file)) return false;
+        bool copied = false;
+        try
+        {
+            var data = new DataObject();
+            data.SetFileDropList(new System.Collections.Specialized.StringCollection { file });
+            data.SetText(file);
+            Clipboard.SetDataObject(data, copy: true);
+            copied = true;
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException)
+        {
+            // Someone else holds the clipboard open.
+            Log.Debug("clipboard: " + ex.Message);
+        }
+        UiKit.OpenFolder(file);
+        Toasts.Show(ToastKind.Ok, L.T(copied ? "log.verboseOffCopied" : "log.verboseOffOpened", ("file", Path.GetFileName(file))));
+        return true;
     }
 
     /// <summary>What WinMarchy sees right now, as a file next to the logs, opened right away.</summary>

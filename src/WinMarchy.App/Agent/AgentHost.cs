@@ -88,6 +88,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         {
             StartComponents();
             TakeGreenshot();
+            _ = KeepGlazeCurrentAsync(_cts.Token);
         }
         HookMinimize();
         // The program list for Win+Space's search, read once in the background.
@@ -499,12 +500,14 @@ public sealed class AgentHost : IAgentHost, IDisposable
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
         ForgetGlazeProcess();
+        // Ended by WinMarchy itself (an update ends it the way its tray menu does, with code 0).
+        if (_restoring || AppModel.Jobs.AnyRunning || App.ExitRequested) return;
         if (code == 0)
         {
             Log.Info(L.T("agent.glazeQuit"));
             return;
         }
-        if (!SetupDone || _restoring || AppModel.Jobs.AnyRunning || App.ExitRequested) return;
+        if (!SetupDone) return;
         var now = DateTime.Now;
         _glazeCrashes.RemoveAll(t => now - t > TimeSpan.FromMinutes(10));
         var detail = code is { } c ? "0x" + c.ToString("X8") : "?";
@@ -788,10 +791,48 @@ public sealed class AgentHost : IAgentHost, IDisposable
 
     // ------------------------------------------------------------------ updates
 
+    /// <summary>The programs' latest releases (Start page), then WinMarchy's own update if updates are on.</summary>
     async Task CheckUpdatesAsync()
     {
+        try
+        {
+            await Core.Tools.ToolUpdates.RefreshAsync(Core.Tools.ToolUpdates.MaxAge, _cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
         if (!Settings.AutoUpdate || AppInfo.IsPrerelease) return;
         await AppModel.Updater.CheckAsync(download: true, _cts.Token);
+    }
+
+    /// <summary>
+    /// Shortly after the start: GlazeWM is WinMarchy's build, in its latest release if updates are on
+    /// (Settings). Runs as a job, so the Log page shows the steps; the crash watchdog leaves GlazeWM
+    /// alone meanwhile. WinMarchy's own pre-releases update GlazeWM too: GlazeWM has releases of its own.
+    /// </summary>
+    async Task KeepGlazeCurrentAsync(CancellationToken ct)
+    {
+        try
+        {
+            // Login is over and the network is up by then.
+            await Task.Delay(TimeSpan.FromSeconds(10), ct);
+            if (AppModel.Jobs.IsRunning("setup")) return;
+            if (await AppModel.Engine.GlazeUpkeepAsync(Settings.AutoUpdate, ct) is not { } upkeep) return;
+            Log.Info(upkeep.Title);
+            Application.Current?.Dispatcher.InvokeAsync(() => AppModel.Run("glazewm", "setup", upkeep.Title, upkeep.Steps, j =>
+            {
+                if (j.State == JobState.Done) Notify(L.T("agent.glazeUpToDate", ("version", AppState.Load().ToolTags.GetValueOrDefault(Core.Tools.ToolCatalog.GlazeWm.Id) ?? "?")));
+                else Log.Warn(L.T("agent.glazeUpkeepFailed", ("detail", j.Status)));
+                return Task.CompletedTask;
+            }));
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            // Mostly no network yet (VPN, proxy); the next start tries again.
+            Log.Info(L.T("agent.glazeUpkeepFailed", ("detail", Net.Describe(ex))));
+        }
     }
 
     /// <summary>

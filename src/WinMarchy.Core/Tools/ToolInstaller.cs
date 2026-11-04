@@ -111,7 +111,7 @@ public static class ToolInstaller
 
     /// <summary>
     /// "msiexec /a" unpacks the files of an MSI into a folder without registering anything, which works
-    /// with normal user rights. GlazeWM and Zebar run from there.
+    /// with normal user rights. GlazeWM runs from there.
     /// </summary>
     static async Task<string> ExtractMsiAsync(ToolDef tool, string msi, CancellationToken ct)
     {
@@ -175,8 +175,12 @@ public static class ToolInstaller
     /// known by the tag WinMarchy noted when it installed it; for older installs by the program's
     /// version.
     /// </summary>
-    public static async Task<ReleaseInfo?> NewerReleaseAsync(ToolDef tool, string? installedVersion, CancellationToken ct) =>
-        await LatestReleaseAsync(tool, ct) is { } release && !IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), installedVersion) ? release : null;
+    public static async Task<ReleaseInfo?> NewerReleaseAsync(ToolDef tool, string? installedVersion, CancellationToken ct)
+    {
+        if (await LatestReleaseAsync(tool, ct) is not { } release) return null;
+        ToolUpdates.Remember(tool, release.Tag);
+        return IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), installedVersion) ? null : release;
+    }
 
     /// <summary>The vendor's latest release, or null for a program WinMarchy does not download.</summary>
     public static async Task<ReleaseInfo?> LatestReleaseAsync(ToolDef tool, CancellationToken ct)

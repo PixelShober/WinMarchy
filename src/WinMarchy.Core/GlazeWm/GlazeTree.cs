@@ -129,6 +129,50 @@ public static class GlazeTree
     }
 
     /// <summary>
+    /// The workspace shown on the monitor next to the one with workspace <paramref name="from"/>, in a
+    /// direction, from "query monitors": of the monitors beyond that edge, the nearest. A monitor
+    /// beside a taller one is not above it, even if its centre is higher. Null at the outer edge, or
+    /// if that monitor shows no regular workspace.
+    /// </summary>
+    public static string? WorkspaceInDirection(JsonElement monitorsData, string from, string direction)
+    {
+        var monitors = List(monitorsData, "monitors").ToList();
+        var current = monitors.Cast<JsonElement?>().FirstOrDefault(m => Children(m!.Value).Any(w => Str(w, "name") == from));
+        if (current is not { } cur) return null;
+        static (int L, int T, int R, int B) Rect(JsonElement m) => (Int(m, "x"), Int(m, "y"), Int(m, "x") + Int(m, "width"), Int(m, "y") + Int(m, "height"));
+        double Cx(JsonElement m) => Int(m, "x") + Int(m, "width") / 2.0;
+        double Cy(JsonElement m) => Int(m, "y") + Int(m, "height") / 2.0;
+        var c = Rect(cur);
+        // A few pixels of overlap, as scaled screens leave them, still count as next to each other.
+        const int slack = 8;
+        var next = monitors.Where(m => Str(m, "id") != Str(cur, "id")).Where(m =>
+        {
+            var r = Rect(m);
+            return direction switch
+            {
+                "left" => r.R <= c.L + slack,
+                "right" => r.L >= c.R - slack,
+                "up" => r.B <= c.T + slack,
+                _ => r.T >= c.B - slack,
+            };
+        }).OrderBy(m => Math.Abs(Cx(m) - Cx(cur)) + Math.Abs(Cy(m) - Cy(cur))).Cast<JsonElement?>().FirstOrDefault();
+        if (next is not { } target) return null;
+        return Children(target).Where(w => Bool(w, "isDisplayed") && IsRegularWorkspace(w)).Select(w => Str(w, "name")).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// The window where the focus comes in when it arrives from the side opposite
+    /// <paramref name="direction"/>: going right, the leftmost one; going down, the top one.
+    /// </summary>
+    public static WindowInfo? EntryWindow(IEnumerable<WindowInfo> windows, string direction) => direction switch
+    {
+        "left" => windows.MaxBy(w => w.X + w.Width),
+        "right" => windows.MinBy(w => w.X),
+        "up" => windows.MaxBy(w => w.Y + w.Height),
+        _ => windows.MinBy(w => w.Y),
+    };
+
+    /// <summary>
     /// The window next to <paramref name="from"/> in a direction, by position on the screen: the
     /// closest one whose centre lies that way, preferring windows on the same line.
     /// </summary>

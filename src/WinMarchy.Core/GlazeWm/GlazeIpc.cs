@@ -22,6 +22,10 @@ public sealed class GlazeIpc : IAsyncDisposable
     TaskCompletionSource<JsonElement>? _pending;
     string? _pendingMessage;
     int _unanswered;
+    long _lastTimeout;
+
+    /// <summary>While GlazeWM does not answer, one request every so often still goes out to see whether it is back.</summary>
+    const long ProbeEveryMs = 5000;
 
     public event Action<GlazeEvent>? Event;
     public event Action? Disconnected;
@@ -59,15 +63,25 @@ public sealed class GlazeIpc : IAsyncDisposable
         }
     }
 
-    /// <summary>"query workspaces", "command --id … set-floating", "sub -e window_managed".</summary>
+    /// <summary>
+    /// "query workspaces", "command --id … set-floating", "sub -e window_managed". Once a request went
+    /// unanswered, the next ones fail at once instead of waiting five seconds each in a queue (keys
+    /// pressed meanwhile would otherwise all happen late, one after the other); one request every
+    /// five seconds still goes out to see whether GlazeWM is back.
+    /// </summary>
     public async Task<JsonElement> SendAsync(string message, CancellationToken ct)
     {
         var ws = _ws ?? throw new WinMarchyException("glazeNotConnected");
+        // GlazeWM did not answer, and a request that checks on it is out: no queueing behind it.
+        if (Unanswered > 0 && _send.CurrentCount == 0) throw new WinMarchyException("glazeNoAnswer", ("command", message));
         await _send.WaitAsync(ct);
         var clock = System.Diagnostics.Stopwatch.StartNew();
         bool queries = message.StartsWith("query", StringComparison.Ordinal);
         try
         {
+            if (ws.State != WebSocketState.Open) throw new WinMarchyException("glazeNotConnected");
+            if (Unanswered > 0 && Environment.TickCount64 - Interlocked.Read(ref _lastTimeout) < ProbeEveryMs)
+                throw new WinMarchyException("glazeNoAnswer", ("command", message));
             var tcs = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (_pendingLock)
             {
@@ -89,8 +103,18 @@ public sealed class GlazeIpc : IAsyncDisposable
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             Interlocked.Increment(ref _unanswered);
+            Interlocked.Exchange(ref _lastTimeout, Environment.TickCount64);
             Log.Trace($"{message} → timeout ({clock.ElapsedMilliseconds} ms)", "glazewm");
             throw new WinMarchyException("glazeNoAnswer", ("command", message));
+        }
+        catch (WinMarchyException ex) when (ex.Code is "glazeNotConnected" or "glazeNoAnswer")
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or WebSocketException)
+        {
+            // The connection was closed meanwhile (reconnect, restart); the agent connects again.
+            throw new WinMarchyException(ex, "glazeNotConnected");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
