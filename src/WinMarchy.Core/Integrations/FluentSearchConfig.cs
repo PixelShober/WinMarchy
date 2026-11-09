@@ -37,13 +37,33 @@ public static class FluentSearchConfig
     }
 
     /// <summary>
-    /// Folders earlier WinMarchy versions wrote the settings to by mistake (a level too high, or the
-    /// wrong AppData). Only the pages WinMarchy put there are taken away again.
+    /// Every folder with Fluent Search data: "Blast" next to the exe (settings, themes, cache, plugins)
+    /// and in both AppData folders (the installed build's, and where earlier WinMarchy versions wrote
+    /// by mistake). <see cref="ResetAsync"/> clears them all.
     /// </summary>
-    internal static IEnumerable<string> FormerGuesses(Locations loc, string exe) => new[]
+    internal static IEnumerable<string> DataDirs(Locations loc, string exe) => new[]
     {
         Path.Combine(Path.GetDirectoryName(exe)!, "Blast"), Path.Combine(loc.AppData, "Blast"), Path.Combine(loc.LocalAppData, "Blast"),
     };
+
+    /// <summary>
+    /// "Reinstall Fluent Search": ends it and deletes all its data (settings, themes, cache, plugins)
+    /// from every folder it may use. Each folder goes into the restore point as a whole first (without
+    /// the search index, which builds itself again), so undo brings the settings and themes back.
+    /// </summary>
+    public static async Task ResetAsync(IntegrationContext ctx, string exe, CancellationToken ct)
+    {
+        await StopAsync(ct);
+        foreach (var dir in DataDirs(ctx.Loc, exe).Where(Directory.Exists))
+        {
+            // The search index is large and builds itself again; it is not worth a backup.
+            var cache = Path.Combine(dir, "Cache");
+            if (Directory.Exists(cache)) Directory.Delete(cache, true);
+            ctx.Backups.CaptureDirectory(ctx.Point, dir);
+            Directory.Delete(dir, true);
+            Log.Info(L.T("integrations.fluentSearch.cleared", ("path", dir)));
+        }
+    }
 
     /// <summary>The settings pages WinMarchy carries a template for, e.g. "System.json".</summary>
     public static IReadOnlyList<string> TemplateFiles() => typeof(FluentSearchConfig).Assembly.GetManifestResourceNames()
@@ -101,14 +121,7 @@ public static class FluentSearchConfig
             return;
         }
         await StopAsync(ct);
-        // Pages earlier versions put a level too high or into the wrong AppData: only WinMarchy's own names.
         var names = TemplateFiles();
-        foreach (var guess in FormerGuesses(ctx.Loc, exe).Where(Directory.Exists))
-            foreach (var file in names.Select(n => Path.Combine(guess, n)).Where(File.Exists))
-            {
-                ctx.Backups.CaptureFile(ctx.Point, file);
-                File.Delete(file);
-            }
         var dir = SettingsDir(ctx.Loc, exe);
         int written = 0;
         foreach (var file in names)
@@ -121,9 +134,15 @@ public static class FluentSearchConfig
                 "Appearance.json" => PatchAppearance(text, palette),
                 _ => text,
             };
-            if (File.Exists(path) && FileSafety.ReadShared(path) == text) continue;
-            ctx.WriteFile(path, text);
-            written++;
+            // Fluent Search keeps a "<page>.backup.json" next to every page and falls back to it; both
+            // carry the same settings, or the old ones come back.
+            var backup = Path.Combine(dir, Path.GetFileNameWithoutExtension(file) + ".backup.json");
+            foreach (var target in new[] { path, backup })
+            {
+                if (File.Exists(target) && FileSafety.ReadShared(target) == text) continue;
+                ctx.WriteFile(target, text);
+                written++;
+            }
         }
         Log.Info(L.T("integrations.fluentSearch.written", ("count", written), ("path", dir)));
         ctx.Report(L.T("integrations.fluentSearch.done", ("path", dir)));

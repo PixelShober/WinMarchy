@@ -146,7 +146,12 @@
     "extrasDone": "Extras installiert.",
     "piNeedsBash": "Braucht Git Bash, das hier noch fehlt.",
     "experimental": "Experimentell",
-    "glazeOfficial": "Offizielles Release, wird ersetzt"
+    "glazeOfficial": "Offizielles Release, wird ersetzt",
+    "fluentSearchReinstall": "Fluent Search neu installieren",
+    "fluentSearchReinstallHint": "Löscht alle Einstellungen, Themes und den Suchindex von Fluent Search, lädt die neueste Version und richtet sie mit WinMarchys Einstellungen neu ein.",
+    "fluentSearchReinstallTitle": "Fluent Search neu installieren?",
+    "fluentSearchReinstallConfirm": "WinMarchy löscht alle Einstellungen, Themes und den Suchindex von Fluent Search, auch in AppData, lädt die neueste Version und richtet sie neu ein. Einstellungen und Themes liegen danach im Sicherungspunkt und lassen sich zurückholen; der Suchindex baut sich neu auf.",
+    "fluentSearchReinstallDone": "Fluent Search ist neu installiert und eingerichtet."
   },
 
   "themes": {
@@ -663,7 +668,8 @@
     "glazeUpdate": "GlazeWM auf {version} aktualisieren",
     "toolUpdate": "{tool} aktualisieren",
     "launcher": "{tool} auf die Win-Taste legen",
-    "afterUpdate": "WinMarchy {version}: GlazeWM, Tastenkürzel und Leiste neu einrichten"
+    "afterUpdate": "WinMarchy {version}: GlazeWM, Tastenkürzel und Leiste neu einrichten",
+    "fluentSearchReinstall": "Fluent Search neu installieren"
   },
 
   "steps": {
@@ -712,7 +718,8 @@
     "greenshot": "Greenshot für Bildschirmfotos einrichten",
     "greenshotFixed": "Greenshot zurückstellen",
     "notInstalled": "{tool} ist nicht installiert",
-    "fluentSearch": "Fluent Search einrichten"
+    "fluentSearch": "Fluent Search einrichten",
+    "fluentSearchClear": "Einstellungen, Themes und Cache von Fluent Search löschen"
   },
 
   "integrations": {
@@ -780,7 +787,8 @@
     "fluentSearch": {
       "notFound": "Fluent Search ist nicht installiert.",
       "done": "Fluent Search hört auf Alt+F24 und trägt die Akzentfarbe des Themes. Einstellungen: {path}",
-      "written": "Fluent Search: {count} Einstellungsdateien geschrieben in {path}"
+      "written": "Fluent Search: {count} Einstellungsdateien geschrieben in {path}",
+      "cleared": "Fluent-Search-Daten gelöscht (im Sicherungspunkt): {path}"
     }
   },
 

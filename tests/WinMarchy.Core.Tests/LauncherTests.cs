@@ -37,13 +37,27 @@ public class LauncherTests
     }
 
     [Fact]
-    public void Fluent_search_comes_from_a_pinned_release_with_its_own_checksum()
+    public void Fluent_search_comes_from_the_newest_nightly_and_keeps_its_data_on_updates()
     {
         var tool = ToolCatalog.FluentSearch;
-        Assert.Equal("1.0.1.4", tool.PinnedTag);
-        Assert.Matches("^[0-9a-f]{64}$", tool.PinnedSha256!);
+        Assert.True(tool.PreRelease);
+        Assert.Equal(new[] { "Blast" }, tool.KeepFolders);
         Assert.Matches(tool.Asset!, "fluent-search-portable-x64.zip");
         Assert.True(tool.Extra);
+    }
+
+    [Fact]
+    public void The_newest_release_may_be_a_nightly()
+    {
+        var json = """
+        [ { "tag_name": "1.5.0.7", "draft": true, "assets": [] },
+          { "tag_name": "1.5.0.6", "draft": false, "prerelease": true, "assets": [
+            { "name": "fluent-search-portable-x64.zip", "browser_download_url": "https://example.com/fs.zip", "digest": "sha256:14F9" } ] } ]
+        """;
+        var release = Net.NewestOf(json)!;
+        Assert.Equal("1.5.0.6", release.Tag);
+        Assert.Equal("14f9", release.Sha256["fluent-search-portable-x64.zip"]);
+        Assert.Equal("1.5.0.6", Net.NewestTagOnPage("<a href=\"/adirh3/Fluent-Search/releases/tag/1.5.0.6\">1.5.0.6 Nightly</a>", "adirh3/Fluent-Search"));
     }
 
     [Fact]
@@ -97,28 +111,47 @@ public class LauncherTests
         // A page the user changed stays theirs, apart from what WinMarchy needs.
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "Web.json"), "[{\"SettingName\":\"OpenLinksInBrowser\",\"Value\":true}]");
-        // What an earlier version put a level too high goes; Fluent Search's own files there stay.
-        var tooHigh = Path.Combine(Path.GetDirectoryName(exe)!, "Blast");
-        File.WriteAllText(Path.Combine(tooHigh, "System.json"), "[]");
-        File.WriteAllText(Path.Combine(tooHigh, "other.dat"), "x");
-        var roaming = Path.Combine(loc.AppData, "Blast");
-        Directory.CreateDirectory(roaming);
-        File.WriteAllText(Path.Combine(roaming, "Appearance.json"), "[]");
 
         var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
         var point = store.Begin("launcher", "Fluent Search");
         await FluentSearchConfig.ApplyAsync(new IntegrationContext(loc, store, point, new UserSettings()), Tokyo, exe, start: false, CancellationToken.None);
 
-        Assert.Equal(FluentSearchConfig.TemplateFiles().Count, Directory.GetFiles(dir, "*.json").Length);
+        // Every page twice: Fluent Search falls back to "<page>.backup.json".
+        Assert.Equal(2 * FluentSearchConfig.TemplateFiles().Count, Directory.GetFiles(dir, "*.json").Length);
+        Assert.Equal(File.ReadAllText(Path.Combine(dir, "System.json")), File.ReadAllText(Path.Combine(dir, "System.backup.json")));
         Assert.Contains("\"OpenLinksInBrowser\",\"Value\":true", File.ReadAllText(Path.Combine(dir, "Web.json")));
         Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(dir, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
-        Assert.False(File.Exists(Path.Combine(tooHigh, "System.json")));
-        Assert.True(File.Exists(Path.Combine(tooHigh, "other.dat")));
-        Assert.False(File.Exists(Path.Combine(roaming, "Appearance.json")));
 
         store.Restore(point);
         Assert.Equal(new[] { "Web.json" }, Directory.GetFiles(dir, "*.json").Select(Path.GetFileName));
-        Assert.True(File.Exists(Path.Combine(tooHigh, "System.json")));
+    }
+
+    [Fact]
+    public async Task Reinstalling_clears_every_folder_and_undo_brings_settings_and_themes_back()
+    {
+        using var temp = new TempDir();
+        var loc = Locations.Under(temp.Path);
+        var exe = temp.File("fluent/FluentSearch.exe");
+        var blast = Path.Combine(Path.GetDirectoryName(exe)!, "Blast");
+        Directory.CreateDirectory(Path.Combine(blast, "Themes"));
+        Directory.CreateDirectory(Path.Combine(blast, "Cache"));
+        File.WriteAllText(Path.Combine(blast, "Themes", "test.json"), "{}");
+        File.WriteAllText(Path.Combine(blast, "Cache", "index.bin"), "big");
+        var roaming = Path.Combine(loc.AppData, "Blast");
+        Directory.CreateDirectory(roaming);
+        File.WriteAllText(Path.Combine(roaming, "System.json"), "[]");
+
+        var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
+        var point = store.Begin("fluentsearch-reinstall", "Fluent Search");
+        await FluentSearchConfig.ResetAsync(new IntegrationContext(loc, store, point, new UserSettings()), exe, CancellationToken.None);
+        Assert.False(Directory.Exists(blast));
+        Assert.False(Directory.Exists(roaming));
+
+        store.Restore(point);
+        Assert.True(File.Exists(Path.Combine(blast, "Themes", "test.json")));
+        Assert.True(File.Exists(Path.Combine(roaming, "System.json")));
+        // The search index builds itself again; it is not kept.
+        Assert.False(File.Exists(Path.Combine(blast, "Cache", "index.bin")));
     }
 
     [Fact]

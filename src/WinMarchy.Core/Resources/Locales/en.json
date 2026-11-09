@@ -146,7 +146,12 @@
     "extrasDone": "Extras installed.",
     "piNeedsBash": "Needs Git Bash, which is missing here.",
     "experimental": "Experimental",
-    "glazeOfficial": "Official release, gets replaced"
+    "glazeOfficial": "Official release, gets replaced",
+    "fluentSearchReinstall": "Reinstall Fluent Search",
+    "fluentSearchReinstallHint": "Deletes all of Fluent Search's settings, themes and search index, downloads the newest version and sets it up again with WinMarchy's settings.",
+    "fluentSearchReinstallTitle": "Reinstall Fluent Search?",
+    "fluentSearchReinstallConfirm": "WinMarchy deletes all of Fluent Search's settings, themes and search index, also in AppData, downloads the newest version and sets it up again. Settings and themes are kept in the restore point and can be brought back; the search index builds itself again.",
+    "fluentSearchReinstallDone": "Fluent Search is reinstalled and set up."
   },
 
   "themes": {
@@ -663,7 +668,8 @@
     "glazeUpdate": "Update GlazeWM to {version}",
     "toolUpdate": "Update {tool}",
     "launcher": "Put {tool} on the Win key",
-    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again"
+    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again",
+    "fluentSearchReinstall": "Reinstall Fluent Search"
   },
 
   "steps": {
@@ -712,7 +718,8 @@
     "greenshot": "Set up Greenshot for screenshots",
     "greenshotFixed": "Reset Greenshot",
     "notInstalled": "{tool} is not installed",
-    "fluentSearch": "Set up Fluent Search"
+    "fluentSearch": "Set up Fluent Search",
+    "fluentSearchClear": "Delete Fluent Search's settings, themes and cache"
   },
 
   "integrations": {
@@ -780,7 +787,8 @@
     "fluentSearch": {
       "notFound": "Fluent Search is not installed.",
       "done": "Fluent Search listens on Alt+F24 and wears the theme's accent colour. Settings: {path}",
-      "written": "Fluent Search: wrote {count} settings files to {path}"
+      "written": "Fluent Search: wrote {count} settings files to {path}",
+      "cleared": "Deleted Fluent Search data (kept in the restore point): {path}"
     }
   },
 

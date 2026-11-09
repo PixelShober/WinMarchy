@@ -66,10 +66,13 @@ public static class Net
         return ParseExpandedAssets(html, repo, tag);
     }
 
-    /// <summary>The release with this tag, from the API or, past its rate limit, from the release page.</summary>
-    public static async Task<ReleaseInfo> GetReleaseAsync(HttpClient http, string repo, string tag, CancellationToken ct)
+    /// <summary>
+    /// The newest release of a GitHub repository, pre-releases (nightly builds) included. From the API
+    /// or, past its rate limit, from the releases page.
+    /// </summary>
+    public static async Task<ReleaseInfo> GetNewestReleaseAsync(HttpClient http, string repo, CancellationToken ct)
     {
-        using (var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/tags/{Uri.EscapeDataString(tag)}"))
+        using (var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases?per_page=10"))
         {
             request.Headers.Accept.ParseAdd("application/vnd.github+json");
             using var response = await http.SendAsync(request, ct);
@@ -80,11 +83,33 @@ public static class Net
             else
             {
                 EnsureOk(response);
-                return ParseApiRelease(await response.Content.ReadAsStringAsync(ct));
+                return NewestOf(await response.Content.ReadAsStringAsync(ct)) ?? throw new WinMarchyException("releaseTagUnknown", ("repo", repo));
             }
         }
-        var html = await http.GetStringAsync($"https://github.com/{repo}/releases/expanded_assets/{Uri.EscapeDataString(tag)}", ct);
+        var web = "https://github.com/" + repo;
+        var page = await http.GetStringAsync(web + "/releases", ct);
+        var tag = NewestTagOnPage(page, repo) ?? throw new WinMarchyException("releaseTagUnknown", ("repo", repo));
+        var html = await http.GetStringAsync(web + "/releases/expanded_assets/" + Uri.EscapeDataString(tag), ct);
         return ParseExpandedAssets(html, repo, tag);
+    }
+
+    /// <summary>The first release in the API's list (newest first) that is not a draft.</summary>
+    internal static ReleaseInfo? NewestOf(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        foreach (var release in doc.RootElement.EnumerateArray())
+        {
+            if (release.TryGetProperty("draft", out var draft) && draft.GetBoolean()) continue;
+            return ParseApiRelease(release.GetRawText());
+        }
+        return null;
+    }
+
+    /// <summary>The first release tag linked on a GitHub releases page (they are listed newest first).</summary>
+    internal static string? NewestTagOnPage(string html, string repo)
+    {
+        var m = Regex.Match(html, "href=\"/" + Regex.Escape(repo) + "/releases/tag/([^\"]+)\"", RegexOptions.IgnoreCase);
+        return m.Success ? Uri.UnescapeDataString(WebUtility.HtmlDecode(m.Groups[1].Value)) : null;
     }
 
     internal static ReleaseInfo ParseApiRelease(string json)

@@ -19,14 +19,12 @@ public static class ToolInstaller
         if (release == null)
         {
             step.Report(L.T("tools.lookup", ("tool", tool.Name)));
-            release = tool.PinnedTag is { } pinned ? await Net.GetReleaseAsync(http, tool.Repo, pinned, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+            release = tool.PreRelease ? await Net.GetNewestReleaseAsync(http, tool.Repo, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
         }
         var asset = release.Assets.Keys.FirstOrDefault(n => tool.Asset.IsMatch(n))
             ?? throw new WinMarchyException("toolAssetMissing", ("tool", tool.Name), ("tag", release.Tag));
-        // A pinned release brings its checksum with WinMarchy; otherwise GitHub's counts.
-        var sha = tool.PinnedSha256 is { } own && string.Equals(release.Tag, tool.PinnedTag, StringComparison.OrdinalIgnoreCase) ? own
-            : release.Sha256.TryGetValue(asset, out var published) ? published
-            : throw new WinMarchyException("toolNoChecksum", ("tool", tool.Name), ("file", asset));
+        if (!release.Sha256.TryGetValue(asset, out var sha))
+            throw new WinMarchyException("toolNoChecksum", ("tool", tool.Name), ("file", asset));
 
         var file = Path.Combine(Paths.Ensure(Paths.DownloadDir), asset);
         step.Report(L.T("tools.downloading", ("tool", tool.Name), ("version", release.Tag)));
@@ -163,6 +161,15 @@ public static class ToolInstaller
         var relative = Path.GetRelativePath(staging, exe);
         if (Directory.Exists(tool.ToolDir))
         {
+            // The user's data inside the program's folder (a portable program's settings) moves into the new one.
+            foreach (var keep in tool.KeepFolders ?? Array.Empty<string>())
+            {
+                var from = Path.Combine(tool.ToolDir, keep);
+                var to = Path.Combine(staging, keep);
+                if (!Directory.Exists(from)) continue;
+                if (Directory.Exists(to)) Directory.Delete(to, true);
+                Directory.Move(from, to);
+            }
             var old = tool.ToolDir + ".old";
             if (Directory.Exists(old)) Directory.Delete(old, true);
             Directory.Move(tool.ToolDir, old);
@@ -185,14 +192,14 @@ public static class ToolInstaller
     }
 
     /// <summary>
-    /// The vendor's latest release (for a pinned program: the pinned one, so an update comes only with
-    /// a WinMarchy that pins a newer one), or null for a program WinMarchy does not download.
+    /// The vendor's latest release (for a program on nightly builds: the newest one, pre-releases too),
+    /// or null for a program WinMarchy does not download.
     /// </summary>
     public static async Task<ReleaseInfo?> LatestReleaseAsync(ToolDef tool, CancellationToken ct)
     {
         if (tool.Repo == null) return null;
         using var http = Net.CreateClient(TimeSpan.FromMinutes(2));
-        return tool.PinnedTag is { } pinned ? await Net.GetReleaseAsync(http, tool.Repo, pinned, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+        return tool.PreRelease ? await Net.GetNewestReleaseAsync(http, tool.Repo, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
     }
 
     internal static bool IsCurrent(string latestTag, string? installedTag, string? installedVersion)

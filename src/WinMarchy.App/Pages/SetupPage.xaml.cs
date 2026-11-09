@@ -120,6 +120,21 @@ public partial class SetupPage : UserControl, IPage
         if (job != null) Job.Follow(job.Id);
     }
 
+    /// <summary>All of Fluent Search's settings, themes and cache go, the newest build comes, and WinMarchy sets it up again.</summary>
+    async void OnReinstallFluent(object sender, RoutedEventArgs e)
+    {
+        if (!await Dialogs.ConfirmAsync(L.T("setup.fluentSearchReinstallTitle"), L.T("setup.fluentSearchReinstallConfirm"), L.T("setup.fluentSearchReinstall"), danger: true)) return;
+        var job = AppModel.Run("fluentsearch-reinstall", "setup", L.T("jobs.fluentSearchReinstall"), AppModel.Engine.FluentSearchReinstallSteps(), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("setup.fluentSearchReinstallDone"));
+                OnShown();
+            });
+        });
+        if (job != null) Job.Follow(job.Id);
+    }
+
     void OnStart(object sender, RoutedEventArgs e)
     {
         AppModel.Update(s =>

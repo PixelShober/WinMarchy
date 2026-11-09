@@ -552,6 +552,31 @@ public sealed class Engine
         return steps;
     }
 
+    /// <summary>
+    /// Setup → Reinstall Fluent Search: all its data goes (settings, themes, cache, in every folder it
+    /// may use; all in a restore point), the newest build comes from GitHub, and it gets the settings
+    /// from WinMarchy's template, the hotkey and the theme's colour again.
+    /// </summary>
+    public List<SetupStep> FluentSearchReinstallSteps()
+    {
+        RestorePoint? point = null;
+        var tool = ToolCatalog.FluentSearch;
+        bool chosen = Launchers.Of(S) == Launchers.FluentSearch;
+        var steps = new List<SetupStep>
+        {
+            BeginStep("fluentsearch-reinstall", L.T("jobs.fluentSearchReinstall"), p => point = p),
+            new(L.T("steps.fluentSearchClear"), async (step, ct) =>
+            {
+                var exe = Components.Status(tool).Path ?? Path.Combine(tool.ToolDir, tool.Exe);
+                await FluentSearchConfig.ResetAsync(Context(point!, step), exe, ct);
+            }),
+            new(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); }),
+            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Context(point!, step), CurrentTheme.Palette,
+                Components.Status(tool).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)), start: chosen, ct)),
+        };
+        return steps;
+    }
+
     // ------------------------------------------------------------------ program updates
 
     /// <summary>
