@@ -662,7 +662,8 @@
     "toolUpdates": "Programme aktualisieren",
     "glazeUpdate": "GlazeWM auf {version} aktualisieren",
     "toolUpdate": "{tool} aktualisieren",
-    "launcher": "{tool} auf die Win-Taste legen"
+    "launcher": "{tool} auf die Win-Taste legen",
+    "afterUpdate": "WinMarchy {version}: GlazeWM, Tastenkürzel und Leiste neu einrichten"
   },
 
   "steps": {
@@ -778,7 +779,8 @@
     },
     "fluentSearch": {
       "notFound": "Fluent Search ist nicht installiert.",
-      "done": "Fluent Search hört auf Alt+F24 und trägt die Akzentfarbe des Themes. Einstellungen: {path}"
+      "done": "Fluent Search hört auf Alt+F24 und trägt die Akzentfarbe des Themes. Einstellungen: {path}",
+      "written": "Fluent Search: {count} Einstellungsdateien geschrieben in {path}"
     }
   },
 

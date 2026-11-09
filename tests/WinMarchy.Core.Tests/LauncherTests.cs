@@ -106,8 +106,14 @@ public class LauncherTests
         Assert.Contains("\"OpenLinksInBrowser\",\"Value\":true", File.ReadAllText(Path.Combine(dir, "Web.json")));
         Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(dir, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
 
+        // Older portable builds read %AppData%\Blast as well.
+        var roaming = Path.Combine(loc.AppData, "Blast");
+        Assert.Equal(new[] { dir, roaming }, FluentSearchConfig.SettingsDirs(loc, exe));
+        Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(roaming, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
+
         store.Restore(point);
         Assert.Equal(new[] { "Web.json" }, Directory.GetFiles(dir, "*.json").Select(Path.GetFileName));
+        Assert.Empty(Directory.Exists(roaming) ? Directory.GetFiles(roaming) : Array.Empty<string>());
     }
 
     [Fact]
@@ -115,5 +121,13 @@ public class LauncherTests
     {
         var loc = Locations.Under("/tmp/x");
         Assert.Equal(Path.Combine(loc.AppData, "Blast"), FluentSearchConfig.SettingsDir(loc, null));
+    }
+
+    [Fact]
+    public void A_new_version_writes_the_generated_files_again()
+    {
+        Assert.False(Services.Engine.GeneratedFilesOutdated(new AppState { SetupDone = false }));
+        Assert.True(Services.Engine.GeneratedFilesOutdated(new AppState { SetupDone = true, GeneratedBy = "0.0.0-ci.1" }));
+        Assert.False(Services.Engine.GeneratedFilesOutdated(new AppState { SetupDone = true, GeneratedBy = AppInfo.Version }));
     }
 }

@@ -807,6 +807,20 @@ public sealed class AgentHost : IAgentHost, IDisposable
     }
 
     /// <summary>
+    /// A new WinMarchy version writes GlazeWM's config, the hotkey script and the bar's config again
+    /// (Engine.AfterUpdateSteps), and waits for it, so the GlazeWM update after it does not run into it.
+    /// </summary>
+    async Task RefreshGeneratedFilesAsync(CancellationToken ct)
+    {
+        if (!Core.Services.Engine.GeneratedFilesOutdated(AppState.Load())) return;
+        Log.Info(L.T("jobs.afterUpdate", ("version", AppInfo.Version)));
+        var started = await Application.Current.Dispatcher.InvokeAsync(() =>
+            AppModel.Run("after-update", "setup", L.T("jobs.afterUpdate", ("version", AppInfo.Version)), AppModel.Engine.AfterUpdateSteps()) != null);
+        if (!started) return;
+        for (int i = 0; i < 240 && AppModel.Jobs.IsRunning("setup"); i++) await Task.Delay(500, ct);
+    }
+
+    /// <summary>
     /// Shortly after the start: GlazeWM is WinMarchy's build, in its latest release if updates are on
     /// (Settings). Runs as a job, so the Log page shows the steps; the crash watchdog leaves GlazeWM
     /// alone meanwhile. WinMarchy's own pre-releases update GlazeWM too: GlazeWM has releases of its own.
@@ -815,6 +829,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     {
         try
         {
+            await RefreshGeneratedFilesAsync(ct);
             // Login is over and the network is up by then.
             await Task.Delay(TimeSpan.FromSeconds(10), ct);
             if (AppModel.Jobs.IsRunning("setup")) return;

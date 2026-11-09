@@ -22,6 +22,14 @@ public static class FluentSearchConfig
 
     const string ResourcePrefix = "WinMarchy.FluentSearch.";
 
+    /// <summary>
+    /// Every folder the Fluent Search at <paramref name="exe"/> may read: the portable build's next to
+    /// the exe, and %AppData%\Blast. Its documentation names the first for the portable build; older
+    /// portable builds were seen using the second as well, so both get the settings.
+    /// </summary>
+    public static IReadOnlyList<string> SettingsDirs(Locations loc, string? exe) =>
+        new[] { SettingsDir(loc, exe), Path.Combine(loc.AppData, "Blast") }.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
     /// <summary>The settings folder of the Fluent Search at <paramref name="exe"/>.</summary>
     public static string SettingsDir(Locations loc, string? exe)
     {
@@ -87,21 +95,28 @@ public static class FluentSearchConfig
             ctx.Report(L.T("integrations.fluentSearch.notFound"));
             return;
         }
-        var dir = SettingsDir(ctx.Loc, exe);
         await StopAsync(ct);
-        foreach (var file in TemplateFiles())
+        var dirs = SettingsDirs(ctx.Loc, exe);
+        foreach (var dir in dirs)
         {
-            var path = Path.Combine(dir, file);
-            var text = File.Exists(path) ? FileSafety.ReadShared(path) : Template(file, ctx.Loc.UserProfile);
-            text = file switch
+            int written = 0;
+            foreach (var file in TemplateFiles())
             {
-                "System.json" => PatchSystem(text),
-                "Appearance.json" => PatchAppearance(text, palette),
-                _ => text,
-            };
-            if (!File.Exists(path) || FileSafety.ReadShared(path) != text) ctx.WriteFile(path, text);
+                var path = Path.Combine(dir, file);
+                var text = File.Exists(path) ? FileSafety.ReadShared(path) : Template(file, ctx.Loc.UserProfile);
+                text = file switch
+                {
+                    "System.json" => PatchSystem(text),
+                    "Appearance.json" => PatchAppearance(text, palette),
+                    _ => text,
+                };
+                if (File.Exists(path) && FileSafety.ReadShared(path) == text) continue;
+                ctx.WriteFile(path, text);
+                written++;
+            }
+            Log.Info(L.T("integrations.fluentSearch.written", ("count", written), ("path", dir)));
         }
-        ctx.Report(L.T("integrations.fluentSearch.done", ("path", dir)));
+        ctx.Report(L.T("integrations.fluentSearch.done", ("path", string.Join(" · ", dirs))));
         if (start) Platform.AppLauncher.Start(exe);
     }
 

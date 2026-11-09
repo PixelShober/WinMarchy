@@ -662,7 +662,8 @@
     "toolUpdates": "Update programs",
     "glazeUpdate": "Update GlazeWM to {version}",
     "toolUpdate": "Update {tool}",
-    "launcher": "Put {tool} on the Win key"
+    "launcher": "Put {tool} on the Win key",
+    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again"
   },
 
   "steps": {
@@ -778,7 +779,8 @@
     },
     "fluentSearch": {
       "notFound": "Fluent Search is not installed.",
-      "done": "Fluent Search listens on Alt+F24 and wears the theme's accent colour. Settings: {path}"
+      "done": "Fluent Search listens on Alt+F24 and wears the theme's accent colour. Settings: {path}",
+      "written": "Fluent Search: wrote {count} settings files to {path}"
     }
   },
 

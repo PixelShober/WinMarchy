@@ -127,15 +127,16 @@ public static class Diagnostics
         Guard("Fluent Search", () =>
         {
             var exe = ToolCatalog.Detect(ToolCatalog.FluentSearch, loc, s, AppState.Load()).Path;
-            var dir = Integrations.FluentSearchConfig.SettingsDir(loc, exe);
-            Line($"launcher behind Win: {Integrations.Launchers.Of(s)} · {exe ?? "not found"} · {dir}{(Directory.Exists(dir) ? "" : " (missing)")}");
-            var system = Path.Combine(dir, "System.json");
-            if (File.Exists(system))
+            Line($"launcher behind Win: {Integrations.Launchers.Of(s)} · {exe ?? "not found"}");
+            foreach (var dir in Integrations.FluentSearchConfig.SettingsDirs(loc, exe))
             {
+                Line($"{dir}: {(Directory.Exists(dir) ? string.Join(", ", Directory.GetFiles(dir).Select(f => $"{Path.GetFileName(f)} {File.GetLastWriteTime(f):yyyy-MM-dd HH:mm}")) : "missing")}");
+                var system = Path.Combine(dir, "System.json");
+                if (!File.Exists(system)) continue;
                 using var doc = JsonDocument.Parse(FileSafety.ReadShared(system));
                 foreach (var item in doc.RootElement.EnumerateArray())
                     if (item.TryGetProperty("SettingName", out var n) && n.GetString() is "Search hotkey" or "StartAtStartup" && item.TryGetProperty("Value", out var v))
-                        Line($"{n.GetString()}: {v}");
+                        Line($"  {n.GetString()}: {v}");
             }
         });
         Guard("Flow Launcher", () =>

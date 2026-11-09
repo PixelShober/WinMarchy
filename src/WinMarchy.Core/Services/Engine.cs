@@ -153,6 +153,30 @@ public sealed class Engine
         }
     }
 
+    /// <summary>
+    /// The first start of a new WinMarchy version: GlazeWM's config, the hotkey script and the bar's
+    /// config are written again, so what the new version changed in them (window rules, workspaces,
+    /// shortcuts) takes effect without a visit to the Tiling page. In a restore point of their own.
+    /// </summary>
+    public List<SetupStep> AfterUpdateSteps()
+    {
+        RestorePoint? point = null;
+        return new List<SetupStep>
+        {
+            BeginStep("update", L.T("jobs.afterUpdate", ("version", AppInfo.Version)), p => point = p),
+            new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)),
+            new(L.T("steps.barSetup"), (step, _) =>
+            {
+                WriteBarConfig(Context(point!, step));
+                AppState.Update(s => s.GeneratedBy = AppInfo.Version);
+                return Task.CompletedTask;
+            }),
+        };
+    }
+
+    /// <summary>Whether the generated files come from an older WinMarchy than this one.</summary>
+    public static bool GeneratedFilesOutdated(AppState state) => state.SetupDone && state.GeneratedBy != AppInfo.Version;
+
     public List<SetupStep> HotkeySteps()
     {
         RestorePoint? point = null;
@@ -696,7 +720,7 @@ public sealed class Engine
         {
             Components.StopBar();
             if (S.ShowBar) Components.StartBar();
-            AppState.Update(st => st.SetupDone = true);
+            AppState.Update(st => { st.SetupDone = true; st.GeneratedBy = AppInfo.Version; });
             return Task.CompletedTask;
         }));
         return steps;

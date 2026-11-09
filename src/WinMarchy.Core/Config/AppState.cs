@@ -24,6 +24,12 @@ public sealed class AppState
     /// <summary>Wallpaper position per theme for "next background".</summary>
     public Dictionary<string, int> WallpaperIndex { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The WinMarchy version that last wrote the generated files (GlazeWM's config, the hotkey script,
+    /// the bar's config). A newer version writes them again at its first start.
+    /// </summary>
+    public string? GeneratedBy { get; set; }
+
     /// <summary>First complete setup finished.</summary>
     public bool SetupDone { get; set; }
 
