@@ -409,6 +409,10 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _lastGlazeRestart = DateTime.Now;
         _hangReported = false;
         Log.Warn(L.T("agent.glazeHung"));
+        // What GlazeWM itself wrote before it stopped answering, and which build it is: the next fix starts there.
+        var errors = AppModel.Engine.Components.GlazeErrors(3);
+        var version = AppState.Load().ToolTags.GetValueOrDefault(Core.Tools.ToolCatalog.GlazeWm.Id) ?? AppModel.Engine.Components.Status(Core.Tools.ToolCatalog.GlazeWm).Version ?? "?";
+        Log.Info(L.T("agent.glazeHungDetail", ("version", version), ("detail", errors.Count > 0 ? string.Join(" | ", errors) : L.T("agent.glazeNoErrors"))));
         Notify(L.T("agent.glazeRestarting"));
         // WinMarchy ends this one itself: its end is no crash.
         ForgetGlazeProcess();

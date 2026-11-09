@@ -23,12 +23,77 @@ public static class FluentSearchConfig
     const string ResourcePrefix = "WinMarchy.FluentSearch.";
 
     /// <summary>
-    /// Every folder the Fluent Search at <paramref name="exe"/> may read: the portable build's next to
-    /// the exe, and %AppData%\Blast. Its documentation names the first for the portable build; older
-    /// portable builds were seen using the second as well, so both get the settings.
+    /// The folders WinMarchy writes Fluent Search's settings to. Where Fluent Search really reads them
+    /// is learnt once on this PC (<see cref="LearnSettingsDirAsync"/>, kept in state.json): then that
+    /// folder and the portable one. Until then every place it may use: next to the exe (its
+    /// documentation), %LocalAppData%\Blast and %AppData%\Blast.
     /// </summary>
-    public static IReadOnlyList<string> SettingsDirs(Locations loc, string? exe) =>
-        new[] { SettingsDir(loc, exe), Path.Combine(loc.AppData, "Blast") }.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    public static IReadOnlyList<string> SettingsDirs(Locations loc, string? exe)
+    {
+        var dirs = new List<string> { SettingsDir(loc, exe) };
+        if (AppState.Load().FluentSearchSettingsDir is { } learnt) dirs.Add(learnt);
+        else dirs.AddRange(new[] { Path.Combine(loc.LocalAppData, "Blast"), Path.Combine(loc.AppData, "Blast") });
+        return dirs.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>Folders that may hold Fluent Search's settings: the known places, and any folder up to two levels down in %LocalAppData% or %AppData% with an Appearance.json.</summary>
+    internal static IEnumerable<string> CandidateDirs(Locations loc, string exe)
+    {
+        yield return SettingsDir(loc, exe);
+        yield return Path.Combine(loc.LocalAppData, "Blast");
+        yield return Path.Combine(loc.AppData, "Blast");
+        foreach (var root in new[] { loc.LocalAppData, loc.AppData, Path.GetDirectoryName(exe)! })
+        {
+            if (!Directory.Exists(root)) continue;
+            foreach (var dir in SafeDirs(root).Concat(SafeDirs(root).SelectMany(SafeDirs)))
+                if (File.Exists(Path.Combine(dir, "Appearance.json"))) yield return dir;
+        }
+    }
+
+    static IEnumerable<string> SafeDirs(string dir)
+    {
+        try { return Directory.GetDirectories(dir); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return Array.Empty<string>(); }
+    }
+
+    /// <summary>Every settings page in the candidate folders, with when it was last written.</summary>
+    static Dictionary<string, DateTime> Snapshot(Locations loc, string exe)
+    {
+        var files = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        foreach (var dir in CandidateDirs(loc, exe).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!Directory.Exists(dir)) continue;
+            foreach (var f in Directory.EnumerateFiles(dir, "*.json")) files[f] = File.GetLastWriteTimeUtc(f);
+        }
+        return files;
+    }
+
+    /// <summary>
+    /// Finds out where this Fluent Search keeps its settings: starts it, and the folder whose settings
+    /// pages it creates or writes within half a minute is the one. Remembered in state.json; null if
+    /// it wrote nothing (then all likely folders get the settings).
+    /// </summary>
+    public static async Task<string?> LearnSettingsDirAsync(Locations loc, string exe, CancellationToken ct)
+    {
+        if (AppState.Load().FluentSearchSettingsDir is { } known && Directory.Exists(known)) return known;
+        if (!OperatingSystem.IsWindows()) return null;
+        await StopAsync(ct);
+        var before = Snapshot(loc, exe);
+        Platform.AppLauncher.Start(exe);
+        string? found = null;
+        for (int i = 0; i < 30 && found == null; i++)
+        {
+            await Task.Delay(1000, ct);
+            found = Snapshot(loc, exe)
+                .Where(f => !before.TryGetValue(f.Key, out var was) || was != f.Value)
+                .Select(f => Path.GetDirectoryName(f.Key))
+                .FirstOrDefault();
+        }
+        await StopAsync(ct);
+        Log.Info(found != null ? L.T("integrations.fluentSearch.learnt", ("path", found)) : L.T("integrations.fluentSearch.notLearnt"));
+        if (found != null) AppState.Update(s => s.FluentSearchSettingsDir = found);
+        return found;
+    }
 
     /// <summary>The settings folder of the Fluent Search at <paramref name="exe"/>.</summary>
     public static string SettingsDir(Locations loc, string? exe)
@@ -95,6 +160,7 @@ public static class FluentSearchConfig
             ctx.Report(L.T("integrations.fluentSearch.notFound"));
             return;
         }
+        await LearnSettingsDirAsync(ctx.Loc, exe, ct);
         await StopAsync(ct);
         var dirs = SettingsDirs(ctx.Loc, exe);
         foreach (var dir in dirs)

@@ -30,6 +30,9 @@ public sealed class AppState
     /// </summary>
     public string? GeneratedBy { get; set; }
 
+    /// <summary>Where Fluent Search keeps its settings on this PC, as WinMarchy found out by starting it once.</summary>
+    public string? FluentSearchSettingsDir { get; set; }
+
     /// <summary>First complete setup finished.</summary>
     public bool SetupDone { get; set; }
 

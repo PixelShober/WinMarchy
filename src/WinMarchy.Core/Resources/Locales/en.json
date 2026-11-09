@@ -780,7 +780,9 @@
     "fluentSearch": {
       "notFound": "Fluent Search is not installed.",
       "done": "Fluent Search listens on Alt+F24 and wears the theme's accent colour. Settings: {path}",
-      "written": "Fluent Search: wrote {count} settings files to {path}"
+      "written": "Fluent Search: wrote {count} settings files to {path}",
+      "learnt": "Fluent Search keeps its settings in {path}; WinMarchy writes them there from now on.",
+      "notLearnt": "Fluent Search wrote no settings file when it started; WinMarchy writes them to every folder Fluent Search may use."
     }
   },
 
@@ -908,7 +910,8 @@
     "glazeCrashesTooOften": "GlazeWM crashed three times in ten minutes (last code {code}). WinMarchy no longer starts it by itself; \"Reload GlazeWM\" starts it again.",
     "glazeBusyAfterWake": "GlazeWM does not answer right now. The PC just woke up, was unlocked or changed its screens; WinMarchy waits up to a minute before restarting GlazeWM.",
     "glazeUpToDate": "GlazeWM now runs version {version}.",
-    "glazeUpkeepFailed": "GlazeWM could not be updated at start: {detail}"
+    "glazeUpkeepFailed": "GlazeWM could not be updated at start: {detail}",
+    "glazeHungDetail": "GlazeWM {version} hung. Its error log says: {detail}"
   },
 
   "tray": {

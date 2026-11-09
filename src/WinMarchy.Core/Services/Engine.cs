@@ -340,7 +340,7 @@ public sealed class Engine
                 () => targets.PowerShell ? null : L.T("steps.off")),
             new(L.T("steps.vscode"), (step, ct) => VsCodeTheme.ApplyAsync(Ctx(step), theme, ct),
                 () => targets.VsCode ? null : L.T("steps.off")),
-            new(L.T("steps.flow"), (step, ct) => FlowTheme.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.Flow).Path, ct),
+            new(L.T("steps.flow"), (step, ct) => FlowTheme.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.Flow).Path, ct, start: Launchers.Of(S) == Launchers.Flow),
                 () => !targets.Flow ? L.T("steps.off") : Launchers.Of(S) == Launchers.Flow || Components.Status(ToolCatalog.Flow).Installed ? null : L.T("steps.notSetUp")),
             new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.FluentSearch).Path,
                     start: Launchers.Of(S) == Launchers.FluentSearch, ct),

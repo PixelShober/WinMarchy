@@ -55,7 +55,8 @@ public static class FlowTheme
         return loc.FlowSettings;
     }
 
-    public static async Task ApplyAsync(IntegrationContext ctx, Palette palette, string? flowExe, CancellationToken ct)
+    /// <param name="start">Flow is the launcher behind Win (Settings → Program search): it runs afterwards.</param>
+    public static async Task ApplyAsync(IntegrationContext ctx, Palette palette, string? flowExe, CancellationToken ct, bool start = true)
     {
         var settingsFile = SettingsFile(ctx.Loc, flowExe);
         bool fresh = false;
@@ -84,8 +85,9 @@ public static class FlowTheme
         ctx.WriteFile(settingsFile, PatchSettings(fresh ? "{}" : FileSafety.ReadShared(settingsFile), palette.IsLight));
         ctx.Report(L.T("integrations.flow.done"));
 
-        // Flow is the launcher behind Win: afterwards it runs, whether it did before or not.
-        if (exe != null && File.Exists(exe)) await StartAndCheckAsync(exe, ct);
+        // The launcher behind Win runs afterwards, whether it did before or not; with Fluent Search
+        // chosen instead, Flow stays off, or both would answer the key.
+        if (start && exe != null && File.Exists(exe)) await StartAndCheckAsync(exe, ct);
     }
 
     /// <summary>

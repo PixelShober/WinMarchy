@@ -108,7 +108,7 @@ public class LauncherTests
 
         // Older portable builds read %AppData%\Blast as well.
         var roaming = Path.Combine(loc.AppData, "Blast");
-        Assert.Equal(new[] { dir, roaming }, FluentSearchConfig.SettingsDirs(loc, exe));
+        Assert.Equal(new[] { dir, Path.Combine(loc.LocalAppData, "Blast"), roaming }, FluentSearchConfig.SettingsDirs(loc, exe));
         Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(roaming, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
 
         store.Restore(point);
