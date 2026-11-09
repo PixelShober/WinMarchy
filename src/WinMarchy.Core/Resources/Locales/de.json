@@ -780,9 +780,7 @@
     "fluentSearch": {
       "notFound": "Fluent Search ist nicht installiert.",
       "done": "Fluent Search hört auf Alt+F24 und trägt die Akzentfarbe des Themes. Einstellungen: {path}",
-      "written": "Fluent Search: {count} Einstellungsdateien geschrieben in {path}",
-      "learnt": "Fluent Search hält seine Einstellungen in {path}; WinMarchy schreibt sie künftig dorthin.",
-      "notLearnt": "Fluent Search hat beim Start keine Einstellungsdatei geschrieben; WinMarchy schreibt sie in alle Ordner, die Fluent Search nutzen kann."
+      "written": "Fluent Search: {count} Einstellungsdateien geschrieben in {path}"
     }
   },
 

@@ -128,7 +128,7 @@ public static class Diagnostics
         {
             var exe = ToolCatalog.Detect(ToolCatalog.FluentSearch, loc, s, AppState.Load()).Path;
             Line($"launcher behind Win: {Integrations.Launchers.Of(s)} · {exe ?? "not found"}");
-            foreach (var dir in Integrations.FluentSearchConfig.SettingsDirs(loc, exe))
+            foreach (var dir in new[] { Integrations.FluentSearchConfig.SettingsDir(loc, exe) })
             {
                 Line($"{dir}: {(Directory.Exists(dir) ? string.Join(", ", Directory.GetFiles(dir).Select(f => $"{Path.GetFileName(f)} {File.GetLastWriteTime(f):yyyy-MM-dd HH:mm}")) : "missing")}");
                 var system = Path.Combine(dir, "System.json");

@@ -84,7 +84,7 @@ public class LauncherTests
     }
 
     [Fact]
-    public async Task Settings_land_next_to_the_portable_exe_and_can_be_undone()
+    public async Task Settings_land_in_blast_settings_next_to_the_portable_exe_and_can_be_undone()
     {
         using var temp = new TempDir();
         var loc = Locations.Under(temp.Path);
@@ -93,10 +93,17 @@ public class LauncherTests
         File.WriteAllText(exe, "");
         File.WriteAllText(temp.File("fluent/readme-portable.txt"), "");
         var dir = FluentSearchConfig.SettingsDir(loc, exe);
-        Assert.Equal(Path.Combine(Path.GetDirectoryName(exe)!, "Blast"), dir);
+        Assert.Equal(Path.Combine(Path.GetDirectoryName(exe)!, "Blast", "Settings"), dir);
         // A page the user changed stays theirs, apart from what WinMarchy needs.
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "Web.json"), "[{\"SettingName\":\"OpenLinksInBrowser\",\"Value\":true}]");
+        // What an earlier version put a level too high goes; Fluent Search's own files there stay.
+        var tooHigh = Path.Combine(Path.GetDirectoryName(exe)!, "Blast");
+        File.WriteAllText(Path.Combine(tooHigh, "System.json"), "[]");
+        File.WriteAllText(Path.Combine(tooHigh, "other.dat"), "x");
+        var roaming = Path.Combine(loc.AppData, "Blast");
+        Directory.CreateDirectory(roaming);
+        File.WriteAllText(Path.Combine(roaming, "Appearance.json"), "[]");
 
         var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
         var point = store.Begin("launcher", "Fluent Search");
@@ -105,22 +112,20 @@ public class LauncherTests
         Assert.Equal(FluentSearchConfig.TemplateFiles().Count, Directory.GetFiles(dir, "*.json").Length);
         Assert.Contains("\"OpenLinksInBrowser\",\"Value\":true", File.ReadAllText(Path.Combine(dir, "Web.json")));
         Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(dir, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
-
-        // Older portable builds read %AppData%\Blast as well.
-        var roaming = Path.Combine(loc.AppData, "Blast");
-        Assert.Equal(new[] { dir, Path.Combine(loc.LocalAppData, "Blast"), roaming }, FluentSearchConfig.SettingsDirs(loc, exe));
-        Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(roaming, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
+        Assert.False(File.Exists(Path.Combine(tooHigh, "System.json")));
+        Assert.True(File.Exists(Path.Combine(tooHigh, "other.dat")));
+        Assert.False(File.Exists(Path.Combine(roaming, "Appearance.json")));
 
         store.Restore(point);
         Assert.Equal(new[] { "Web.json" }, Directory.GetFiles(dir, "*.json").Select(Path.GetFileName));
-        Assert.Empty(Directory.Exists(roaming) ? Directory.GetFiles(roaming) : Array.Empty<string>());
+        Assert.True(File.Exists(Path.Combine(tooHigh, "System.json")));
     }
 
     [Fact]
     public void The_installed_build_keeps_its_settings_in_roaming_app_data()
     {
         var loc = Locations.Under("/tmp/x");
-        Assert.Equal(Path.Combine(loc.AppData, "Blast"), FluentSearchConfig.SettingsDir(loc, null));
+        Assert.Equal(Path.Combine(loc.AppData, "Blast", "Settings"), FluentSearchConfig.SettingsDir(loc, null));
     }
 
     [Fact]

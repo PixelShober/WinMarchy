@@ -154,8 +154,8 @@ public sealed class Engine
     }
 
     /// <summary>
-    /// The first start of a new WinMarchy version: GlazeWM's config, the hotkey script and the bar's
-    /// config are written again, so what the new version changed in them (window rules, workspaces,
+    /// The first start of a new WinMarchy version: GlazeWM's config, the hotkey script, Fluent Search's
+    /// settings (if installed) and the bar's config are written again, so what the new version changed in them (window rules, workspaces,
     /// shortcuts) takes effect without a visit to the Tiling page. In a restore point of their own.
     /// </summary>
     public List<SetupStep> AfterUpdateSteps()
@@ -165,6 +165,9 @@ public sealed class Engine
         {
             BeginStep("update", L.T("jobs.afterUpdate", ("version", AppInfo.Version)), p => point = p),
             new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)),
+            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Context(point!, step), CurrentTheme.Palette,
+                    Components.Status(ToolCatalog.FluentSearch).Path, start: Launchers.Of(S) == Launchers.FluentSearch, ct),
+                () => Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notSetUp")),
             new(L.T("steps.barSetup"), (step, _) =>
             {
                 WriteBarConfig(Context(point!, step));
