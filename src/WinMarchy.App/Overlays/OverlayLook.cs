@@ -113,6 +113,31 @@ static class Placement
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
 
+    /// <summary>The window class and process of the window in front; nulls if there is none.</summary>
+    public static (string? Class, string? Process) ForegroundWindowInfo()
+    {
+        var hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return (null, null);
+        var cls = new System.Text.StringBuilder(256);
+        GetClassName(hwnd, cls, cls.Capacity);
+        GetWindowThreadProcessId(hwnd, out var pid);
+        string? process = null;
+        try
+        {
+            using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+            process = p.ProcessName;
+        }
+        catch (ArgumentException) { }
+        catch (InvalidOperationException) { }
+        return (cls.ToString(), process);
+    }
+
+    /// <summary>Windows of the shell itself: taskbars, Start and search, the desktop.</summary>
+    public static bool IsShellWindow(string windowClass) => windowClass is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd"
+        or "Windows.UI.Core.CoreWindow" or "XamlExplorerHostIslandWindow" or "TopLevelWindowForOverflowXamlIsland"
+        or "NotifyIconOverflowWindow" or "Progman" or "WorkerW";
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, System.Text.StringBuilder name, int max);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);

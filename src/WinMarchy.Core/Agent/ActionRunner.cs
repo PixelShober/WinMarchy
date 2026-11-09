@@ -81,6 +81,7 @@ public sealed class ActionRunner
     {
         if (_host.Glaze is { Connected: true } ipc)
         {
+            if (action.WmCommands.Select(GlazeConfig.WorkspaceOf).Max() is { } highest && !await WorkspaceExistsAsync(ipc, highest, ct)) return;
             foreach (var command in action.WmCommands) await ipc.CommandAsync(command, ct);
             return;
         }
@@ -98,6 +99,20 @@ public sealed class ActionRunner
             foreach (var part in command.Split(' ', StringSplitOptions.RemoveEmptyEntries)) psi.ArgumentList.Add(part);
             Process.Start(psi)?.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Whether workspace <paramref name="number"/> exists with the screens connected now (five on one
+    /// screen, six on more). If not, the user is told, and GlazeWM is not asked for it.
+    /// </summary>
+    async Task<bool> WorkspaceExistsAsync(GlazeIpc ipc, int number, CancellationToken ct)
+    {
+        if (number <= GlazeConfig.WorkspaceLimit(1)) return true;
+        var screens = GlazeTree.List(await ipc.QueryAsync("monitors", ct), "monitors").Count();
+        int limit = GlazeConfig.WorkspaceLimit(screens);
+        if (number <= limit) return true;
+        _host.Notify(L.T(screens <= 1 ? "tiling.workspaceLimitOne" : "tiling.workspaceLimit", ("number", number), ("count", limit)));
+        return false;
     }
 
     async Task AppAsync(string id, IReadOnlyList<string> urls, CancellationToken ct)
@@ -269,8 +284,9 @@ public sealed class ActionRunner
             case "toggle-split": await windows.ToggleSplitAsync(ct); break;
             case "focus": await windows.FocusAsync(Direction(arg), ct); break;
             case "swap": await windows.SwapAsync(Direction(arg), ct); break;
-            case "to-workspace" when arg != null && int.TryParse(arg, out var n) && n is >= 1 and <= GlazeConfig.WorkspaceCount:
-                await windows.ToWorkspaceAsync(arg, ct);
+            case "to-workspace" when arg != null && int.TryParse(arg, out var n) && n >= 1:
+                if (n <= GlazeConfig.WorkspaceCount && _host.Glaze is { } glaze && await WorkspaceExistsAsync(glaze, n, ct)) await windows.ToWorkspaceAsync(arg, ct);
+                else if (n > GlazeConfig.WorkspaceCount) _host.Notify(L.T("tiling.workspaceLimit", ("number", n), ("count", GlazeConfig.WorkspaceCount)));
                 break;
             // "desktop-new" from the time Win+Ctrl+D had only one set of programs.
             case "work-mode" or "desktop-new":

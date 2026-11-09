@@ -69,8 +69,8 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 
 | Windows | Was passiert | Omarchy |
 |-|-|-|
-| `Win+1…0` | Workspace 1–10 | gleich |
-| `Win+Umschalt+1…0` | Fenster auf Workspace 1–10 | gleich |
+| `Win+1…6` | Workspace 1–6 | gleich |
+| `Win+Umschalt+1…6` | Fenster auf Workspace 1–6 | gleich |
 | `Win+Tab` | Nächster Workspace | gleich |
 | `Win+Umschalt+Tab` | Vorheriger Workspace | gleich |
 | `Win+Strg+Tab` | Zuletzt benutzter Workspace · *optional* | gleich |

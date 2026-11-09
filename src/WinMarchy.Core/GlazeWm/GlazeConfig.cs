@@ -33,7 +33,16 @@ public static class GlazeConfig
     public const string ScratchpadWorkspace = "scratchpad";
     /// <summary>Hidden workspace where a layout change parks windows for a moment. Never the scratchpad.</summary>
     public const string StageWorkspace = "winmarchy-stage";
-    public const int WorkspaceCount = 10;
+    /// <summary>The numbered workspaces GlazeWM knows: 1 to 6. With one screen only 1 to 5 are used (<see cref="WorkspaceLimit"/>).</summary>
+    public const int WorkspaceCount = 6;
+
+    /// <summary>How many workspaces there are with this many screens: five on one, six on two or more.</summary>
+    public static int WorkspaceLimit(int screens) => screens <= 1 ? 5 : WorkspaceCount;
+
+    /// <summary>The workspace number of "focus --workspace 3" or "move --workspace 3"; null for any other command.</summary>
+    public static int? WorkspaceOf(string command) =>
+        System.Text.RegularExpressions.Regex.Match(command.Trim(), @"^(?:focus|move) --workspace (\d+)$") is { Success: true } m &&
+        int.TryParse(m.Groups[1].Value, out var n) ? n : null;
 
     /// <summary>The numbered workspaces, not the two hidden ones.</summary>
     public static bool IsRegular(string name) => name != ScratchpadWorkspace && name != StageWorkspace;
@@ -89,9 +98,12 @@ public static class GlazeConfig
         Line("window_behavior:");
         Line("  initial_state: 'tiling'");
         Line("  state_defaults:");
+        // Floating windows stay above the tiles, as in Hyprland. Otherwise every click on a tile
+        // would raise all tiles over them, and a dialog or reminder would vanish behind its program.
+        // The scrolling layout floats its columns explicitly without this.
         Line("    floating:");
         Line("      centered: true");
-        Line("      shown_on_top: false");
+        Line("      shown_on_top: true");
         Line("    fullscreen:");
         Line("      maximized: false");
         Line("      shown_on_top: false");
@@ -119,6 +131,10 @@ public static class GlazeConfig
         // Teams and Outlook pop-ups (incoming call, meeting reminder) must not push the layout around.
         Rule(sb, "ignore", ("window_process", "equals", "ms-teams"), ("window_title", "regex", "^(Microsoft Teams Notification|Benachrichtigung|Notification)"));
         Rule(sb, "set-floating --centered", ("window_process", "equals", "OUTLOOK"), ("window_title", "regex", "Erinnerung|Reminder"));
+        // Dialogs and setup wizards float in front instead of squeezing into the tiles: Windows'
+        // standard dialog class (also used by NSIS setups), Windows Installer and Inno Setup.
+        Rule(sb, "set-floating --centered", ("window_class", "equals", "#32770"));
+        Rule(sb, "set-floating --centered", ("window_class", "regex", "^(MsiDialogCloseClass|MsiDialogNoCloseClass|TWizardForm|TSetupForm)$"));
         Line();
         Line("binding_modes: []");
         Line();

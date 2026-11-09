@@ -249,9 +249,10 @@ public sealed class WorkModeRunner
         }
 
         var pinned = settings.WorkspaceMonitors;
+        int limit = GlazeConfig.WorkspaceLimit(state.Screens.Count);
         if (plan.Back)
         {
-            var back = await _windows.ShowScreensAsync(plan.Targets, GlazeConfig.WorkspaceCount, pinned, ct);
+            var back = await _windows.ShowScreensAsync(plan.Targets, limit, pinned, ct);
             store.Previous = null;
             store.Save();
             _notify(L.T("workModes.back", ("workspaces", Join(back))));
@@ -259,9 +260,9 @@ public sealed class WorkModeRunner
         }
 
         store.Previous = state.Screens.Select(s => s.Shown).ToList();
-        var shown = await _windows.ShowScreensAsync(plan.Targets, GlazeConfig.WorkspaceCount, pinned, ct);
+        var shown = await _windows.ShowScreensAsync(plan.Targets, limit, pinned, ct);
         if (plan.Targets.Select((t, m) => t.Goal == ScreenGoal.Fresh && (m >= shown.Count || shown[m] == null)).Any(x => x))
-            _notify(L.T("tiling.allTaken", ("count", GlazeConfig.WorkspaceCount)));
+            _notify(L.T("tiling.allTaken", ("count", limit)));
         _notify(L.T("workModes.opened", ("name", title), ("workspaces", Join(shown))));
 
         for (int m = 0; m < plan.Targets.Count && m < shown.Count; m++)

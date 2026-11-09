@@ -144,7 +144,7 @@ public sealed class LayoutEngine
     /// Windows that left full screen for a new window, by id: their workspace, whether it was the
     /// "maximized" full screen, and the windows that came since. Only touched while holding the gate.
     /// </summary>
-    readonly Dictionary<string, (string Workspace, bool Maximized, HashSet<string> Newcomers)> _yielded = new();
+    readonly Dictionary<string, (string Workspace, bool Maximized, HashSet<string> Newcomers, bool BackOnFocus)> _yielded = new();
     readonly SemaphoreSlim _busy;
 
     /// <param name="chooseScreen">Saves a screen's layout chosen with Win+Ctrl+J into the settings.</param>
@@ -317,11 +317,13 @@ public sealed class LayoutEngine
                     Log.Trace($"fullscreen: {otherId} ({GlazeTree.Str(other, "processName")}) leaves full screen for new window {id} ({GlazeTree.Str(window, "processName")})", "layout");
                     await _ipc.CommandAsync("toggle-fullscreen", ct, otherId);
                     if (!_yielded.TryGetValue(otherId, out var yielded))
-                        _yielded[otherId] = yielded = (name, other.TryGetProperty("state", out var st) && GlazeTree.Bool(st, "maximized"), new HashSet<string>());
+                        _yielded[otherId] = yielded = (name, other.TryGetProperty("state", out var st) && GlazeTree.Bool(st, "maximized"), new HashSet<string>(), false);
                     yielded.Newcomers.Add(id);
                 }
             }
         }
+
+        if (eventType == "focus_changed") await FullscreenOnFocusLockedAsync(window, id, name, ws!.Value, ct);
 
         switch (mode)
         {
@@ -358,6 +360,37 @@ public sealed class LayoutEngine
     }
 
     /// <summary>
+    /// Another program comes to the front (a mail opens from a link, an app activates itself) on a
+    /// workspace where a window is in full screen: that one leaves full screen, else the program would
+    /// stay hidden behind it. Once the window gets the focus again, it is in full screen again; also
+    /// when the other program closes. Windows floating in front (dialogs, reminders) need no room and
+    /// change nothing. Caller holds the gate.
+    /// </summary>
+    async Task FullscreenOnFocusLockedAsync(JsonElement window, string id, string workspace, JsonElement ws, CancellationToken ct)
+    {
+        if (_yielded.TryGetValue(id, out var own) && own.BackOnFocus && own.Workspace == workspace)
+        {
+            _yielded.Remove(id);
+            if (GlazeTree.WindowState(window) is "tiling" or "floating" && !GlazeTree.Windows(ws).Any(w => GlazeTree.WindowState(w) == "fullscreen"))
+            {
+                Log.Trace($"fullscreen: {id} has the focus again and goes back to full screen", "layout");
+                await _ipc.CommandAsync("set-fullscreen" + (own.Maximized ? " --maximized" : ""), ct, id);
+            }
+            return;
+        }
+        if (!_settings().NewWindowEndsFullscreen || GlazeTree.ShownOnTop(window) || GlazeTree.WindowState(window) is not ("tiling" or "floating")) return;
+        foreach (var other in GlazeTree.Windows(ws).Where(w => GlazeTree.WindowState(w) == "fullscreen" && GlazeTree.Str(w, "id") != id).ToList())
+        {
+            if (GlazeTree.Str(other, "id") is not { } otherId) continue;
+            Log.Trace($"fullscreen: {otherId} ({GlazeTree.Str(other, "processName")}) leaves full screen, {id} ({GlazeTree.Str(window, "processName")}) came to the front", "layout");
+            await _ipc.CommandAsync("toggle-fullscreen", ct, otherId);
+            if (!_yielded.TryGetValue(otherId, out var yielded))
+                _yielded[otherId] = yielded = (workspace, other.TryGetProperty("state", out var st) && GlazeTree.Bool(st, "maximized"), new HashSet<string>(), true);
+            yielded.Newcomers.Add(id);
+        }
+    }
+
+    /// <summary>
     /// A window closed. If it was the last of those that came since a window left full screen for
     /// them (a dialog, a pop-up, a window opened for a moment), that window gets its full screen back:
     /// otherwise it would stay in half the screen. Not if it moved to another workspace or another
@@ -374,7 +407,7 @@ public sealed class LayoutEngine
         var workspaces = await _ipc.QueryAsync("workspaces", ct);
         foreach (var id in back)
         {
-            var (workspace, maximized, _) = _yielded[id];
+            var (workspace, maximized, _, _) = _yielded[id];
             _yielded.Remove(id);
             if (GlazeTree.WorkspaceOf(workspaces, id) is not { } ws || GlazeTree.Str(ws, "name") != workspace) continue;
             var windows = GlazeTree.Windows(ws).ToList();

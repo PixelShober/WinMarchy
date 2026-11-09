@@ -38,7 +38,7 @@ public sealed class HotkeyBinding
 
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Expands "{n}" (1 … 9, 0) and "{ws}" (1 … 10) to all ten workspaces.</summary>
+    /// <summary>Expands "{n}" and "{ws}" to every workspace (1 … 6).</summary>
     public string? Repeat { get; set; }
 
     /// <summary>The profile files it under "Optional": Win+K lists it at the end, in its own section.</summary>
@@ -48,7 +48,7 @@ public sealed class HotkeyBinding
     [JsonIgnore]
     public bool Favorite { get; set; }
 
-    /// <summary>For the ten bindings "Win+{n}" expands to: the keys as the profile writes them, so lists can show one row.</summary>
+    /// <summary>For the bindings "Win+{n}" expands to: the keys as the profile writes them, so lists can show one row.</summary>
     [JsonIgnore]
     public string? Template { get; set; }
 

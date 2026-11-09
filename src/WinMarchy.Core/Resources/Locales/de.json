@@ -370,7 +370,7 @@
     "wallpaper-menu": "Hintergrund wählen",
     "focus": "Fokus in eine Richtung (left, right, up, down)",
     "swap": "Fenster tauschen (left, right, up, down)",
-    "to-workspace": "Fenster auf Workspace (1 bis 10)",
+    "to-workspace": "Fenster auf Workspace (1 bis 6)",
     "screenshot": "Bildschirmfoto (region, window, screen)",
     "about": "Über dieses System (Fastfetch)",
     "bar-shortcut": "Eigener Eintrag der Leiste",
@@ -405,12 +405,12 @@
     "monitorsText": "Wie im Omarchy-Plugin Screens: Jeder Bildschirm bekommt sein Layout und feste Workspaces. Win+3 öffnet Workspace 3 immer auf seinem Bildschirm und in dessen Layout, und ein Arbeitsmodus nimmt dort nur Workspaces dieses Bildschirms.",
     "monitorsHint": "Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt. Steckst du einen ab, ziehen seine Workspaces auf einen anderen um. Seine Zeile bleibt hier stehen, bis du sie leerst, damit die Aufteilung am Dock wieder passt.",
     "monitorsSplit": "Neu aufteilen",
-    "monitorsInvalid": "{name}: nur Workspace-Nummern von 1 bis 10, etwa 1-5 oder 6, 7.",
+    "monitorsInvalid": "{name}: nur Workspace-Nummern von 1 bis 6, etwa 1-2 oder 3, 4.",
     "monitorsTwice": "Workspace {workspace} steht bei {a} und bei {b}. Jeder Workspace gehört zu einem Bildschirm.",
     "monitorName": "Bildschirm {number}",
     "monitorSize": "{width} × {height}",
     "monitorWorkspaces": "Workspaces",
-    "monitorWorkspacesHint": "Zum Beispiel 1-5 oder 6, 7, 8. Leer: Dieser Bildschirm nimmt, was frei ist.",
+    "monitorWorkspacesHint": "Zum Beispiel 1-2 oder 3, 4. Es gibt sechs Workspaces, an einem einzelnen Bildschirm fünf. Leer: Dieser Bildschirm nimmt, was frei ist.",
     "desktopAppLate": "{action} hat nach 12 Sekunden noch kein Fenster gezeigt; vorgesehen war Workspace {workspace}.",
     "monitorsFailed": "Workspaces ließen sich nicht auf ihre Bildschirme verschieben: {detail}",
     "shortcuts": "Eigene Einträge in der Leiste",
@@ -423,7 +423,7 @@
     "shortcutAdd": "Eintrag hinzufügen",
     "shortcutNoTitle": "Der Eintrag mit der Aktion {action} braucht einen Namen.",
     "newWindowEndsFullscreen": "Neues Fenster beendet Vollbild",
-    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland. Schließt sich das neue wieder, bekommt es sein Vollbild zurück.",
+    "newWindowEndsFullscreenHint": "Öffnet sich ein Fenster neben einem im Vollbild oder drängt sich ein Programm davor, geht das Vollbild-Fenster zurück in seine Kachel, wie in Hyprland. Es bekommt sein Vollbild zurück, sobald das andere wieder zu ist oder du zu ihm zurückkehrst.",
     "oneMonitor": "Es ist nur ein Bildschirm angeschlossen.",
     "monitorAbsent": "nicht angeschlossen",
     "workModes": "Arbeitsmodi",
@@ -447,7 +447,9 @@
     "mainScreen": "Hauptbildschirm",
     "mainScreenHint": "Bekommt Workspace 1 und 2. Wechselst du ihn, teilen sich die anderen Bildschirme den Rest gleichmäßig.",
     "monitorsSuggested": "Noch ist nichts festgelegt, das hier ist der Vorschlag: der Hauptbildschirm 1 und 2, die anderen den Rest. Mit „Übernehmen“ gilt er. Bildschirme zählen von links nach rechts, so wie GlazeWM sie zählt.",
-    "monitorWorkspacesOf": "Workspaces von {name}"
+    "monitorWorkspacesOf": "Workspaces von {name}",
+    "workspaceLimit": "Workspace {number} gibt es nicht. Es sind {count} Workspaces.",
+    "workspaceLimitOne": "Workspace {number} gibt es an einem einzelnen Bildschirm nicht. Hier sind es {count} Workspaces, ab dem zweiten Bildschirm 6."
   },
 
   "layouts": {

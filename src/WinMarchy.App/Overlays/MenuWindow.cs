@@ -77,6 +77,9 @@ public sealed class MenuWindow : Window
     System.Drawing.Point _mouse;
     /// <summary>The work area the window covers, in pixels.</summary>
     System.Drawing.Rectangle? _area;
+    /// <summary>When the menu came to the front last, and how often the focus was taken back since.</summary>
+    DateTime _shownAt;
+    int _reclaims;
 
     internal MenuWindow()
     {
@@ -152,7 +155,7 @@ public sealed class MenuWindow : Window
         Content = root;
 
         SourceInitialized += (_, _) => Placement.MakeOverlay(this, clickThrough: false);
-        Deactivated += (_, _) => Dismiss();
+        Deactivated += (_, _) => OnDeactivated();
         PreviewKeyDown += OnKey;
         SizeChanged += (_, _) => _scroll.MaxHeight = Math.Max(200, ActualHeight * 0.66);
         // A scaling change resizes the window by the ratio of the two scalings; it has to cover the work area again.
@@ -190,10 +193,43 @@ public sealed class MenuWindow : Window
             Show();
         }
         Placement.MovePixels(this, area.Left, area.Top, area.Width, area.Height, activate: true);
+        _shownAt = DateTime.Now;
+        _reclaims = 0;
+        TakeFocus();
+        Log.Trace($"menu: shown ({_mode})", "menu");
+        if (Ui.Motion.Enabled) Ui.Motion.FadeIn(_card, 6);
+    }
+
+    void TakeFocus()
+    {
         Placement.ForceForeground(this);
         _filter.Focus();
         Keyboard.Focus(_filter);
-        if (Ui.Motion.Enabled) Ui.Motion.FadeIn(_card, 6);
+    }
+
+    /// <summary>
+    /// Another window has the focus: the menu closes, as a click next to it closes it. Except right
+    /// after it opened, when Windows' shell takes the focus for a moment (the Win key shows the hidden
+    /// taskbar, WinMarchy hides it again): the menu takes the focus back, else it would be gone
+    /// before it was seen.
+    /// </summary>
+    void OnDeactivated()
+    {
+        if (_closing) return;
+        var (cls, process) = Placement.ForegroundWindowInfo();
+        var age = (DateTime.Now - _shownAt).TotalMilliseconds;
+        if (age < 1500 && _reclaims < 3 && (cls == null || Placement.IsShellWindow(cls)))
+        {
+            _reclaims++;
+            Log.Trace($"menu: the shell ({cls ?? "no window"}) took the focus after {age:0} ms, taking it back", "menu");
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (!_closing && IsVisible) TakeFocus();
+            }, System.Windows.Threading.DispatcherPriority.Input);
+            return;
+        }
+        Log.Trace($"menu: closed, {process ?? "?"} ({cls ?? "?"}) took the focus after {age:0} ms", "menu");
+        Dismiss();
     }
 
     void Dismiss()
@@ -270,7 +306,7 @@ public sealed class MenuWindow : Window
         Reset(list.FindIndex(e => !e.Header));
     }
 
-    /// <summary>One row per shortcut; the ten of "Win+1 … 0" become one row.</summary>
+    /// <summary>One row per shortcut; the ones of "Win+1 … 6" become one row.</summary>
     static List<MenuEntry> BindingRows(IEnumerable<HotkeyBinding> bindings, IKeyboardLayout layout)
     {
         var rows = new List<MenuEntry>();
@@ -281,8 +317,8 @@ public sealed class MenuWindow : Window
             {
                 if (!seen.Add(b.Template)) continue;
                 var keys = (b.Combo?.Display(layout) ?? b.Keys);
-                var label = b.TemplateLabel?.ToString().Replace("{ws}", "1–10") ?? b.Describe();
-                rows.Add(new MenuEntry("keyboard", label) { Keys = keys[..^1] + "1 … 0", Detail = b.Omarchy });
+                var label = b.TemplateLabel?.ToString().Replace("{ws}", $"1–{GlazeConfig.WorkspaceCount}") ?? b.Describe();
+                rows.Add(new MenuEntry("keyboard", label) { Keys = keys[..^1] + $"1 … {GlazeConfig.WorkspaceCount}", Detail = b.Omarchy });
                 continue;
             }
             rows.Add(new MenuEntry("keyboard", b.Describe()) { Keys = b.Combo?.Display(layout) ?? b.Keys, Action = b.Do, Detail = b.Omarchy });
@@ -532,7 +568,7 @@ public sealed class MenuWindow : Window
     }
 
     /// <summary>
-    /// The starred shortcuts as rows that run them, with their keys on the right. "Win+1 … 0" and
+    /// The starred shortcuts as rows that run them, with their keys on the right. "Win+1 … 6" and
     /// the like are left out: they do one thing per key.
     /// </summary>
     static List<MenuEntry> FavoriteRows()

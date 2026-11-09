@@ -9,9 +9,13 @@ public static class ScreenPlan
     /// <summary>
     /// The main screen gets workspaces 1 and 2, the other screens share the rest evenly from left to
     /// right (the left ones one more where it does not come out even). A single screen gets them all.
+    /// There are five workspaces with one screen and six with more (<see cref="GlazeConfig.WorkspaceLimit"/>).
     /// </summary>
     /// <returns>Per screen, in the screens' order, its workspace numbers.</returns>
-    public static List<List<int>> Split(int screens, int main, int count = GlazeConfig.WorkspaceCount)
+    public static List<List<int>> Split(int screens, int main) => Split(screens, main, GlazeConfig.WorkspaceLimit(screens));
+
+    /// <summary>As <see cref="Split(int, int)"/>, over <paramref name="count"/> workspaces.</summary>
+    public static List<List<int>> Split(int screens, int main, int count)
     {
         var plan = Enumerable.Range(0, Math.Max(0, screens)).Select(_ => new List<int>()).ToList();
         if (plan.Count == 0) return plan;

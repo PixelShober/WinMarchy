@@ -370,7 +370,7 @@
     "wallpaper-menu": "Choose background",
     "focus": "Focus in a direction (left, right, up, down)",
     "swap": "Swap window (left, right, up, down)",
-    "to-workspace": "Window to workspace (1 to 10)",
+    "to-workspace": "Move window to workspace (1 to 6)",
     "screenshot": "Screenshot (region, window, screen)",
     "about": "About this system (Fastfetch)",
     "bar-shortcut": "Own bar entry",
@@ -405,12 +405,12 @@
     "monitorsText": "As in Omarchy's Screens plugin: each screen gets its layout and fixed workspaces. Win+3 always opens workspace 3 on its screen and in that screen's layout, and a work mode only takes that screen's workspaces there.",
     "monitorsHint": "Screens count from left to right, the way GlazeWM counts them. Unplug one and its workspaces move to another. Its row stays here until you clear it, so the split fits again at the dock.",
     "monitorsSplit": "Split again",
-    "monitorsInvalid": "{name}: only workspace numbers from 1 to 10, such as 1-5 or 6, 7.",
+    "monitorsInvalid": "{name}: only workspace numbers from 1 to 6, such as 1-2 or 3, 4.",
     "monitorsTwice": "Workspace {workspace} is listed for {a} and for {b}. Each workspace belongs to one screen.",
     "monitorName": "Monitor {number}",
     "monitorSize": "{width} × {height}",
     "monitorWorkspaces": "Workspaces",
-    "monitorWorkspacesHint": "For example 1-5 or 6, 7, 8. Empty: this monitor takes whatever is free.",
+    "monitorWorkspacesHint": "For example 1-2 or 3, 4. There are six workspaces, five on a single screen. Empty: this screen takes whatever is free.",
     "desktopAppLate": "{action} showed no window within 12 seconds; it was meant for workspace {workspace}.",
     "monitorsFailed": "Could not move workspaces to their monitors: {detail}",
     "shortcuts": "Your own bar entries",
@@ -423,7 +423,7 @@
     "shortcutAdd": "Add entry",
     "shortcutNoTitle": "The entry with the action {action} needs a name.",
     "newWindowEndsFullscreen": "A new window ends full screen",
-    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen, that one goes back into its tile, as in Hyprland. Once the new window closes again, it gets its full screen back.",
+    "newWindowEndsFullscreenHint": "When a window opens next to one in full screen or a program pushes in front of it, that one goes back into its tile, as in Hyprland. It gets its full screen back once the other one closes or you return to it.",
     "oneMonitor": "Only one monitor is connected.",
     "monitorAbsent": "not connected",
     "workModes": "Work modes",
@@ -447,7 +447,9 @@
     "mainScreen": "Main screen",
     "mainScreenHint": "Gets workspaces 1 and 2. When you pick another one, the other screens share the rest evenly.",
     "monitorsSuggested": "Nothing is set yet, so this is the suggestion: the main screen gets 1 and 2, the others the rest. \"Apply\" makes it stick. Screens count from left to right, the way GlazeWM counts them.",
-    "monitorWorkspacesOf": "Workspaces of {name}"
+    "monitorWorkspacesOf": "Workspaces of {name}",
+    "workspaceLimit": "There is no workspace {number}. There are {count} workspaces.",
+    "workspaceLimitOne": "There is no workspace {number} on a single screen. There are {count} here, six from the second screen on."
   },
 
   "layouts": {

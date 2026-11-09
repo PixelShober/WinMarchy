@@ -11,15 +11,46 @@ public class ScreenTests
     [Fact]
     public void The_main_screen_gets_one_and_two_and_the_others_share_the_rest()
     {
-        Assert.Equal(new[] { Enumerable.Range(1, 10).ToList() }, ScreenPlan.Split(1, 0));
-        Assert.Equal(new[] { new List<int> { 1, 2 }, Enumerable.Range(3, 8).ToList() }, ScreenPlan.Split(2, 0));
-        Assert.Equal(new[] { Enumerable.Range(3, 8).ToList(), new List<int> { 1, 2 } }, ScreenPlan.Split(2, 1));
-        Assert.Equal(new[] { new List<int> { 3, 4, 5, 6 }, new List<int> { 1, 2 }, new List<int> { 7, 8, 9, 10 } }, ScreenPlan.Split(3, 1));
+        // Five workspaces on one screen, six on more.
+        Assert.Equal(new[] { Enumerable.Range(1, 5).ToList() }, ScreenPlan.Split(1, 0));
+        Assert.Equal(new[] { new List<int> { 1, 2 }, new List<int> { 3, 4, 5, 6 } }, ScreenPlan.Split(2, 0));
+        Assert.Equal(new[] { new List<int> { 3, 4, 5, 6 }, new List<int> { 1, 2 } }, ScreenPlan.Split(2, 1));
+        Assert.Equal(new[] { new List<int> { 3, 4 }, new List<int> { 1, 2 }, new List<int> { 5, 6 } }, ScreenPlan.Split(3, 1));
         // Not even: the left ones get one more.
-        Assert.Equal(new[] { new List<int> { 1, 2 }, new List<int> { 3, 4, 5 }, new List<int> { 6, 7, 8 }, new List<int> { 9, 10 } }, ScreenPlan.Split(4, 0));
+        Assert.Equal(new[] { new List<int> { 1, 2 }, new List<int> { 3, 4 }, new List<int> { 5 }, new List<int> { 6 } }, ScreenPlan.Split(4, 0));
         Assert.Empty(ScreenPlan.Split(0, 0));
         // A main screen that is gone counts as the last row.
         Assert.Equal(new List<int> { 1, 2 }, ScreenPlan.Split(2, 5)[1]);
+    }
+
+    [Theory]
+    [InlineData(1, 5)]
+    [InlineData(2, 6)]
+    [InlineData(3, 6)]
+    public void Five_workspaces_on_one_screen_six_on_more(int screens, int limit) => Assert.Equal(limit, GlazeConfig.WorkspaceLimit(screens));
+
+    [Theory]
+    [InlineData("focus --workspace 7", 7)]
+    [InlineData("move --workspace 3", 3)]
+    [InlineData("focus --direction left", null)]
+    [InlineData("move --workspace scratchpad", null)]
+    public void Workspace_commands_are_recognised(string command, int? number) => Assert.Equal(number, GlazeConfig.WorkspaceOf(command));
+
+    [Fact]
+    public void Glazewm_knows_six_workspaces_and_floats_dialogs_in_front()
+    {
+        var yaml = GlazeConfig.Generate(GlazeConfig.FromSettings(new UserSettings(), Themes.ThemeCatalog.Default.Palette, Integrations.Bars.Height));
+        Assert.Contains("- name: '6'", yaml);
+        Assert.DoesNotContain("- name: '7'", yaml);
+        Assert.Contains("shown_on_top: true", yaml);
+        Assert.Contains("'#32770'", yaml);
+    }
+
+    [Fact]
+    public void Settings_forget_screens_of_workspaces_that_are_gone()
+    {
+        var s = new UserSettings { WorkspaceMonitors = { ["1"] = 0, ["6"] = 1, ["7"] = 1, ["10"] = 2 } }.Upgraded();
+        Assert.Equal(new[] { "1", "6" }, s.WorkspaceMonitors.Keys.OrderBy(k => k));
     }
 
     [Fact]

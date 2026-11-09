@@ -99,7 +99,7 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+W` | Fenster schließen |
 | `Win+Pfeiltasten` | Fokus wechseln, mit Umschalt Fenster tauschen |
 | `Win+J` | Teilung drehen, sofort sichtbar |
-| `Win+1` … `Win+0` | Workspace 1 bis 10 |
+| `Win+1` … `Win+6` | Workspace 1 bis 6 (an einem einzelnen Bildschirm 1 bis 5) |
 | `Win+Strg+D`, `Win+Strg+1` bis `3` | Arbeitsmodus: frischer Workspace auf jedem Bildschirm mit festen Programmen, auch der Browser mit festen Seiten; nochmal drücken holt zurück, was vorher da war. `Win+Strg+Pfeil` schaltet alle Bildschirme weiter |
 | `Win+Strg+J` | Layout des Bildschirms wechseln: Dwindle, Spalten, Scrolling (Omarchy: Super+L) |
 | `Win+T`, `Win+O` | Fenster schweben lassen (über den Kacheln, mit `O` klein in der Ecke); noch einmal zurück ins Layout |

@@ -208,6 +208,9 @@ public sealed class UserSettings
                 WorkModes.Add(new WorkMode { Apps = Enumerable.Range(0, screens).Select(i => old.TryGetValue(i.ToString(), out var a) ? a : "").ToList() });
         }
         DesktopApps = null;
+        // There are six workspaces since the limit; bindings of 7 to 10 no longer mean anything.
+        foreach (var key in WorkspaceMonitors.Keys.Where(k => !int.TryParse(k, out var n) || n < 1 || n > GlazeWm.GlazeConfig.WorkspaceCount).ToList())
+            WorkspaceMonitors.Remove(key);
         return this;
     }
 

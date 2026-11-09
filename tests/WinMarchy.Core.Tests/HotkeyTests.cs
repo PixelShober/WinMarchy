@@ -131,11 +131,12 @@ public class HotkeySetTests
     }
 
     [Fact]
-    public void Workspace_bindings_expand_to_ten_workspaces()
+    public void Workspace_bindings_expand_to_six_workspaces()
     {
         var set = HotkeySet.Build(new CustomHotkeys());
         Assert.Contains(set.Active, b => b.Keys == "Win+1" && b.Do == "wm:focus --workspace 1");
-        Assert.Contains(set.Active, b => b.Keys == "Win+0" && b.Do == "wm:focus --workspace 10");
+        Assert.Contains(set.Active, b => b.Keys == "Win+6" && b.Do == "wm:focus --workspace 6");
+        Assert.DoesNotContain(set.Active, b => b.Keys is "Win+7" or "Win+0");
     }
 
     [Fact]

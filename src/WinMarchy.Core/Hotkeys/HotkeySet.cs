@@ -37,7 +37,7 @@ public sealed class HotkeySet
         return profile;
     }
 
-    /// <summary>"Win+{n}" with "focus --workspace {ws}" becomes ten bindings, Win+1 … Win+0.</summary>
+    /// <summary>"Win+{n}" with "focus --workspace {ws}" becomes one binding per workspace, Win+1 … Win+6.</summary>
     internal static IEnumerable<HotkeyBinding> Expand(IEnumerable<HotkeyBinding> bindings)
     {
         foreach (var b in bindings)
@@ -47,7 +47,7 @@ public sealed class HotkeySet
                 yield return b;
                 continue;
             }
-            for (int ws = 1; ws <= 10; ws++)
+            for (int ws = 1; ws <= GlazeWm.GlazeConfig.WorkspaceCount; ws++)
             {
                 var n = (ws % 10).ToString();
                 var copy = b.Copy();

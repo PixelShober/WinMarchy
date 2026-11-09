@@ -51,7 +51,7 @@ public class FavoriteTests
         Assert.Equal("web:https://open.spotify.com/", Assert.Single(set.Active, b => b.Keys == "Win+Shift+M").Do);
         Assert.Equal("app:browser2", Assert.Single(set.Active, b => b.Keys == "Win+Shift+Enter").Do);
         Assert.Equal("do:to-workspace 3", Assert.Single(set.Active, b => b.Keys == "Win+Shift+3").Do);
-        Assert.Equal(10, set.Active.Count(b => b.Template == "Win+{n}"));
+        Assert.Equal(GlazeWm.GlazeConfig.WorkspaceCount, set.Active.Count(b => b.Template == "Win+{n}"));
         // Win+T and Win+O go through WinMarchy: back out of floating, the window joins the screen's layout.
         Assert.Equal("do:float-toggle", Assert.Single(set.Active, b => b.Keys == "Win+T").Do);
         Assert.Equal("do:float-toggle corner", Assert.Single(set.Active, b => b.Keys == "Win+O").Do);
