@@ -57,6 +57,7 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 
 | Programm | Wofür | Lizenz |
 |-|-|-|
+| Fluent Search | Programme suchen (Win allein) statt Flow Launcher, umschaltbar unter **Einstellungen → Programmsuche** | Freeware, nicht Open Source (siehe unten) |
 | PowerShell 7 | Shell im Terminal | MIT |
 | Starship | Omarchys Eingabezeile in PowerShell, in den Farben des Themes | ISC |
 | Fastfetch | Systeminfo mit IP- und MAC-Adresse in jedem neuen Terminal-Tab, wie „Über“ in Omarchy (auch im Logo-Menü der Leiste und unter WinMarchy-Menü → Info) | MIT |
@@ -64,6 +65,10 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 | Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
 | Greenshot | Bildschirmfotos mit Editor statt Snipping Tool, sobald installiert (umschaltbar unter **Einstellungen**) | GPL-3.0 |
 | ExplorerBlurMica (experimentell) | Unschärfe hinter Explorer, eingefärbt mit dem Theme (ein- und ausschalten unter **Einstellungen**) | LGPL-3.0 |
+
+**Fluent Search** ist die Alternative zu Flow Launcher. Installiert sein dürfen beide, unter **Einstellungen → Programmsuche** wählst du, welches die Win-Taste öffnet; nur das läuft, das andere bleibt liegen. WinMarchy lädt die portable Version 1.0.1.4, die letzte stabile auf GitHub. GitHub zeigt für sie keine Prüfsumme, deshalb trägt WinMarchy die SHA-256 selbst mit und lädt nur genau diese Datei; eine neuere Version kommt erst mit einem WinMarchy, das sie geprüft einträgt. Die Einstellungen liegen im Ordner `Blast` neben `FluentSearch.exe`. Fehlt dort eine Datei, kommt sie aus WinMarchys Vorlage (Suchmaschinen, Plugins, Darstellung, Indexierung von C:\ ohne Windows-Ordner; ohne Verlauf, angeheftete Treffer, Benutzer-ID und Laufwerkspfade). Dazu setzt WinMarchy das Kürzel Alt+F24, das es beim Druck auf Win sendet, schaltet Fluent Searchs eigenen Autostart aus und gibt ihm die Akzentfarbe des Themes, auch als Fensterrahmen. Jede Datei landet vorher im Wiederherstellungspunkt.
+
+Fluent Search ist Freeware, aber nicht Open Source. Seine Lizenz liegt laut Entwickler nur dem Installer bei (`COPYING.txt`), auf GitHub und im Netz ist sie nicht veröffentlicht; die portable Version enthält sie nicht. Ob es in einer Firma genutzt werden darf, ist damit nicht belegt. Das muss die IT vor dem Einsatz klären.
 
 **Starship und Fastfetch** bekommen ihre Einstellungen in `C:\WinMarchy\Runtime`, eine eigene `starship.toml` oder Fastfetch-Konfiguration bleibt also unberührt. Jeder neue PowerShell-Tab zeigt zuerst Fastfetch (mit IP- und MAC-Adresse, praktisch für IT-Tickets) und dann Starships Eingabezeile; `fastfetch` lässt sich auch selbst eintippen. Ins Profil kommt nur der markierte WinMarchy-Block, der das Startskript lädt, wenn es da ist: in PowerShell 7 und in Windows PowerShell 5.1, dort aber nur, wenn die Ausführungsrichtlinie Profile zulässt (RemoteSigned oder lockerer). Windows 10 und 11 stehen ohne Vorgabe auf Restricted; dann bleibt Windows PowerShell unberührt, und Starship und Fastfetch kommen mit dem Extra PowerShell 7. WinMarchy ändert die Richtlinie nicht. Unter AppLocker läuft PowerShell im eingeschränkten Sprachmodus: Fastfetch erscheint trotzdem, Starship nicht, denn sein Skript läuft dort nicht.
 
@@ -92,7 +97,7 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 
 | Kürzel | Was passiert |
 |-|-|
-| `Win` allein | Programme suchen (Flow Launcher) |
+| `Win` allein | Programme suchen (Flow Launcher oder Fluent Search) |
 | `Win+Eingabe` | Terminal |
 | `Win+Space` | WinMarchy-Menü; Tippen sucht in deinen Favoriten, in den Programmen des Startmenüs und im Menü |
 | `Win+K` | Alle Kürzel anzeigen, Favoriten zuerst (Eingabe führt das gewählte aus) |
@@ -169,6 +174,7 @@ Der Titel des Pull Requests bestimmt die Version (Conventional Commits): `feat:`
 - [ExplorerBlurMica](https://github.com/Maplespe/ExplorerBlurMica) von Maplespe, LGPL-3.0.
 - [AutoHotkey](https://www.autohotkey.com), GPL-2.0.
 - [Flow Launcher](https://www.flowlauncher.com), MIT.
+- [Fluent Search](https://github.com/adirh3/Fluent-Search) von Adir Hudayfi, Freeware.
 
 ## Lizenz
 

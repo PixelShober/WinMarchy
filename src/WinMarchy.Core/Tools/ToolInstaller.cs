@@ -19,12 +19,14 @@ public static class ToolInstaller
         if (release == null)
         {
             step.Report(L.T("tools.lookup", ("tool", tool.Name)));
-            release = await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+            release = tool.PinnedTag is { } pinned ? await Net.GetReleaseAsync(http, tool.Repo, pinned, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
         }
         var asset = release.Assets.Keys.FirstOrDefault(n => tool.Asset.IsMatch(n))
             ?? throw new WinMarchyException("toolAssetMissing", ("tool", tool.Name), ("tag", release.Tag));
-        if (!release.Sha256.TryGetValue(asset, out var sha))
-            throw new WinMarchyException("toolNoChecksum", ("tool", tool.Name), ("file", asset));
+        // A pinned release brings its checksum with WinMarchy; otherwise GitHub's counts.
+        var sha = tool.PinnedSha256 is { } own && string.Equals(release.Tag, tool.PinnedTag, StringComparison.OrdinalIgnoreCase) ? own
+            : release.Sha256.TryGetValue(asset, out var published) ? published
+            : throw new WinMarchyException("toolNoChecksum", ("tool", tool.Name), ("file", asset));
 
         var file = Path.Combine(Paths.Ensure(Paths.DownloadDir), asset);
         step.Report(L.T("tools.downloading", ("tool", tool.Name), ("version", release.Tag)));
@@ -182,12 +184,15 @@ public static class ToolInstaller
         return IsCurrent(release.Tag, AppState.Load().ToolTags.GetValueOrDefault(tool.Id), installedVersion) ? null : release;
     }
 
-    /// <summary>The vendor's latest release, or null for a program WinMarchy does not download.</summary>
+    /// <summary>
+    /// The vendor's latest release (for a pinned program: the pinned one, so an update comes only with
+    /// a WinMarchy that pins a newer one), or null for a program WinMarchy does not download.
+    /// </summary>
     public static async Task<ReleaseInfo?> LatestReleaseAsync(ToolDef tool, CancellationToken ct)
     {
         if (tool.Repo == null) return null;
         using var http = Net.CreateClient(TimeSpan.FromMinutes(2));
-        return await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
+        return tool.PinnedTag is { } pinned ? await Net.GetReleaseAsync(http, tool.Repo, pinned, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
     }
 
     internal static bool IsCurrent(string latestTag, string? installedTag, string? installedVersion)

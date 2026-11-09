@@ -19,6 +19,8 @@ public enum InstallKind
 /// A program WinMarchy builds on. All of them may be used free of charge in companies.
 /// </summary>
 /// <param name="Experimental">Shown with a warning: it changes something deep in Windows and may break with an update.</param>
+/// <param name="PinnedTag">Always this release, not the latest one: for a vendor whose GitHub release carries no checksum.</param>
+/// <param name="PinnedSha256">The SHA-256 of the pinned release's asset, checked as GitHub's would be.</param>
 public sealed record ToolDef(
     string Id,
     string Name,
@@ -31,7 +33,9 @@ public sealed record ToolDef(
     bool Required,
     string? InstallerArgs = null,
     bool Extra = false,
-    bool Experimental = false)
+    bool Experimental = false,
+    string? PinnedTag = null,
+    string? PinnedSha256 = null)
 {
     public Regex? Asset => AssetPattern == null ? null : new Regex(AssetPattern, RegexOptions.IgnoreCase);
 
@@ -110,9 +114,19 @@ public static class ToolCatalog
     public static readonly ToolDef ExplorerBlurMica = new("explorerblurmica", "ExplorerBlurMica", "LGPL-3.0", "https://github.com/Maplespe/ExplorerBlurMica",
         "Maplespe/ExplorerBlurMica", @"^Release_x64\.zip$", InstallKind.Zip, "ExplorerBlurMica.dll", Required: false, Extra: true, Experimental: true);
 
+    /// <summary>
+    /// The other launcher behind the Win key, chosen in Settings instead of Flow Launcher. Freeware, not
+    /// open source: its terms come as COPYING.txt with its installer and are published nowhere else, so
+    /// a company has to check them itself. The portable build of the last stable release on GitHub;
+    /// GitHub shows no checksum for it, so WinMarchy carries the one it checked.
+    /// </summary>
+    public static readonly ToolDef FluentSearch = new("fluentsearch", "Fluent Search", "Freeware (proprietär)", "https://github.com/adirh3/Fluent-Search",
+        "adirh3/Fluent-Search", @"^fluent-search-portable-x64\.zip$", InstallKind.Zip, "FluentSearch.exe", Required: false, Extra: true,
+        PinnedTag: "1.0.1.4", PinnedSha256: "56b9c2f3f9a5fcfa163c31b462df3a9f3989ffcc3797baf3ea897d9730f88f8b");
+
     public static IReadOnlyList<ToolDef> All { get; } = new[]
     {
-        GlazeWm, Yasb, AutoHotkey, Flow, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Terminal, Files, VsCode,
+        GlazeWm, Yasb, AutoHotkey, Flow, FluentSearch, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Terminal, Files, VsCode,
     };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>

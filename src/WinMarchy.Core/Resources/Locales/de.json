@@ -85,7 +85,8 @@
       "yasb": "Leiste oben",
       "starship": "Eingabezeile",
       "fastfetch": "Systeminfo",
-      "explorerblurmica": "Explorer-Effekt"
+      "explorerblurmica": "Explorer-Effekt",
+      "fluentsearch": "Programme suchen (statt Flow)"
     },
     "running": "Läuft",
     "installedBadge": "Installiert",
@@ -174,7 +175,8 @@
       "lockscreen": "Sperrbildschirm",
       "bar": "Leiste",
       "shell": "Starship und Fastfetch",
-      "explorerBlur": "Explorer (ExplorerBlurMica)"
+      "explorerBlur": "Explorer (ExplorerBlurMica)",
+      "fluentsearch": "Fluent Search einfärben"
     },
     "wallpapers": "{total} Hintergrundbilder, {have} davon schon geladen ({size})",
     "noWallpapers": "Zu diesem Theme gibt es keine Hintergrundbilder.",
@@ -581,7 +583,14 @@
     "explorerBlurOff": "ExplorerBlurMica ist aus. Ganz weg ist es nach der nächsten Anmeldung.",
     "glazeOfficialFound": "Gefunden: ein offizielles Release ({path}). Ihm fehlt, was WinMarchy braucht. Der Knopf installiert den WinMarchy-Build nach C:\\WinMarchy\\Tools und startet ihn an seiner Stelle. Das offizielle bleibt installiert, läuft aber nicht mehr.",
     "glazeForkInstall": "WinMarchy-Build installieren",
-    "languageText": "Sprache dieses Fensters, des WinMarchy-Menüs und der Meldungen."
+    "languageText": "Sprache dieses Fensters, des WinMarchy-Menüs und der Meldungen.",
+    "launcher": "Programmsuche",
+    "launcherText": "Was sich öffnet, wenn du die Win-Taste allein drückst. Installiert sein dürfen beide, laufen tut nur das gewählte.",
+    "launcherActive": "{tool} liegt auf der Win-Taste.",
+    "launcherMissing": "{tool} ist nicht installiert; beim Umschalten lädt WinMarchy es vom Hersteller.",
+    "launcherOther": "{tool} bleibt installiert, läuft aber nicht.",
+    "launcherFluentLicense": "Fluent Search ist Freeware, aber nicht Open Source. Seine Lizenz liegt nur dem Installer bei (COPYING.txt); ob es in der Firma genutzt werden darf, klärt bitte die IT.",
+    "launcherDone": "{tool} liegt jetzt auf der Win-Taste."
   },
 
   "log": {
@@ -652,7 +661,8 @@
     "explorerBlurOff": "ExplorerBlurMica ausschalten",
     "toolUpdates": "Programme aktualisieren",
     "glazeUpdate": "GlazeWM auf {version} aktualisieren",
-    "toolUpdate": "{tool} aktualisieren"
+    "toolUpdate": "{tool} aktualisieren",
+    "launcher": "{tool} auf die Win-Taste legen"
   },
 
   "steps": {
@@ -700,7 +710,8 @@
     "update": "{tool} aktualisieren",
     "greenshot": "Greenshot für Bildschirmfotos einrichten",
     "greenshotFixed": "Greenshot zurückstellen",
-    "notInstalled": "{tool} ist nicht installiert"
+    "notInstalled": "{tool} ist nicht installiert",
+    "fluentSearch": "Fluent Search einrichten"
   },
 
   "integrations": {
@@ -764,6 +775,10 @@
     "shell": {
       "done": "Fastfetch und Starship starten mit jedem neuen PowerShell-Tab: {path}",
       "noProfile": "Keine PowerShell auf diesem Rechner lädt ein Profil. Starship und Fastfetch zeigen sich, sobald PowerShell 7 installiert ist (Einrichtung → Extras). Fastfetch allein startet aus dem WinMarchy-Menü unter Info."
+    },
+    "fluentSearch": {
+      "notFound": "Fluent Search ist nicht installiert.",
+      "done": "Fluent Search hört auf Alt+F24 und trägt die Akzentfarbe des Themes. Einstellungen: {path}"
     }
   },
 
@@ -831,7 +846,6 @@
     "rejected": "Aktion „{action}“ abgelehnt: {detail}",
     "failed": "Aktion „{action}“ fehlgeschlagen: {detail}",
     "appMissing": "{app} ist auf diesem Rechner nicht zu finden.",
-    "flowMissing": "Flow Launcher fehlt. Unter Einrichtung lässt er sich nachinstallieren.",
     "glazeMissing": "GlazeWM fehlt. Unter Einrichtung lässt es sich nachinstallieren.",
     "glazeNotRunning": "Dafür muss GlazeWM laufen.",
     "scriptMissing": "Die Datei hinter diesem Kürzel fehlt.",
@@ -846,7 +860,8 @@
     "fastfetchMissing": "Fastfetch ist nicht installiert. Du findest es unter Einrichtung → Extras.",
     "barMenuNoYasb": "Die Menüs der Leiste gibt es nur mit YASB, und YASB muss laufen.",
     "barMenuOff": "„{entry}“ ist in der Leiste ausgeschaltet. Einschalten unter Tiling → Die Leiste zeigt.",
-    "barMenuUnknown": "Die Leiste hat kein Menü „{menu}“. Möglich sind logo, calendar, audio, network, media, cpu und memory."
+    "barMenuUnknown": "Die Leiste hat kein Menü „{menu}“. Möglich sind logo, calendar, audio, network, media, cpu und memory.",
+    "launcherMissing": "{tool} fehlt. Unter Einstellungen → Programmsuche lässt es sich nachinstallieren."
   },
 
   "agent": {

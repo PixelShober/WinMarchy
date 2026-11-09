@@ -36,7 +36,7 @@ public static class Diagnostics
 
         Guard("Processes and tools", () =>
         {
-            foreach (var name in new[] { "glazewm", "yasb", "AutoHotkey64", "AutoHotkey32", "AutoHotkey", "Flow.Launcher", "Greenshot", "WinMarchy" })
+            foreach (var name in new[] { "glazewm", "yasb", "AutoHotkey64", "AutoHotkey32", "AutoHotkey", "Flow.Launcher", "FluentSearch", "Greenshot", "WinMarchy" })
                 foreach (var p in Process.GetProcessesByName(name))
                 {
                     string started = "", path = "";
@@ -123,6 +123,20 @@ public static class Diagnostics
             // The keys the fault reports were about.
             foreach (var key in new[] { "\"$#!l\"", "\"$#j\"", "\"$#^d\"", "\"$#+s\"", "\"$PrintScreen\"", "\"$#Space\"", "LWin" })
                 foreach (var l in lines.Where(l => l.Contains(key))) Line(l);
+        });
+        Guard("Fluent Search", () =>
+        {
+            var exe = ToolCatalog.Detect(ToolCatalog.FluentSearch, loc, s, AppState.Load()).Path;
+            var dir = Integrations.FluentSearchConfig.SettingsDir(loc, exe);
+            Line($"launcher behind Win: {Integrations.Launchers.Of(s)} · {exe ?? "not found"} · {dir}{(Directory.Exists(dir) ? "" : " (missing)")}");
+            var system = Path.Combine(dir, "System.json");
+            if (File.Exists(system))
+            {
+                using var doc = JsonDocument.Parse(FileSafety.ReadShared(system));
+                foreach (var item in doc.RootElement.EnumerateArray())
+                    if (item.TryGetProperty("SettingName", out var n) && n.GetString() is "Search hotkey" or "StartAtStartup" && item.TryGetProperty("Value", out var v))
+                        Line($"{n.GetString()}: {v}");
+            }
         });
         Guard("Flow Launcher", () =>
         {

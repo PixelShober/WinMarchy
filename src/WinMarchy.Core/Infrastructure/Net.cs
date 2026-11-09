@@ -66,6 +66,27 @@ public static class Net
         return ParseExpandedAssets(html, repo, tag);
     }
 
+    /// <summary>The release with this tag, from the API or, past its rate limit, from the release page.</summary>
+    public static async Task<ReleaseInfo> GetReleaseAsync(HttpClient http, string repo, string tag, CancellationToken ct)
+    {
+        using (var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/tags/{Uri.EscapeDataString(tag)}"))
+        {
+            request.Headers.Accept.ParseAdd("application/vnd.github+json");
+            using var response = await http.SendAsync(request, ct);
+            if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
+            {
+                Log.Warn(L.T("net.githubRateLimit"));
+            }
+            else
+            {
+                EnsureOk(response);
+                return ParseApiRelease(await response.Content.ReadAsStringAsync(ct));
+            }
+        }
+        var html = await http.GetStringAsync($"https://github.com/{repo}/releases/expanded_assets/{Uri.EscapeDataString(tag)}", ct);
+        return ParseExpandedAssets(html, repo, tag);
+    }
+
     internal static ReleaseInfo ParseApiRelease(string json)
     {
         using var doc = JsonDocument.Parse(json);

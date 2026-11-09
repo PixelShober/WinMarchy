@@ -130,19 +130,23 @@ public sealed class ActionRunner
         if (!_host.Apps.Launch(id, urls)) _host.Notify(L.T("actions.appMissing", ("app", L.T("apps." + id))));
     }
 
-    /// <summary>Flow Launcher listens on Alt+F24 (set by WinMarchy). If it is not running yet, it is started first.</summary>
+    /// <summary>
+    /// The launcher chosen in Settings listens on Alt+F24 (set by WinMarchy). If it is not running yet,
+    /// it is started first.
+    /// </summary>
     async Task LauncherAsync(CancellationToken ct)
     {
-        if (Process.GetProcessesByName("Flow.Launcher").Length == 0)
+        var tool = Launchers.Tool(_host.Settings);
+        if (Process.GetProcessesByName(Launchers.Process(_host.Settings)).Length == 0)
         {
-            var flow = ToolCatalog.Detect(ToolCatalog.Flow, Locations.Current, _host.Settings, AppState.Load()).Path;
-            if (flow == null)
+            var exe = ToolCatalog.Detect(tool, Locations.Current, _host.Settings, AppState.Load()).Path;
+            if (exe == null)
             {
-                _host.Notify(L.T("actions.flowMissing"));
+                _host.Notify(L.T("actions.launcherMissing", ("tool", tool.Name)));
                 return;
             }
-            AppLauncher.Start(flow);
-            // Flow takes its hotkey only once its plugins are loaded.
+            AppLauncher.Start(exe);
+            // Both take their hotkey only once they have loaded.
             await Task.Delay(3000, ct);
         }
         KeySender.Send(KeyCombo.Parse("Alt+F24"));

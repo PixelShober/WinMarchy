@@ -132,7 +132,7 @@ public sealed class Engine
         if (Components.AhkExe != null)
         {
             var glazeCli = ToolCatalog.GlazeCli(Components.GlazeExe) ?? "";
-            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s), Extra: Extra(s)));
+            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s), Extra: Extra(s), LauncherProcess: Launchers.Process(s) + ".exe"));
             step.Report(L.T("hotkeys.validating"));
             var (ok, output) = await Components.ValidateAhkAsync(script, ct);
             if (!ok) throw new WinMarchyException("ahkInvalid", ("detail", output));
@@ -317,7 +317,10 @@ public sealed class Engine
             new(L.T("steps.vscode"), (step, ct) => VsCodeTheme.ApplyAsync(Ctx(step), theme, ct),
                 () => targets.VsCode ? null : L.T("steps.off")),
             new(L.T("steps.flow"), (step, ct) => FlowTheme.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.Flow).Path, ct),
-                () => targets.Flow ? null : L.T("steps.off")),
+                () => !targets.Flow ? L.T("steps.off") : Launchers.Of(S) == Launchers.Flow || Components.Status(ToolCatalog.Flow).Installed ? null : L.T("steps.notSetUp")),
+            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.FluentSearch).Path,
+                    start: Launchers.Of(S) == Launchers.FluentSearch, ct),
+                () => !targets.FluentSearch ? L.T("steps.off") : Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notSetUp")),
             new(L.T("steps.files"), (step, _) => { FilesTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
                 () => targets.Files ? null : L.T("steps.off")),
             new(L.T("steps.windows"), (step, _) => { WindowsAppearance.Apply(Ctx(step), palette); return Task.CompletedTask; },
@@ -438,6 +441,9 @@ public sealed class Engine
                 if (tool == ToolCatalog.Fastfetch) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, BarOptions);
                 return Task.CompletedTask;
             });
+        if (tool == ToolCatalog.FluentSearch)
+            return new SetupStep(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Context(pointOf(), step), CurrentTheme.Palette,
+                Exe() ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)), start: Launchers.Of(S) == Launchers.FluentSearch, ct));
         // Installed, Greenshot takes over the screenshots (unless Snipping Tool was chosen on purpose).
         if (tool == ToolCatalog.Greenshot) return GreenshotStep(pointOf);
         if (tool == ToolCatalog.ExplorerBlurMica)
@@ -485,6 +491,37 @@ public sealed class Engine
                 return Task.CompletedTask;
             }));
         }
+        return steps;
+    }
+
+    // ------------------------------------------------------------------ launcher
+
+    /// <summary>
+    /// Settings → Program search: the launcher <paramref name="id"/> takes over the Win key. It is
+    /// installed if it is missing, gets its settings and the theme, the hotkey script asks for it, and
+    /// the other launcher is ended (it stays installed). Changed files go into a restore point.
+    /// </summary>
+    public List<SetupStep> LauncherSteps(string id)
+    {
+        RestorePoint? point = null;
+        var tool = Launchers.Tool(id);
+        var steps = new List<SetupStep>
+        {
+            BeginStep("launcher", L.T("jobs.launcher", ("tool", tool.Name)), p => point = p),
+            new(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); },
+                () => Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null),
+            new(L.T(id == Launchers.FluentSearch ? "steps.fluentSearch" : "steps.flow"), async (step, ct) =>
+            {
+                var changed = S.Clone();
+                changed.Launcher = id;
+                _save(changed);
+                var exe = Components.Status(tool).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name));
+                if (id == Launchers.FluentSearch) await FluentSearchConfig.ApplyAsync(Context(point!, step), CurrentTheme.Palette, exe, start: false, ct);
+                else await FlowTheme.ApplyAsync(Context(point!, step), CurrentTheme.Palette, exe, ct);
+                Components.StartLauncher();
+            }),
+        };
+        steps.Add(new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)));
         return steps;
     }
 
@@ -698,6 +735,7 @@ public sealed class Engine
             {
                 // Flow and Files write their settings on exit: stop them before the files go back.
                 await FlowTheme.StopAsync(Process.GetProcessesByName("Flow.Launcher"), ct);
+                await FluentSearchConfig.StopAsync(ct);
                 foreach (var p in Process.GetProcessesByName("Files")) { try { p.CloseMainWindow(); } catch { } }
                 if (point.IsOriginal)
                 {
@@ -717,8 +755,7 @@ public sealed class Engine
             {
                 Win32.BroadcastSettingChange("ImmersiveColorSet");
                 await Components.ReloadGlazeAsync(Glaze(), ct);
-                var flow = Components.Status(ToolCatalog.Flow).Path;
-                if (flow != null) Platform.AppLauncher.Start(flow);
+                Components.StartLauncher();
                 if (point.IsOriginal)
                 {
                     var before = AppState.Load().TaskbarAutoHideBefore;

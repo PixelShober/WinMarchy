@@ -60,14 +60,14 @@ IsTerminal() {
 UniversalCopy() => Send(IsTerminal() ? "^+c" : "^c")
 UniversalPaste() => Send(IsTerminal() ? "^+v" : "^v")
 
-; Left Win tapped on its own opens the launcher. vkE8 is not assigned to any key: pressing it while
-; Win is down keeps the Start menu closed when Win goes up. If Flow Launcher is not running, WinMarchy
-; starts it first.
+; Left Win tapped on its own opens the launcher (Flow Launcher or Fluent Search, both on Alt+F24).
+; vkE8 is not assigned to any key: pressing it while Win is down keeps the Start menu closed when Win
+; goes up. If the launcher is not running, WinMarchy starts it first.
 WinDown(*) => Send("{Blind}{vkE8}")
 WinUp(*) {
     if (A_PriorKey != "LWin")
         return
-    if ProcessExist("Flow.Launcher.exe")
+    if ProcessExist(LauncherProcess)
         Send(LauncherKeys)
     else
         Act("app:launcher")

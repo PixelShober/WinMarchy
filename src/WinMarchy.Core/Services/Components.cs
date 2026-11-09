@@ -203,17 +203,28 @@ public sealed class Components
             await ProcessRunner.RunAsync(cli, new[] { "command", "wm-reload-config" }, ct, timeoutSec: 15);
     }
 
-    /// <summary>Starts Flow Launcher if it is installed and not running. True if it was started.</summary>
-    public bool StartFlow()
+    /// <summary>
+    /// Starts the launcher chosen in Settings (Flow Launcher or Fluent Search) if it is installed and
+    /// not running, and ends the other one: both would answer the Win key. True if it was started.
+    /// </summary>
+    public bool StartLauncher()
     {
-        if (IsRunning("Flow.Launcher")) return false;
-        if (Status(ToolCatalog.Flow).Path is not { } flow)
+        var chosen = Launchers.Of(_settings());
+        foreach (var p in Process.GetProcessesByName(Launchers.Process(Launchers.Other(chosen))))
         {
-            Log.Trace("flow: not installed", "flow");
+            using (p)
+            {
+                try { p.Kill(); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            }
+        }
+        if (IsRunning(Launchers.Process(chosen))) return false;
+        if (Status(Launchers.Tool(chosen)).Path is not { } exe)
+        {
+            Log.Trace($"launcher: {chosen} not installed", "flow");
             return false;
         }
-        Log.Trace("flow: starting " + flow, "flow");
-        return Platform.AppLauncher.Start(flow);
+        Log.Trace("launcher: starting " + exe, "flow");
+        return Platform.AppLauncher.Start(exe);
     }
 
     /// <summary>Starts the bar. False if it is not installed.</summary>

@@ -18,7 +18,7 @@ Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotk
 |-|-|-|
 | `Super+L` (Layout wechseln) | `Win+Strg+J` | `Win+L` sperrt den Rechner. Das lässt sich ohne Gruppenrichtlinie nicht abschalten, und die will in Firmen niemand anfassen. `Win+Alt+L` kam im Test nie bei WinMarchy an, Windows behält die Taste offenbar auch mit Alt. `Win+Strg+J` liegt neben `Win+J`, das die Teilung dreht. |
 | `Super+Alt+Space` (Omarchy-Menü) und `Super+Space` (Programme) | `Win+Space` | Ein Menü für beides: Tippen sucht in WinMarchys Einträgen und in den Programmen des Startmenüs. |
-| Super allein | `Win` allein | Öffnet Flow Launcher. Flow hört auf `Alt+F24`, eine Taste, die keine Tastatur hat; läuft Flow nicht, startet WinMarchy ihn. |
+| Super allein | `Win` allein | Öffnet Flow Launcher oder Fluent Search (Einstellungen → Programmsuche). Beide hören auf `Alt+F24`, eine Taste, die keine Tastatur hat; läuft der gewählte nicht, startet WinMarchy ihn. |
 | Scrolling-Layout | `Win+Strg+J` bis „Scrolling“ | GlazeWM kann das nicht selbst, WinMarchy setzt die Spalten. Siehe [tiling.md](tiling.md). |
 | `Super+Shift+L` (Sperrbildschirm-Explorer) | nicht belegt | Windows hat kein Gegenstück. |
 | Spotify-Playlists mit Autoplay | Playlist öffnet sich | Unter Windows gibt es kein `playerctl`. Spotify zeigt die Playlist, starten musst du selbst. |

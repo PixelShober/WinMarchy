@@ -85,7 +85,8 @@
       "yasb": "Top bar",
       "starship": "Prompt",
       "fastfetch": "System info",
-      "explorerblurmica": "Explorer effect"
+      "explorerblurmica": "Explorer effect",
+      "fluentsearch": "Search programs (instead of Flow)"
     },
     "running": "Running",
     "installedBadge": "Installed",
@@ -174,7 +175,8 @@
       "lockscreen": "Lock screen",
       "bar": "Bar",
       "shell": "Starship and Fastfetch",
-      "explorerBlur": "Explorer (ExplorerBlurMica)"
+      "explorerBlur": "Explorer (ExplorerBlurMica)",
+      "fluentsearch": "Colour Fluent Search"
     },
     "wallpapers": "{total} wallpapers, {have} already downloaded ({size})",
     "noWallpapers": "This theme has no wallpapers.",
@@ -581,7 +583,14 @@
     "explorerBlurOff": "ExplorerBlurMica is off. It is fully gone after the next sign-in.",
     "glazeOfficialFound": "Found: an official release ({path}). It lacks what WinMarchy needs. The button installs the WinMarchy build into C:\\WinMarchy\\Tools and starts it instead. The official one stays installed but no longer runs.",
     "glazeForkInstall": "Install the WinMarchy build",
-    "languageText": "Language of this window, the WinMarchy menu and the messages."
+    "languageText": "Language of this window, the WinMarchy menu and the messages.",
+    "launcher": "Program search",
+    "launcherText": "What opens when you press the Win key on its own. Both may be installed; only the chosen one runs.",
+    "launcherActive": "{tool} is on the Win key.",
+    "launcherMissing": "{tool} is not installed; switching downloads it from its vendor.",
+    "launcherOther": "{tool} stays installed but does not run.",
+    "launcherFluentLicense": "Fluent Search is freeware but not open source. Its licence comes only with its installer (COPYING.txt); please let IT decide whether the company may use it.",
+    "launcherDone": "{tool} is now on the Win key."
   },
 
   "log": {
@@ -652,7 +661,8 @@
     "explorerBlurOff": "Switch ExplorerBlurMica off",
     "toolUpdates": "Update programs",
     "glazeUpdate": "Update GlazeWM to {version}",
-    "toolUpdate": "Update {tool}"
+    "toolUpdate": "Update {tool}",
+    "launcher": "Put {tool} on the Win key"
   },
 
   "steps": {
@@ -700,7 +710,8 @@
     "update": "Update {tool}",
     "greenshot": "Set up Greenshot for screenshots",
     "greenshotFixed": "Reset Greenshot",
-    "notInstalled": "{tool} is not installed"
+    "notInstalled": "{tool} is not installed",
+    "fluentSearch": "Set up Fluent Search"
   },
 
   "integrations": {
@@ -764,6 +775,10 @@
     "shell": {
       "done": "Fastfetch and Starship start with every new PowerShell tab: {path}",
       "noProfile": "No PowerShell on this computer loads a profile. Starship and Fastfetch show once PowerShell 7 is installed (Setup → Extras). Fastfetch alone starts from the WinMarchy menu under About."
+    },
+    "fluentSearch": {
+      "notFound": "Fluent Search is not installed.",
+      "done": "Fluent Search listens on Alt+F24 and wears the theme's accent colour. Settings: {path}"
     }
   },
 
@@ -831,7 +846,6 @@
     "rejected": "Action “{action}” rejected: {detail}",
     "failed": "Action “{action}” failed: {detail}",
     "appMissing": "{app} is not on this PC.",
-    "flowMissing": "Flow Launcher is missing. Setup can install it.",
     "glazeMissing": "GlazeWM is missing. Setup can install it.",
     "glazeNotRunning": "This needs GlazeWM running.",
     "scriptMissing": "The file behind this shortcut is missing.",
@@ -846,7 +860,8 @@
     "fastfetchMissing": "Fastfetch is not installed. You find it under Setup → Extras.",
     "barMenuNoYasb": "The bar's menus need YASB, and YASB has to be running.",
     "barMenuOff": "“{entry}” is off in the bar. Switch it on under Tiling → The bar shows.",
-    "barMenuUnknown": "The bar has no menu “{menu}”. There are logo, calendar, audio, network, media, cpu and memory."
+    "barMenuUnknown": "The bar has no menu “{menu}”. There are logo, calendar, audio, network, media, cpu and memory.",
+    "launcherMissing": "{tool} is missing. Settings → Program search installs it."
   },
 
   "agent": {

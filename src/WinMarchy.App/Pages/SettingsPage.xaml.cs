@@ -47,6 +47,8 @@ public partial class SettingsPage : UserControl, IPage
         FillBrowsers(Browser1, s.Browser);
         FillBrowsers(Browser2, s.Browser2);
         (s.ScreenshotTool == Core.Platform.Screenshots.Greenshot ? ShotGreenshot : ShotWindows).IsChecked = true;
+        (Launchers.Of(s) == Launchers.FluentSearch ? LauncherFluent : LauncherFlow).IsChecked = true;
+        ShowLauncherHint();
         ShowScreenshotHint();
         ShowGlaze();
         ShowExplorerBlur();
@@ -127,6 +129,37 @@ public partial class SettingsPage : UserControl, IPage
             });
         });
         if (job != null) ShotJob.Follow(job.Id);
+        else OnShown();
+    }
+
+    // ------------------------------------------------------------------ launcher
+
+    void ShowLauncherHint()
+    {
+        var id = Launchers.Of(AppModel.Settings);
+        var status = AppModel.Engine.Components.Status(Launchers.Tool(id));
+        var other = AppModel.Engine.Components.Status(Launchers.Tool(Launchers.Other(id)));
+        var parts = new List<string> { status.Installed ? L.T("settings.launcherActive", ("tool", status.Tool.Name)) : L.T("settings.launcherMissing", ("tool", status.Tool.Name)) };
+        if (other.Installed) parts.Add(L.T("settings.launcherOther", ("tool", other.Tool.Name)));
+        if (id == Launchers.FluentSearch) parts.Add(L.T("settings.launcherFluentLicense"));
+        LauncherHint.Text = string.Join(" ", parts);
+    }
+
+    /// <summary>The chosen launcher is installed if needed, set up, and takes over the Win key; the other one stops.</summary>
+    void OnLauncher(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string id } || id == Launchers.Of(AppModel.Settings)) return;
+        var tool = Launchers.Tool(id);
+        var job = AppModel.Run("launcher", "setup", L.T("jobs.launcher", ("tool", tool.Name)), AppModel.Engine.LauncherSteps(id), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Toasts.Show(j.State == JobState.Done ? ToastKind.Ok : ToastKind.Error,
+                    j.State == JobState.Done ? L.T("settings.launcherDone", ("tool", tool.Name)) : j.Status);
+                OnShown();
+            });
+        });
+        if (job != null) LauncherJob.Follow(job.Id);
         else OnShown();
     }
 

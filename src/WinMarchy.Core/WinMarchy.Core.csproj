@@ -16,6 +16,7 @@
     <!-- Hotkey profiles (Business, Persönlich) and the AutoHotkey runtime part. -->
     <EmbeddedResource Include="Resources\Hotkeys\*.json" LogicalName="WinMarchy.Hotkeys.%(Filename).json" />
     <EmbeddedResource Include="Resources\Hotkeys\runtime.ahk" LogicalName="WinMarchy.Hotkeys.runtime.ahk" />
+    <EmbeddedResource Include="Resources\FluentSearch\*.json" LogicalName="WinMarchy.FluentSearch.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

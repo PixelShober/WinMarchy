@@ -5,8 +5,9 @@ namespace WinMarchy.Core.Hotkeys;
 /// <summary>What the generated AutoHotkey script needs to know about this machine.</summary>
 /// <param name="LeaveAlone">Keys another program owns (Greenshot's Print keys), normalized: no hotkey for them.</param>
 /// <param name="Extra">Shortcuts a setting adds when their keys are free (Greenshot takes Win+Shift+S).</param>
+/// <param name="LauncherProcess">The launcher behind Win (Flow Launcher or Fluent Search), as its exe is called.</param>
 public sealed record AhkContext(string WinMarchyExe, string GlazeCli, bool WinKeyOpensLauncher, string LauncherKeys = "!{F24}",
-    IReadOnlyCollection<string>? LeaveAlone = null, IReadOnlyList<HotkeyBinding>? Extra = null);
+    IReadOnlyCollection<string>? LeaveAlone = null, IReadOnlyList<HotkeyBinding>? Extra = null, string LauncherProcess = "Flow.Launcher.exe");
 
 /// <summary>
 /// Generates the AutoHotkey v2 script from the active shortcuts. Only fixed function calls with quoted
@@ -29,6 +30,7 @@ public static class AhkScript
         sb.AppendLine($"global WinMarchyExe := {Quote(ctx.WinMarchyExe)}");
         sb.AppendLine($"global GlazeCli := {Quote(ctx.GlazeCli)}");
         sb.AppendLine($"global LauncherKeys := {Quote(ctx.LauncherKeys)}");
+        sb.AppendLine($"global LauncherProcess := {Quote(ctx.LauncherProcess)}");
         sb.AppendLine();
 
         if (ctx.WinKeyOpensLauncher)

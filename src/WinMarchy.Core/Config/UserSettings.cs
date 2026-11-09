@@ -13,6 +13,8 @@ public sealed class ThemeTargets
     public bool PowerShell { get; set; } = true;
     public bool VsCode { get; set; } = true;
     public bool Flow { get; set; } = true;
+    /// <summary>Fluent Search's accent colour, if it is installed.</summary>
+    public bool FluentSearch { get; set; } = true;
     public bool Files { get; set; } = true;
     /// <summary>Dark or light mode and accent colour of Windows itself.</summary>
     public bool Windows { get; set; } = true;
@@ -84,6 +86,9 @@ public sealed class UserSettings
     public string Theme { get; set; } = "tokyo-night";
 
     public ThemeTargets ThemeTargets { get; set; } = new();
+
+    /// <summary>The program search behind the Win key: "flow" (Flow Launcher) or "fluentsearch" (Fluent Search).</summary>
+    public string Launcher { get; set; } = Integrations.Launchers.Flow;
 
     /// <summary>Tapping the left Windows key alone opens the launcher (AutoHotkey only).</summary>
     public bool WinKeyOpensLauncher { get; set; } = true;

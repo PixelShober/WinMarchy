@@ -124,10 +124,10 @@ public sealed class AgentHost : IAgentHost, IDisposable
             // Print belongs to Greenshot when the user chose it; it has to run for that.
             if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
                 c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
-            // Win opens Flow Launcher; after the setup it has never run yet.
+            // Win opens the launcher (Flow Launcher or Fluent Search); after the setup it has never run yet.
             Log.Trace($"components: glazewm {Core.Services.Components.GlazeRunning}, yasb {c.BarRunning}, " +
-                      $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, flow {Core.Services.Components.IsRunning("Flow.Launcher")}", "agent");
-            if (c.StartFlow())
+                      $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, launcher {Core.Services.Components.IsRunning(Core.Integrations.Launchers.Process(Settings))}", "agent");
+            if (c.StartLauncher())
             {
                 _flowStarted = DateTime.Now;
                 Log.Info(L.T("agent.flowStarted"));
@@ -161,14 +161,14 @@ public sealed class AgentHost : IAgentHost, IDisposable
     }
 
     /// <summary>
-    /// Win alone opens Flow Launcher, so it has to run. If it is gone (crashed, or a restart after a
+    /// Win alone opens the launcher (Flow Launcher or Fluent Search), so it has to run. If it is gone (crashed, or a restart after a
     /// theme change did not come up), it is started again; not more than every 30 seconds, and not while
     /// a job runs (a theme change restarts it on purpose, the setup installs it).
     /// </summary>
     void KeepFlowRunning()
     {
         if (!SetupDone || _restoring || AppModel.Jobs.AnyRunning) return;
-        if (Core.Services.Components.IsRunning("Flow.Launcher")) return;
+        if (Core.Services.Components.IsRunning(Core.Integrations.Launchers.Process(Settings))) return;
         if (DateTime.Now - _flowStarted < TimeSpan.FromSeconds(30))
         {
             Log.Trace("flow: not running, started less than 30 s ago, waiting", "flow");
@@ -176,7 +176,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         }
         try
         {
-            if (AppModel.Engine.Components.StartFlow())
+            if (AppModel.Engine.Components.StartLauncher())
             {
                 _flowStarted = DateTime.Now;
                 Log.Info(L.T("agent.flowRestarted"));
