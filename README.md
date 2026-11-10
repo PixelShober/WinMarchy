@@ -168,7 +168,7 @@ dotnet test tests/WinMarchy.Core.Tests
 dotnet publish src/WinMarchy.App/WinMarchy.App.csproj -c Release -o artifacts/exe
 ```
 
-`WinMarchy.Core` hat keine NuGet-Pakete und baut und testet auch unter Linux. Die App ist WPF und braucht zum Starten Windows.
+`WinMarchy.Core` hat ein einziges NuGet-Paket, SharpCompress für 7-Zip-Archive (`scripts/check-deps.mjs` lässt nur dieses zu), und baut und testet auch unter Linux. Die App ist WPF und braucht zum Starten Windows.
 
 `WinMarchy.exe --selftest <ordner>` rendert jede Seite in Hell und Dunkel als PNG, schreibt das erzeugte AutoHotkey-Skript und die GlazeWM-Konfiguration und meldet Texte, für die eine Übersetzung fehlt. Die CI macht das bei jedem Pull Request und hängt Exe und Screenshots als Artefakte an.
 
