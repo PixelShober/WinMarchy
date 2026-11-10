@@ -1,0 +1,24 @@
+name: PR-Titel
+
+# The PR title decides the next version (see scripts/next-version.mjs):
+#   feat: … → minor · fix: … / others → patch · feat!: … → major
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: Titel nach Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      - name: Titel prüfen
+        # The title goes in through an environment variable, never into the script itself.
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/next-version.mjs --check "$PR_TITLE"

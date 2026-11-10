@@ -1,0 +1,32 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- The release pipeline passes -p:Version=x.y.z. Local builds are 0.0.0-dev. -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+    <Product>WinMarchy</Product>
+    <Company>WinMarchy</Company>
+    <Copyright>Copyright (c) 2026 PixelShober · MIT</Copyright>
+    <LangVersion>latest</LangVersion>
+    <!-- Symbols inside the dlls: no loose .pdb files next to WinMarchy.exe. -->
+    <DebugType>embedded</DebugType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Allows building the Windows projects on Linux (CI, containers). No effect on Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- Package vulnerability audit needs nuget.org; it runs in CI, not on offline machines. -->
+    <NuGetAudit Condition="'$(CI)' != 'true'">false</NuGetAudit>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.IO" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Net.Http" />
+    <Using Include="System.Threading" />
+    <Using Include="System.Threading.Tasks" />
+  </ItemGroup>
+
+</Project>

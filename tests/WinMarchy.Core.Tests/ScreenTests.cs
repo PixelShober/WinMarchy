@@ -1,0 +1,159 @@
+using System.Text.Json;
+using WinMarchy.Core.GlazeWm;
+using WinMarchy.Core.Platform;
+using WinMarchy.Core.Tools;
+
+namespace WinMarchy.Core.Tests;
+
+/// <summary>Screens on the Tiling page: names, the main screen's workspaces, and the screen next door.</summary>
+public class ScreenTests
+{
+    [Fact]
+    public void The_main_screen_gets_one_and_two_and_the_others_share_the_rest()
+    {
+        // Five workspaces on one screen, six on more.
+        Assert.Equal(new[] { Enumerable.Range(1, 5).ToList() }, ScreenPlan.Split(1, 0));
+        Assert.Equal(new[] { new List<int> { 1, 2 }, new List<int> { 3, 4, 5, 6 } }, ScreenPlan.Split(2, 0));
+        Assert.Equal(new[] { new List<int> { 3, 4, 5, 6 }, new List<int> { 1, 2 } }, ScreenPlan.Split(2, 1));
+        Assert.Equal(new[] { new List<int> { 3, 4 }, new List<int> { 1, 2 }, new List<int> { 5, 6 } }, ScreenPlan.Split(3, 1));
+        // Not even: the left ones get one more.
+        Assert.Equal(new[] { new List<int> { 1, 2 }, new List<int> { 3, 4 }, new List<int> { 5 }, new List<int> { 6 } }, ScreenPlan.Split(4, 0));
+        Assert.Empty(ScreenPlan.Split(0, 0));
+        // A main screen that is gone counts as the last row.
+        Assert.Equal(new List<int> { 1, 2 }, ScreenPlan.Split(2, 5)[1]);
+    }
+
+    [Theory]
+    [InlineData(1, 5)]
+    [InlineData(2, 6)]
+    [InlineData(3, 6)]
+    public void Five_workspaces_on_one_screen_six_on_more(int screens, int limit) => Assert.Equal(limit, GlazeConfig.WorkspaceLimit(screens));
+
+    [Theory]
+    [InlineData("focus --workspace 7", 7)]
+    [InlineData("move --workspace 3", 3)]
+    [InlineData("focus --direction left", null)]
+    [InlineData("move --workspace scratchpad", null)]
+    public void Workspace_commands_are_recognised(string command, int? number) => Assert.Equal(number, GlazeConfig.WorkspaceOf(command));
+
+    [Fact]
+    public void Glazewm_knows_six_workspaces_and_floats_dialogs_in_front()
+    {
+        var yaml = GlazeConfig.Generate(GlazeConfig.FromSettings(new UserSettings(), Themes.ThemeCatalog.Default.Palette, Integrations.Bars.Height));
+        Assert.Contains("- name: '6'", yaml);
+        Assert.DoesNotContain("- name: '7'", yaml);
+        Assert.Contains("shown_on_top: true", yaml);
+        Assert.Contains("'#32770'", yaml);
+    }
+
+    [Fact]
+    public void Settings_forget_screens_of_workspaces_that_are_gone()
+    {
+        var s = new UserSettings { WorkspaceMonitors = { ["1"] = 0, ["6"] = 1, ["7"] = 1, ["10"] = 2 } }.Upgraded();
+        Assert.Equal(new[] { "1", "6" }, s.WorkspaceMonitors.Keys.OrderBy(k => k));
+    }
+
+    [Fact]
+    public void Screens_are_named_like_windows_names_them()
+    {
+        var names = ScreenNames.Label(new (string?, bool, bool)[] { (null, true, false), ("DELL U2720Q", false, false), (null, false, false) });
+        Assert.Equal(new[] { L.T("screens.builtIn"), "DELL U2720Q", L.T("tiling.monitorName", ("number", 3)) }, names);
+    }
+
+    [Fact]
+    public void Two_screens_of_one_model_are_told_apart_by_how_and_where_they_stand()
+    {
+        // One upright: that is enough.
+        var upright = ScreenNames.Label(new (string?, bool, bool)[] { ("DELL P2423", false, false), ("DELL P2423", false, true), (null, true, false) });
+        Assert.Equal(new[] { "DELL P2423", $"DELL P2423 ({L.T("screens.portrait")})", L.T("screens.builtIn") }, upright);
+        // Both alike: left and right.
+        var alike = ScreenNames.Label(new (string?, bool, bool)[] { ("DELL P2419H", false, false), (null, true, false), ("DELL P2419H", false, false) });
+        Assert.Equal(new[] { $"DELL P2419H ({L.T("screens.left")})", L.T("screens.builtIn"), $"DELL P2419H ({L.T("screens.right")})" }, alike);
+        // Three of a kind, two upright.
+        var three = ScreenNames.Label(new (string?, bool, bool)[] { ("X", false, true), ("X", false, false), ("X", false, true) });
+        Assert.Equal(new[] { $"X ({L.T("screens.portrait")}, {L.T("screens.left")})", "X", $"X ({L.T("screens.portrait")}, {L.T("screens.right")})" }, three);
+    }
+
+    [Theory]
+    [InlineData(0, 1, null)]
+    [InlineData(1, 2, "screens.right")]
+    [InlineData(1, 3, "screens.middle")]
+    public void Positions_count_from_the_left(int index, int count, string? key) =>
+        Assert.Equal(key == null ? null : L.T(key), ScreenNames.Position(index, count));
+
+    /// <summary>Three screens side by side, as in the log: 3 on the left, 5 in the middle, 1 on the right.</summary>
+    static JsonElement Monitors() => JsonDocument.Parse("""
+        { "monitors": [
+          { "id": "m0", "x": 0, "y": 0, "width": 1920, "height": 1080, "children": [
+            { "type": "workspace", "name": "3", "isDisplayed": true, "children": [] },
+            { "type": "workspace", "name": "4", "isDisplayed": false, "children": [] } ] },
+          { "id": "m1", "x": 1920, "y": 0, "width": 2560, "height": 1440, "children": [
+            { "type": "workspace", "name": "5", "isDisplayed": true, "children": [] } ] },
+          { "id": "m2", "x": 4480, "y": 0, "width": 1920, "height": 1080, "children": [
+            { "type": "workspace", "name": "scratchpad", "isDisplayed": true, "children": [] },
+            { "type": "workspace", "name": "1", "isDisplayed": true, "children": [] } ] } ] }
+        """).RootElement;
+
+    [Theory]
+    [InlineData("5", "left", "3")]
+    [InlineData("5", "right", "1")]
+    [InlineData("3", "right", "5")]
+    [InlineData("4", "right", "5")]
+    [InlineData("3", "left", null)]
+    [InlineData("5", "up", null)]
+    public void The_workspace_on_the_screen_next_door_whatever_its_number(string from, string direction, string? expected) =>
+        Assert.Equal(expected, GlazeTree.WorkspaceInDirection(Monitors(), from, direction));
+
+    [Fact]
+    public void Coming_in_from_the_left_the_focus_lands_on_the_leftmost_window()
+    {
+        var windows = new[]
+        {
+            new WindowInfo("a", 1, "5", "floating", false, false, 3200, 0, 1280, 1440),
+            new WindowInfo("b", 2, "5", "floating", false, false, 1920, 0, 1280, 1440),
+        };
+        Assert.Equal("b", GlazeTree.EntryWindow(windows, "right")?.Id);
+        Assert.Equal("a", GlazeTree.EntryWindow(windows, "left")?.Id);
+        Assert.Null(GlazeTree.EntryWindow(Array.Empty<WindowInfo>(), "right"));
+    }
+
+    [Fact]
+    public void A_newer_release_shows_only_once_it_was_looked_up()
+    {
+        var tool = ToolCatalog.Yasb;
+        var status = new ToolStatus(tool, @"C:\WinMarchy\Tools\yasb\yasb.exe", "1.8.0", false, true);
+        var state = new AppState { InstalledTools = { tool.Id }, ToolTags = { [tool.Id] = "v1.8.0" } };
+        Assert.Null(ToolUpdates.NewerTag(status, state));
+        Assert.False(ToolUpdates.IsCurrent(status, state));
+
+        state.LatestReleases[tool.Id] = new LatestRelease("v1.8.0", DateTime.UtcNow);
+        Assert.Null(ToolUpdates.NewerTag(status, state));
+        Assert.True(ToolUpdates.IsCurrent(status, state));
+
+        state.LatestReleases[tool.Id] = new LatestRelease("v1.8.1", DateTime.UtcNow);
+        Assert.Equal("v1.8.1", ToolUpdates.NewerTag(status, state));
+        Assert.False(ToolUpdates.IsCurrent(status, state));
+    }
+
+    [Fact]
+    public void Only_programs_winmarchy_installed_from_a_zip_or_msi_are_updated()
+    {
+        // "flow": Flow Launcher, installed by an earlier WinMarchy and no longer known.
+        var state = new AppState { InstalledTools = { ToolCatalog.Yasb.Id, ToolCatalog.BulkCrapUninstaller.Id, "flow" } };
+        var tools = ToolUpdates.Updatable(state);
+        Assert.Contains(ToolCatalog.Yasb, tools);
+        Assert.Contains(ToolCatalog.BulkCrapUninstaller, tools);
+        Assert.Equal(2, tools.Count);
+        Assert.DoesNotContain(ToolCatalog.AutoHotkey, tools);
+    }
+
+    [Fact]
+    public void The_lookups_survive_in_state_json()
+    {
+        var state = new AppState();
+        state.LatestReleases["yasb"] = new LatestRelease("v1.8.1", new DateTime(2026, 11, 4, 12, 0, 0, DateTimeKind.Utc));
+        var back = Json.Deserialize<AppState>(Json.Serialize(state, indented: true))!;
+        Assert.Equal("v1.8.1", back.LatestReleases["yasb"].Tag);
+        Assert.Equal(state.LatestReleases["yasb"].CheckedUtc, back.LatestReleases["yasb"].CheckedUtc.ToUniversalTime());
+    }
+}

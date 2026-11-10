@@ -1,0 +1,163 @@
+using System.Windows;
+using System.Windows.Controls;
+using WinMarchy.App.Ui;
+using WinMarchy.Core;
+using WinMarchy.Core.Integrations;
+using WinMarchy.Core.Services;
+using WinMarchy.Core.Themes;
+using WinMarchy.Core.Tools;
+
+namespace WinMarchy.App.Pages;
+
+public partial class SetupPage : UserControl, IPage
+{
+    readonly Dictionary<string, CheckBox> _tools = new();
+    readonly CheckBox _autostart;
+    readonly CheckBox _taskbar;
+    readonly CheckBox _bar;
+    readonly CheckBox _wallpapers;
+    readonly CheckBox _fluentSettings;
+    readonly Action _checkExtras;
+
+    public SetupPage()
+    {
+        InitializeComponent();
+        var s = AppModel.Settings;
+        _autostart = UiKit.Switch(L.T("setup.autostart"), s.StartWithWindows, L.T("setup.autostartHint"));
+        _taskbar = UiKit.Switch(L.T("setup.taskbar"), s.HideTaskbar, L.T("setup.taskbarHint"));
+        _bar = UiKit.Switch(L.T("setup.bar"), s.ShowBar, L.T("setup.barHint"));
+        var bytes = ThemeCatalog.All.Sum(t => t.Backgrounds.Sum(b => b.Size));
+        // Off: the current theme's wallpapers come anyway; all of them are a large download.
+        _wallpapers = UiKit.Switch(L.T("setup.wallpapers"), false,
+            L.T("setup.wallpapersHint", ("count", Wallpapers.AllCount()), ("themes", ThemeCatalog.All.Count), ("size", Net.Mb(bytes))));
+        // Off: Fluent Search's settings are the user's. A Fluent Search without any gets WinMarchy's anyway.
+        _fluentSettings = UiKit.Switch(L.T("setup.fluentSettings"), false, L.T("setup.fluentSettingsHint"));
+        foreach (var c in new[] { _autostart, _taskbar, _bar, _wallpapers, _fluentSettings }) Options.Children.Add(c);
+        if (AppModel.Jobs.Get("setup") != null) Job.Follow("setup");
+        // One installation at a time: a second click while one runs would only start it again.
+        _checkExtras = InstallLock.Bind(InstallExtras, () => WantedExtras().Any());
+        InstallLock.Bind(StartButton);
+        InstallLock.OnChange(() => { if (IsVisible && !InstallLock.Busy) OnShown(); });
+    }
+
+    public void OnShown()
+    {
+        ToolChoices.Children.Clear();
+        ExtraChoices.Children.Clear();
+        _tools.Clear();
+        foreach (var tool in new[] { ToolCatalog.GlazeWm, Bars.Tool, ToolCatalog.AutoHotkey, ToolCatalog.FluentSearch })
+            ToolChoices.Children.Add(Choice(tool, tickedIfMissing: true));
+        // Extras stay unticked: nobody needs them for the Omarchy desktop.
+        foreach (var tool in ToolCatalog.Extras) ExtraChoices.Children.Add(Choice(tool, tickedIfMissing: false));
+        UpdateExtrasButton();
+        var detected = new[] { ToolCatalog.Terminal, ToolCatalog.Files, ToolCatalog.VsCode }
+            .Select(t => (t, AppModel.Engine.Components.Status(t)))
+            .Select(x => x.Item2.Installed ? L.T("setup.detected", ("tool", x.t.Name)) : L.T("setup.notDetected", ("tool", x.t.Name)));
+        Detected.Text = string.Join(" · ", detected);
+    }
+
+    CheckBox Choice(ToolDef tool, bool tickedIfMissing)
+    {
+        var status = AppModel.Engine.Components.Status(tool);
+        // An official GlazeWM is not enough: the setup puts WinMarchy's build in its place.
+        bool official = tool == ToolCatalog.GlazeWm && status.Installed && !ToolCatalog.IsWinMarchyBuild(status.Path);
+        bool present = status.Installed && !official;
+        var label = new StackPanel();
+        var title = new StackPanel { Orientation = Orientation.Horizontal };
+        title.Children.Add(UiKit.Text(tool.Name, "H3"));
+        var badge = official ? UiKit.Badge(L.T("setup.glazeOfficial"), "warn")
+            : present ? UiKit.Badge(status.Version ?? L.T("tools.installedBadge"), "ok") : UiKit.Badge(tool.License, "muted");
+        badge.Margin = new Thickness(8, 0, 0, 0);
+        title.Children.Add(badge);
+        if (tool.Experimental)
+        {
+            var experimental = UiKit.Badge(L.T("setup.experimental"), "warn");
+            experimental.Margin = new Thickness(6, 0, 0, 0);
+            title.Children.Add(experimental);
+        }
+        label.Children.Add(title);
+        var why = L.T("setup.why." + tool.Id);
+        var text = UiKit.Text(why, "Small");
+        text.TextWrapping = TextWrapping.Wrap;
+        label.Children.Add(text);
+        var box = new CheckBox
+        {
+            Content = label,
+            IsChecked = !present && tickedIfMissing,
+            IsEnabled = !present,
+            Margin = new Thickness(0, 0, 0, 14),
+        };
+        if (present) box.ToolTip = status.Path;
+        box.Click += (_, _) =>
+        {
+            // Starship and Fastfetch start from the PowerShell profile. Where Windows PowerShell loads
+            // none (Restricted, the default), they need PowerShell 7.
+            if (box.IsChecked == true && (tool == ToolCatalog.Starship || tool == ToolCatalog.Fastfetch) &&
+                !PowerShellPolicy.LoadsProfiles(PowerShellPolicy.WindowsPowerShell()) &&
+                _tools.TryGetValue(ToolCatalog.PowerShell.Id, out var pwsh) && pwsh.IsEnabled)
+                pwsh.IsChecked = true;
+            UpdateExtrasButton();
+        };
+        _tools[tool.Id] = box;
+        return box;
+    }
+
+    IEnumerable<ToolDef> WantedExtras() => ToolCatalog.Extras.Where(t => _tools.TryGetValue(t.Id, out var b) && b.IsEnabled && b.IsChecked == true);
+
+    void UpdateExtrasButton()
+    {
+        _checkExtras?.Invoke();
+        InstallExtras.Visibility = ToolCatalog.Extras.All(t => AppModel.Engine.Components.Status(t).Installed)
+            ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>Only the ticked extras, without the rest of the setup.</summary>
+    void OnInstallExtras(object sender, RoutedEventArgs e)
+    {
+        var tools = WantedExtras().ToList();
+        if (tools.Count == 0) return;
+        var job = AppModel.Run("extras", "setup", L.T("jobs.extras", ("tools", string.Join(", ", tools.Select(t => t.Name)))),
+            AppModel.Engine.ExtraSteps(tools), async j =>
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("setup.extrasDone"));
+                    OnShown();
+                });
+            });
+        if (job != null) Job.Follow(job.Id);
+        _checkExtras();
+    }
+
+    void OnStart(object sender, RoutedEventArgs e)
+    {
+        AppModel.Update(s =>
+        {
+            s.StartWithWindows = _autostart.IsChecked == true;
+            s.HideTaskbar = _taskbar.IsChecked == true;
+            s.ShowBar = _bar.IsChecked == true;
+        });
+        bool Want(string id) => _tools.TryGetValue(id, out var b) && b.IsEnabled && b.IsChecked == true;
+        var options = new SetupOptions(Want("glazewm"), Want(Bars.Tool.Id), Want("autohotkey"), Want(ToolCatalog.FluentSearch.Id), _wallpapers.IsChecked == true)
+        {
+            Extras = WantedExtras().Select(t => t.Id).ToList(),
+            FluentSearchSettings = _fluentSettings.IsChecked == true,
+        };
+        var job = AppModel.Run("setup", "setup", L.T("jobs.setup"), AppModel.Engine.SetupSteps(options), async j =>
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (j.State == JobState.Done)
+                {
+                    Toasts.Show(ToastKind.Ok, L.T("setup.done"));
+                    AppModel.Agent?.AfterSetup();
+                }
+                OnShown();
+            });
+        });
+        if (job == null) return;
+        Job.Follow(job.Id);
+        // The steps are below the button; show them.
+        Dispatcher.InvokeAsync(() => Job.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+}

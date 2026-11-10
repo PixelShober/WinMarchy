@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Only for the tray icon (NotifyIcon); nothing else from WinForms is used. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>WinMarchy</AssemblyName>
+    <RootNamespace>WinMarchy.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\winmarchy.ico</ApplicationIcon>
+
+    <!-- Release: one self-contained WinMarchy.exe that runs on any Windows 10/11 x64 without installing .NET. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
+    <!-- WFO0003: DPI awareness lives in app.manifest (PerMonitorV2), as WPF needs it. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinMarchy.Core\WinMarchy.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\winmarchy.ico" />
+  </ItemGroup>
+
+</Project>
