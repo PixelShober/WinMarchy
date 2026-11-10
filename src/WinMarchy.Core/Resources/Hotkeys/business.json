@@ -49,7 +49,6 @@
     { "keys": "Win+N", "do": "app:notepad", "group": "apps", "label": { "de": "Editor", "en": "Notepad" } },
     { "keys": "Win+Shift+N", "do": "app:editor", "group": "apps", "omarchy": "SUPER + SHIFT + N (Neovim)", "label": { "de": "Code-Editor (VS Code)", "en": "Code editor (VS Code)" } },
     { "keys": "Win+Ctrl+Enter", "do": "app:herdr", "group": "apps", "label": { "de": "Herdr", "en": "Herdr" } },
-    { "keys": "Win+Alt+Enter", "do": "app:pi", "group": "apps", "label": { "de": "Pi (Coding-Agent)", "en": "Pi (coding agent)" } },
     { "keys": "Win+Shift+M", "do": "web:https://open.spotify.com/", "group": "apps", "label": { "de": "Spotify (Web-App)", "en": "Spotify (web app)" } },
     { "keys": "Win+Shift+Q", "do": "app:calculator", "group": "apps", "label": { "de": "Rechner", "en": "Calculator" } },
     { "keys": "Win+Shift+T", "do": "app:taskmanager", "group": "apps", "omarchy": "SUPER + SHIFT + T (btop)", "label": { "de": "Task-Manager", "en": "Task Manager" } },

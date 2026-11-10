@@ -71,7 +71,7 @@
     "updatesDone": "Programs are updated.",
     "pause": "Pause",
     "resume": "Resume",
-    "pauseHint": "Windows looks and behaves as without WinMarchy until you resume (also with Win+Alt+Esc). A restart ends the pause.",
+    "pauseHint": "Windows looks and behaves like a freshly set up Windows until you resume (also with Win+Alt+Esc). A restart ends the pause.",
     "resumeHint": "Shortcuts, GlazeWM, bar, Fluent Search, theme and wallpaper come back."
   },
 
@@ -84,7 +84,6 @@
       "files": "File manager",
       "vscode": "Editor",
       "herdr": "Agent terminal",
-      "pi": "Coding agent",
       "greenshot": "Screenshots",
       "yasb": "Top bar",
       "starship": "Prompt",
@@ -123,7 +122,6 @@
       "autohotkey": "Catches the shortcuts, including the Win key on its own.",
       "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1.",
       "herdr": "Terminal workspace for coding agents, Win+Ctrl+Enter. Still beta on Windows.",
-      "pi": "The Pi coding agent in the terminal, Win+Alt+Enter.",
       "greenshot": "Screenshots with an editor, if Snipping Tool is not enough for you. Switch in the settings.",
       "yasb": "The bar at the top: workspaces, a clock with calendar, sound, Wi-Fi and battery. Small menus drop down from it; you add entries of your own on the Tiling page.",
       "starship": "Omarchy's prompt for PowerShell: folder, Git branch and status, in the theme's colours. Where Windows PowerShell loads no profiles, WinMarchy ticks PowerShell 7 as well.",
@@ -150,7 +148,6 @@
     "extrasText": "Not needed for the Omarchy desktop. You can also install them one by one later.",
     "installExtras": "Install extras only",
     "extrasDone": "Extras installed.",
-    "piNeedsBash": "Needs Git Bash, which is missing here.",
     "experimental": "Experimental",
     "glazeOfficial": "Official release, gets replaced",
     "fluentSettings": "Set Fluent Search's settings",
@@ -341,7 +338,6 @@
     "bitwarden": "Bitwarden",
     "notepad": "Notepad",
     "stackfield": "Stackfield",
-    "pi": "Pi",
     "browser2": "Second browser"
   },
 
@@ -718,7 +714,8 @@
     "notNeeded": "not needed",
     "fluentSearchTheme": "Colour Fluent Search",
     "updateDone": "Note the new version",
-    "fluentSearchKept": "Settings stay as they are"
+    "fluentSearchKept": "Settings stay as they are",
+    "piRemove": "Remove Pi"
   },
 
   "integrations": {
@@ -1216,7 +1213,7 @@
     "blocked": "WinMarchy is paused. Win+Alt+Esc or the WinMarchy menu resumes it.",
     "notSetUp": "WinMarchy can be paused once it is set up.",
     "jobRunning": "A WinMarchy task is running. Pausing works once it is done.",
-    "pausing": "WinMarchy paused: shortcuts, GlazeWM, bar and Fluent Search off; taskbar, wallpaper and colours as before WinMarchy.",
+    "pausing": "WinMarchy paused: shortcuts, GlazeWM, bar and Fluent Search off; taskbar, wallpaper and colours as on a fresh Windows.",
     "resuming": "WinMarchy goes on.",
     "paused": "WinMarchy is paused. Win+Alt+Esc resumes it.",
     "resumed": "WinMarchy is running again.",

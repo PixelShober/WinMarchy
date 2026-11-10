@@ -305,40 +305,34 @@ public sealed class BackupStore
     }
 
     /// <summary>
-    /// Puts the state before WinMarchy back for the given targets ("registry" with "key|name", or
-    /// "wallpaper"), for a while: no restore point changes. Targets WinMarchy never changed are left
-    /// alone. Returns the state they had until now, for <see cref="PutBack"/>; it holds the wallpaper's
-    /// path only, not the picture, since WinMarchy's own wallpapers stay where they are.
+    /// Shows another state for a while (the pause: a plain Windows), without touching a restore
+    /// point. Returns the state the same targets had until now, for <see cref="PutBack"/>; for the
+    /// wallpaper that is its path only, since WinMarchy's own wallpapers stay where they are.
     /// <paramref name="keep"/> gets that state before anything changes, to store it safely first.
     /// </summary>
-    public List<CapturedItem> ShowOriginal(IEnumerable<(string Kind, string Target)> targets, Action<List<CapturedItem>>? keep = null)
+    public List<CapturedItem> ShowFor(IReadOnlyList<CapturedItem> shown, Action<List<CapturedItem>>? keep = null)
     {
         var now = new List<CapturedItem>();
         lock (_sync)
         {
-            if (LoadOriginal() is not { } original) return now;
-            foreach (var (kind, target) in targets)
-            {
-                if (original.Items.Any(i => i.Kind == kind && SameTarget(i.Target, target))) now.Add(CurrentState(kind, target));
-            }
+            foreach (var item in shown) now.Add(CurrentState(item.Kind, item.Target));
             keep?.Invoke(now);
-            foreach (var item in now)
+            foreach (var item in shown)
             {
-                var before = original.Items.First(i => i.Kind == item.Kind && SameTarget(i.Target, item.Target));
                 try
                 {
-                    RestoreItem(before);
+                    RestoreItem(item);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WinMarchyException)
                 {
-                    Log.Warn(L.T("backup.itemFailed", ("target", before.Target), ("detail", ex.Message)));
+                    Log.Warn(L.T("backup.itemFailed", ("target", item.Target), ("detail", ex.Message)));
                 }
             }
         }
         return now;
     }
 
-    /// <summary>Puts back what <see cref="ShowOriginal"/> returned.</summary>
+    /// <summary>Puts back what <see cref="ShowFor"/> returned.</summary>
     public void PutBack(IEnumerable<CapturedItem> items)
     {
         lock (_sync)

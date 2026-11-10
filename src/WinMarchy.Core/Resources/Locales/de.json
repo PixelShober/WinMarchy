@@ -71,7 +71,7 @@
     "updatesDone": "Programme sind aktualisiert.",
     "pause": "Pausieren",
     "resume": "Fortsetzen",
-    "pauseHint": "Windows sieht aus und verhält sich wie ohne WinMarchy, bis du fortsetzt (auch mit Win+Alt+Esc). Ein Neustart beendet die Pause.",
+    "pauseHint": "Windows sieht aus und verhält sich wie ein frisch eingerichtetes Windows, bis du fortsetzt (auch mit Win+Alt+Esc). Ein Neustart beendet die Pause.",
     "resumeHint": "Kürzel, GlazeWM, Leiste, Fluent Search, Theme und Hintergrund kommen zurück."
   },
 
@@ -84,7 +84,6 @@
       "files": "Dateimanager",
       "vscode": "Editor",
       "herdr": "Agent-Terminal",
-      "pi": "Coding-Agent",
       "greenshot": "Bildschirmfotos",
       "yasb": "Leiste oben",
       "starship": "Eingabezeile",
@@ -123,7 +122,6 @@
       "autohotkey": "Fängt die Tastenkürzel ab, auch die Win-Taste allein.",
       "pwsh": "PowerShell 7 fürs Terminal. Windows bringt nur die alte 5.1 mit.",
       "herdr": "Terminal-Arbeitsplatz für Coding-Agents, Win+Strg+Eingabe. Unter Windows noch Beta.",
-      "pi": "Der Coding-Agent Pi im Terminal, Win+Alt+Eingabe.",
       "greenshot": "Bildschirmfotos mit Editor, falls dir das Snipping Tool nicht reicht. Umschalten unter Einstellungen.",
       "yasb": "Die Leiste oben: Workspaces, Uhr mit Kalender, Ton, WLAN und Akku. Kleine Menüs klappen von oben auf; eigene Einträge legst du unter Tiling an.",
       "starship": "Omarchys Eingabezeile für PowerShell: Ordner, Git-Zweig und Status, in den Farben des Themes. Lädt Windows PowerShell hier keine Profile, hakt WinMarchy PowerShell 7 mit an.",
@@ -150,7 +148,6 @@
     "extrasText": "Für den Omarchy-Desktop nicht nötig. Du kannst sie auch später einzeln installieren.",
     "installExtras": "Nur Extras installieren",
     "extrasDone": "Extras installiert.",
-    "piNeedsBash": "Braucht Git Bash, das hier noch fehlt.",
     "experimental": "Experimentell",
     "glazeOfficial": "Offizielles Release, wird ersetzt",
     "fluentSettings": "Einstellungen von Fluent Search setzen",
@@ -341,7 +338,6 @@
     "bitwarden": "Bitwarden",
     "notepad": "Editor",
     "stackfield": "Stackfield",
-    "pi": "Pi",
     "browser2": "Zweiter Browser"
   },
 
@@ -718,7 +714,8 @@
     "notNeeded": "nicht nötig",
     "fluentSearchTheme": "Fluent Search einfärben",
     "updateDone": "Neue Version vermerken",
-    "fluentSearchKept": "Einstellungen bleiben, wie sie sind"
+    "fluentSearchKept": "Einstellungen bleiben, wie sie sind",
+    "piRemove": "Pi entfernen"
   },
 
   "integrations": {
@@ -1216,7 +1213,7 @@
     "blocked": "WinMarchy ist pausiert. Mit Win+Alt+Esc oder im WinMarchy-Menü geht es weiter.",
     "notSetUp": "Pausieren geht erst, wenn WinMarchy eingerichtet ist.",
     "jobRunning": "Gerade läuft eine Aufgabe von WinMarchy. Pausieren geht, sobald sie fertig ist.",
-    "pausing": "WinMarchy pausiert: Kürzel, GlazeWM, Leiste und Fluent Search aus, Taskleiste, Hintergrund und Farben wie vor WinMarchy.",
+    "pausing": "WinMarchy pausiert: Kürzel, GlazeWM, Leiste und Fluent Search aus, Taskleiste, Hintergrund und Farben wie bei einem frischen Windows.",
     "resuming": "WinMarchy läuft weiter.",
     "paused": "WinMarchy pausiert. Win+Alt+Esc setzt es fort.",
     "resumed": "WinMarchy läuft wieder.",

@@ -11,7 +11,7 @@ namespace WinMarchy.Core.Services;
 /// <summary>Which programs the full setup installs if they are missing.</summary>
 public sealed record SetupOptions(bool InstallGlazeWm, bool InstallBar, bool InstallAutoHotkey, bool InstallLauncher, bool DownloadWallpapers)
 {
-    /// <summary>Ticked extras: PowerShell 7, Starship, Fastfetch, Herdr, Pi … (tool ids).</summary>
+    /// <summary>Ticked extras: PowerShell 7, Starship, Fastfetch, Herdr … (tool ids).</summary>
     public IReadOnlyCollection<string> Extras { get; init; } = Array.Empty<string>();
 
     /// <summary>
@@ -188,6 +188,13 @@ public sealed class Engine
                     AppState.Update(st => st.InstalledTools.Remove("flow"));
                 },
                 () => LegacyFlow.Present(_loc, Backups.Registry) || AppState.Load().InstalledTools.Contains("flow") ? null : L.T("steps.notNeeded")),
+            // WinMarchy no longer offers Pi; the copy it installed goes.
+            new(L.T("steps.piRemove"), (step, _) =>
+                {
+                    if (ToolInstaller.RemoveRetired("pi", "Pi", "pi.exe")) step.Report(L.T("tools.removed", ("tool", "Pi")));
+                    return Task.CompletedTask;
+                },
+                () => AppState.Load().InstalledTools.Contains("pi") || Directory.Exists(Path.Combine(Paths.ToolsDir, "pi")) ? null : L.T("steps.notNeeded")),
             // Last: a download that fails (no network) leaves the rest done, and the next start tries again.
             new(L.T("steps.install", ("tool", launcher.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(launcher, step, ct); },
                 () => launcherMissing ? null : L.T("steps.alreadyInstalled", ("path", Components.Status(launcher).Path))),
@@ -547,18 +554,17 @@ public sealed class Engine
     // ------------------------------------------------------------------ pause
 
     /// <summary>What the pause shows as it was before WinMarchy: Windows' colours and the wallpaper.</summary>
-    static IEnumerable<(string Kind, string Target)> LookTargets =>
-        WindowsAppearance.Values.Select(v => ("registry", v.Key + "|" + v.Name)).Append(("wallpaper", "wallpaper"));
-
     /// <summary>
-    /// Paused: Windows' colours and the wallpaper as they were before WinMarchy. What WinMarchy has
-    /// set is noted in state.json first, so even a WinMarchy that ends during the pause puts it back
-    /// at its next start (<see cref="ShowWinMarchyLook"/>). Restore points stay as they are.
+    /// Paused: Windows' colours and wallpaper as Windows comes (its default theme, a policy wallpaper
+    /// first), not as they were before WinMarchy: an earlier tool may have changed them too. What
+    /// WinMarchy has set is noted in state.json first, so even a WinMarchy that ends during the pause
+    /// puts it back at its next start (<see cref="ShowWinMarchyLook"/>). Restore points stay as they are.
     /// </summary>
     public void ShowPlainWindows()
     {
         if (AppState.Load().PausedLook != null) return;
-        Backups.ShowOriginal(LookTargets, now => AppState.Update(s => s.PausedLook = now));
+        var plain = WindowsDefaults.Read(Backups.Registry);
+        Backups.ShowFor(WindowsDefaults.Items(plain), now => AppState.Update(s => s.PausedLook = now));
         Win32.BroadcastSettingChange("ImmersiveColorSet");
     }
 

@@ -27,6 +27,12 @@ public sealed class AppState
     /// </summary>
     public List<Backup.CapturedItem>? PausedLook { get; set; }
 
+    /// <summary>
+    /// While WinMarchy is paused: whether "Automatically hide the taskbar" was on (the user's own
+    /// choice) before the pause turned it off. Null when not paused.
+    /// </summary>
+    public bool? PausedTaskbarAutoHide { get; set; }
+
     /// <summary>Wallpaper position per theme for "next background".</summary>
     public Dictionary<string, int> WallpaperIndex { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

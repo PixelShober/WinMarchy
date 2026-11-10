@@ -32,9 +32,6 @@ public sealed class AppLauncher
             case "herdr":
                 var herdr = Tool(ToolCatalog.Herdr);
                 return herdr != null ? Terminal(herdr) : false;
-            case "pi":
-                var pi = Tool(ToolCatalog.Pi);
-                return pi != null ? Terminal(pi) : false;
             case "notepad": return Start("notepad.exe");
             case "stackfield":
                 // The desktop app if it is installed (found through its Start menu entry), else the web app.

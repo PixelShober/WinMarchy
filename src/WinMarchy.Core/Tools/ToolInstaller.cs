@@ -230,25 +230,50 @@ public static class ToolInstaller
     }
 
     /// <summary>Removes a program WinMarchy installed (only its own folder).</summary>
-    public static void Remove(ToolDef tool, Locations loc)
+    public static void Remove(ToolDef tool, Locations loc) => Remove(tool.Id, tool.Name, tool.Exe);
+
+    /// <summary>
+    /// Removes a program WinMarchy installed and no longer offers (Pi): its process ends, its folder
+    /// under C:\WinMarchy\Tools goes, and state.json forgets it. A copy installed by someone else
+    /// stays. Returns whether there was anything to remove.
+    /// </summary>
+    public static bool RemoveRetired(string id, string name, string exe)
     {
-        foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(tool.Exe)))
-        {
-            try { p.Kill(entireProcessTree: true); p.WaitForExit(3000); } catch { }
-        }
-        if (Directory.Exists(tool.ToolDir))
+        bool there = AppState.Load().InstalledTools.Contains(id) || Directory.Exists(Path.Combine(Paths.ToolsDir, id));
+        if (there) Remove(id, name, exe);
+        return there;
+    }
+
+    static void Remove(string id, string name, string exe)
+    {
+        var dir = Path.Combine(Paths.ToolsDir, id);
+        foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exe)))
         {
             try
             {
-                Directory.Delete(tool.ToolDir, true);
+                // Only its own copy: one installed elsewhere keeps running.
+                if (p.MainModule?.FileName is { } file && file.StartsWith(dir, StringComparison.OrdinalIgnoreCase))
+                {
+                    p.Kill(entireProcessTree: true);
+                    p.WaitForExit(3000);
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+            finally { p.Dispose(); }
+        }
+        if (Directory.Exists(dir))
+        {
+            try
+            {
+                Directory.Delete(dir, true);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 // ExplorerBlurMica's DLL stays loaded in Explorer until the next sign-in.
-                Log.Info(L.T("tools.removeLater", ("tool", tool.Name), ("path", tool.ToolDir)));
-                AppState.Update(s => { if (!s.LeftoverDirs.Contains(tool.ToolDir)) s.LeftoverDirs.Add(tool.ToolDir); });
+                Log.Info(L.T("tools.removeLater", ("tool", name), ("path", dir)));
+                AppState.Update(s => { if (!s.LeftoverDirs.Contains(dir)) s.LeftoverDirs.Add(dir); });
             }
         }
-        AppState.Update(s => s.InstalledTools.Remove(tool.Id));
+        AppState.Update(s => s.InstalledTools.Remove(id));
     }
 }

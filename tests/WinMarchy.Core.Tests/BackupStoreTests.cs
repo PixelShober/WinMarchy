@@ -14,38 +14,79 @@ public class BackupStoreTests
     const string Key = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
 
     [Fact]
-    public void A_pause_shows_the_look_before_winmarchy_and_puts_winmarchys_back()
+    public void A_pause_shows_a_plain_windows_and_puts_winmarchys_look_back()
     {
         using var tmp = new TempDir();
         var registry = new MemoryUserRegistry();
-        var wallpaper = new FakeWallpaper { Path = tmp.File("windows.jpg") };
-        File.WriteAllBytes(wallpaper.Path, new byte[] { 1, 2, 3 });
-        registry.Write(Key, "AppsUseLightTheme", RegistryData.Dword(1));
+        var wallpaper = new FakeWallpaper();
         var store = new BackupStore(tmp.File("backups"), registry, wallpaper);
 
-        // WinMarchy's theme: dark, its own wallpaper.
-        var point = store.Begin("theme", "Theme");
-        store.CaptureRegistry(point, Key, "AppsUseLightTheme");
-        store.CaptureWallpaper(point);
+        // WinMarchy's theme: dark, its own wallpaper; an earlier tool had already set auto colouring.
         registry.Write(Key, "AppsUseLightTheme", RegistryData.Dword(0));
+        registry.Write(Integrations.WindowsAppearance.DesktopKey, "AutoColorization", RegistryData.Str("1"));
         var own = tmp.File("tokyo.jpg");
         File.WriteAllBytes(own, new byte[] { 4 });
         wallpaper.Set(own);
+        var point = store.Begin("theme", "Theme");
 
+        var windows = tmp.File("windows");
+        var plain = Integrations.WindowsDefaults.Parse(AeroTheme, windows, windows11: true);
         List<Backup.CapturedItem>? kept = null;
-        var targets = new[] { ("registry", Key + "|AppsUseLightTheme"), ("registry", Key + "|SystemUsesLightTheme"), ("wallpaper", "wallpaper") };
-        var now = store.ShowOriginal(targets, items => kept = items.ToList());
+        var now = store.ShowFor(Integrations.WindowsDefaults.Items(plain), items => kept = items.ToList());
         Assert.Equal(1, registry.Read(Key, "AppsUseLightTheme")!.Number);
-        Assert.Equal(tmp.File("windows.jpg"), wallpaper.Current());
-        // Only what WinMarchy changed, and handed over before anything changed.
-        Assert.Equal(2, now.Count);
+        Assert.Equal(1, registry.Read(Key, "SystemUsesLightTheme")!.Number);
+        Assert.Equal("0", registry.Read(Integrations.WindowsAppearance.DesktopKey, "AutoColorization")!.Text);
+        Assert.Equal(windows + @"\web\wallpaper\Windows\img0.jpg", wallpaper.Current());
+        // The state until now, handed over before anything changed.
+        Assert.Equal(7, now.Count);
         Assert.Equal(now, kept);
 
         store.PutBack(now);
         Assert.Equal(0, registry.Read(Key, "AppsUseLightTheme")!.Number);
+        // A value that was not there before the pause is gone again.
+        Assert.Null(registry.Read(Key, "SystemUsesLightTheme"));
+        Assert.Equal("1", registry.Read(Integrations.WindowsAppearance.DesktopKey, "AutoColorization")!.Text);
         Assert.Equal(own, wallpaper.Current());
-        // Restore points are untouched: undo still knows the state before WinMarchy.
-        Assert.Equal(2, store.LoadOriginal()!.Items.Count);
+        // Restore points are untouched.
+        Assert.Empty(store.Get(point.Id)?.Items ?? new List<Backup.CapturedItem>());
+    }
+
+    const string AeroTheme = """
+        ; Copyright © Microsoft Corp.
+        [Theme]
+        DisplayName=@%SystemRoot%\System32\themeui.dll,-2060
+
+        [Control Panel\Desktop]
+        Wallpaper=%SystemRoot%\web\wallpaper\Windows\img0.jpg
+        TileWallpaper=0
+
+        [VisualStyles]
+        Path=%ResourceDir%\Themes\Aero\Aero.msstyles
+        ColorStyle=NormalColor
+        AutoColorization=0
+        ColorizationColor=0XC40078D4
+        SystemMode=Light
+        AppMode=Light
+        """;
+
+    [Fact]
+    public void The_plain_look_comes_from_windows_default_theme()
+    {
+        var look = Integrations.WindowsDefaults.Parse(AeroTheme.Replace("0XC40078D4", "0XC4005FB8").Replace("SystemMode=Light", "SystemMode=Dark"), @"C:\Windows", windows11: true);
+        Assert.True(look.AppsLight);
+        Assert.False(look.SystemLight);
+        Assert.Equal("#005FB8", look.Accent);
+        Assert.False(look.AutoColorization);
+        Assert.Equal(@"C:\Windows\web\wallpaper\Windows\img0.jpg", look.Wallpaper);
+
+        // Without the theme file: Windows 11 is light all over, Windows 10 has a dark taskbar; Windows' blue.
+        var eleven = Integrations.WindowsDefaults.Parse(null, @"C:\Windows", windows11: true);
+        Assert.True(eleven.AppsLight && eleven.SystemLight);
+        Assert.Equal("#0078D4", eleven.Accent);
+        var ten = Integrations.WindowsDefaults.Parse(null, @"C:\Windows", windows11: false);
+        Assert.True(ten.AppsLight);
+        Assert.False(ten.SystemLight);
+        Assert.Equal(Path.Combine(@"C:\Windows", "Web", "Wallpaper", "Windows", "img0.jpg"), ten.Wallpaper);
     }
 
     [Fact]

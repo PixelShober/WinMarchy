@@ -87,10 +87,6 @@ public static class ToolCatalog
     public static readonly ToolDef Herdr = new("herdr", "Herdr", "Apache-2.0", "https://herdr.dev",
         "herdrdev/herdr", @"^herdr-windows-x86_64\.zip$", InstallKind.Zip, "herdr.exe", Required: false, Extra: true);
 
-    /// <summary>The Pi coding agent (Win+Alt+Enter). Needs a bash on Windows, usually Git Bash.</summary>
-    public static readonly ToolDef Pi = new("pi", "Pi", "MIT", "https://pi.dev",
-        "earendil-works/pi", @"^pi-windows-x64\.zip$", InstallKind.Zip, "pi.exe", Required: false, Extra: true);
-
     /// <summary>Screenshots with an editor, if the user prefers it to Snipping Tool. The vendor's portable zip.</summary>
     public static readonly ToolDef Greenshot = new("greenshot", "Greenshot", "GPL-3.0", "https://getgreenshot.org",
         "greenshot/greenshot", @"^Greenshot-PORTABLE-[\d.]+-RELEASE\.zip$", InstallKind.Zip, "Greenshot.exe", Required: false, Extra: true);
@@ -126,18 +122,11 @@ public static class ToolCatalog
 
     public static IReadOnlyList<ToolDef> All { get; } = new[]
     {
-        GlazeWm, Yasb, AutoHotkey, FluentSearch, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, BulkCrapUninstaller, ExplorerBlurMica, Terminal, Files, VsCode,
+        GlazeWm, Yasb, AutoHotkey, FluentSearch, PowerShell, Starship, Fastfetch, Herdr, Greenshot, BulkCrapUninstaller, ExplorerBlurMica, Terminal, Files, VsCode,
     };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
     public static IReadOnlyList<ToolDef> Extras { get; } = All.Where(t => t.Extra).ToList();
-
-    /// <summary>Git Bash, which Pi needs on Windows.</summary>
-    public static string? GitBash(Locations loc) => new[]
-    {
-        Path.Combine(loc.ProgramFiles, "Git", "bin", "bash.exe"),
-        Path.Combine(loc.LocalAppData, "Programs", "Git", "bin", "bash.exe"),
-    }.FirstOrDefault(File.Exists) ?? OnPath("bash.exe");
 
     /// <summary>The program with this id; null for one WinMarchy no longer knows (state.json of an older version).</summary>
     public static ToolDef? Find(string id) => All.FirstOrDefault(t => t.Id == id);
@@ -152,9 +141,8 @@ public static class ToolCatalog
             Path.Combine(loc.ProgramFiles, "AutoHotkey", "v2", "AutoHotkey64.exe"),
             Path.Combine(loc.LocalAppData, "Programs", "AutoHotkey", "v2", "AutoHotkey64.exe"),
         },
-        // Where Herdr's and Pi's own install scripts put them.
+        // Where Herdr's own install script puts it.
         "herdr" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Herdr", "herdr.exe"), Path.Combine(loc.LocalAppData, "Programs", "Herdr", "winarchy-lite", "herdr.exe") },
-        "pi" => new[] { Path.Combine(loc.LocalAppData, "Programs", "pi", "pi.exe"), Path.Combine(loc.UserProfile, ".pi", "bin", "pi.exe") },
         "pwsh" => new[] { Path.Combine(loc.ProgramFiles, "PowerShell", "7", "pwsh.exe") },
         "starship" => new[] { Path.Combine(loc.ProgramFiles, "starship", "bin", "starship.exe") },
         "fastfetch" => new[] { Path.Combine(loc.ProgramFiles, "fastfetch", "fastfetch.exe") },

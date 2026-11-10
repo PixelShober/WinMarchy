@@ -95,7 +95,6 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | `Win+N` | Editor | gleich |
 | `Win+Umschalt+N` | Code-Editor (VS Code) | Super + Umschalt + N (Neovim) |
 | `Win+Strg+Enter` | Herdr | gleich |
-| `Win+Alt+Enter` | Pi (Coding-Agent) | gleich |
 | `Win+Umschalt+M` | Spotify (Web-App) | gleich |
 | `Win+Umschalt+Q` | Rechner | gleich |
 | `Win+Umschalt+T` | Task-Manager | Super + Umschalt + T (btop) |

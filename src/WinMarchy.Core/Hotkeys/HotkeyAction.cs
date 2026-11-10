@@ -36,7 +36,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
     {
         "terminal", "browser", "browser2", "browser-private", "files", "editor", "launcher", "calculator", "taskmanager",
         "settings", "explorer", "mail", "calendar", "teams", "notes", "word", "herdr", "winmarchy",
-        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield", "pi",
+        "signal", "telegram", "whatsapp", "spotify", "obsidian", "bitwarden", "notepad", "stackfield",
     };
 
     /// <summary>Apps that take web addresses: a new window with them as tabs.</summary>

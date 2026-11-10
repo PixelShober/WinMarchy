@@ -77,7 +77,6 @@ public partial class SetupPage : UserControl, IPage
         }
         label.Children.Add(title);
         var why = L.T("setup.why." + tool.Id);
-        if (tool == ToolCatalog.Pi && ToolCatalog.GitBash(Locations.Current) == null) why += " " + L.T("setup.piNeedsBash");
         var text = UiKit.Text(why, "Small");
         text.TextWrapping = TextWrapping.Wrap;
         label.Children.Add(text);

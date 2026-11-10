@@ -820,6 +820,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         AppModel.Engine.Components.StopBar();
         await Core.Integrations.FluentSearchConfig.StopAsync(ct);
         EnforceTaskbar();
+        ShowPlainTaskbar();
         try
         {
             AppModel.Engine.ShowPlainWindows();
@@ -845,6 +846,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
             Log.Warn(L.T("pause.lookFailed", ("detail", Net.Describe(ex))));
         }
         _paused = false;
+        TaskbarAsBeforePause();
         Core.Services.Components.SuspendAhk(false);
         StartComponents();
         _taskbarShownByUser = false;
@@ -869,7 +871,30 @@ public sealed class AgentHost : IAgentHost, IDisposable
                 Log.Warn(L.T("pause.lookFailed", ("detail", Net.Describe(ex))));
             }
         }
+        TaskbarAsBeforePause();
         Core.Services.Components.SuspendAhk(false);
+    }
+
+    /// <summary>
+    /// Paused, the taskbar is there as on any office PC: shown, and "Automatically hide the taskbar"
+    /// off in Windows' settings, also where it was on before WinMarchy (an earlier tool may have
+    /// turned it on). The setting from before the pause is noted first.
+    /// </summary>
+    void ShowPlainTaskbar()
+    {
+        bool autoHide = Taskbar.IsAutoHide();
+        AppState.Update(s => s.PausedTaskbarAutoHide ??= autoHide);
+        _guard.Hide = false;
+        Taskbar.Show();
+        if (autoHide) Taskbar.SetAutoHide(false);
+    }
+
+    /// <summary>The end of a pause (or of a run that ended paused): "Automatically hide the taskbar" as it was before.</summary>
+    void TaskbarAsBeforePause()
+    {
+        if (AppState.Load().PausedTaskbarAutoHide is not { } before) return;
+        if (before) Taskbar.SetAutoHide(true);
+        AppState.Update(s => s.PausedTaskbarAutoHide = null);
     }
 
     /// <summary>The tray entry says what a click does now; the pages and the menu follow <see cref="PausedChanged"/>.</summary>
