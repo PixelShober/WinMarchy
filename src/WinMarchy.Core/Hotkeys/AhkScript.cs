@@ -5,9 +5,9 @@ namespace WinMarchy.Core.Hotkeys;
 /// <summary>What the generated AutoHotkey script needs to know about this machine.</summary>
 /// <param name="LeaveAlone">Keys another program owns (Greenshot's Print keys), normalized: no hotkey for them.</param>
 /// <param name="Extra">Shortcuts a setting adds when their keys are free (Greenshot takes Win+Shift+S).</param>
-/// <param name="LauncherProcess">The launcher behind Win (Flow Launcher or Fluent Search), as its exe is called.</param>
+/// <param name="LauncherProcess">The launcher behind Win (Fluent Search), as its exe is called.</param>
 public sealed record AhkContext(string WinMarchyExe, string GlazeCli, bool WinKeyOpensLauncher, string LauncherKeys = "!{F24}",
-    IReadOnlyCollection<string>? LeaveAlone = null, IReadOnlyList<HotkeyBinding>? Extra = null, string LauncherProcess = "Flow.Launcher.exe");
+    IReadOnlyCollection<string>? LeaveAlone = null, IReadOnlyList<HotkeyBinding>? Extra = null, string LauncherProcess = "FluentSearch.exe");
 
 /// <summary>
 /// Generates the AutoHotkey v2 script from the active shortcuts. Only fixed function calls with quoted
@@ -45,13 +45,19 @@ public static class AhkScript
             if (b.Combo is not { } combo || b.Action is not { } action) continue;
             if (ctx.LeaveAlone?.Contains(combo.ToString()) == true) continue;
             sb.Append("Hotkey(").Append(Quote(combo.ToAhk())).Append(", (*) => ").Append(Call(action, ctx))
-              .Append(")  ; ").AppendLine(Comment(b.Describe()));
+              .Append(WorksWhilePaused(action) ? ", \"S\"" : "").Append(")  ; ").AppendLine(Comment(b.Describe()));
         }
 
         sb.AppendLine();
         sb.Append(Runtime());
         return sb.ToString();
     }
+
+    /// <summary>
+    /// The WinMarchy menu and the pause key work while WinMarchy is paused (AutoHotkey's option "S":
+    /// exempt from Suspend); everything else lets go of its keys.
+    /// </summary>
+    public static bool WorksWhilePaused(HotkeyAction action) => action.Kind == ActionKind.Do && action.Value is "menu" or "pause";
 
     static string Call(HotkeyAction action, AhkContext ctx) => action.Kind switch
     {

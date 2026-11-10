@@ -21,6 +21,12 @@ public sealed class AppState
     /// <summary>Was the Windows taskbar on auto-hide before WinMarchy hid it? null = never touched.</summary>
     public bool? TaskbarAutoHideBefore { get; set; }
 
+    /// <summary>
+    /// While WinMarchy is paused: its wallpaper and Windows colours, to put back when it resumes. Kept
+    /// here so a WinMarchy that ends during the pause puts them back at its next start. Null when not paused.
+    /// </summary>
+    public List<Backup.CapturedItem>? PausedLook { get; set; }
+
     /// <summary>Wallpaper position per theme for "next background".</summary>
     public Dictionary<string, int> WallpaperIndex { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

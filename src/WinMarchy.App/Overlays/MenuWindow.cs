@@ -26,9 +26,25 @@ public sealed class MenuWindow : Window
         else Open(w => w.ShowEntries(string.IsNullOrWhiteSpace(name) ? MenuModel.Root : name.Trim(), clearHistory: true));
     }
 
-    public static void ShowThemes() => Open(w => w.ShowThemeList());
+    public static void ShowThemes()
+    {
+        if (BlockedByPause()) return;
+        Open(w => w.ShowThemeList());
+    }
 
-    public static void ShowWallpapers() => Open(w => w.ShowWallpaperList());
+    public static void ShowWallpapers()
+    {
+        if (BlockedByPause()) return;
+        Open(w => w.ShowWallpaperList());
+    }
+
+    /// <summary>Paused, theme and wallpaper stay as Windows had them before WinMarchy: the choosers do not open.</summary>
+    static bool BlockedByPause()
+    {
+        if (AppModel.Agent?.Paused != true) return false;
+        Osd.Show(L.T("pause.blocked"));
+        return true;
+    }
 
     public static void ShowKeybindings() => Open(w => w.ShowBindings());
 
@@ -209,19 +225,22 @@ public sealed class MenuWindow : Window
 
     /// <summary>
     /// Another window has the focus: the menu closes, as a click next to it closes it. Except right
-    /// after it opened, when Windows' shell takes the focus for a moment (the Win key shows the hidden
-    /// taskbar, WinMarchy hides it again): the menu takes the focus back, else it would be gone
-    /// before it was seen.
+    /// after it opened, when something other than the user takes the focus for a moment: Windows'
+    /// shell (the Win key shows the hidden taskbar, WinMarchy hides it again), or GlazeWM putting its
+    /// focused window back in front. The menu then takes the focus back, else it would be gone before
+    /// it was seen. A mouse button that is down means the user clicked elsewhere: the menu closes.
     /// </summary>
     void OnDeactivated()
     {
         if (_closing) return;
         var (cls, process) = Placement.ForegroundWindowInfo();
         var age = (DateTime.Now - _shownAt).TotalMilliseconds;
-        if (age < 1500 && _reclaims < 3 && (cls == null || Placement.IsShellWindow(cls)))
+        bool shell = cls == null || Placement.IsShellWindow(cls);
+        bool notTheUser = shell ? age < 1500 : age < 800 && !Placement.MouseButtonDown();
+        if (notTheUser && _reclaims < 3)
         {
             _reclaims++;
-            Log.Trace($"menu: the shell ({cls ?? "no window"}) took the focus after {age:0} ms, taking it back", "menu");
+            Log.Trace($"menu: {process ?? "?"} ({cls ?? "no window"}) took the focus after {age:0} ms, taking it back", "menu");
             Dispatcher.InvokeAsync(() =>
             {
                 if (!_closing && IsVisible) TakeFocus();

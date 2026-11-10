@@ -118,10 +118,10 @@ internal static class DisplayConfig
 public static class ScreenNames
 {
     /// <summary>
-    /// The names of the screens with these GDI names ("\\.\DISPLAY1"), in the same order. Where
-    /// Windows tells nothing, "Screen 2" by position.
+    /// The names of the screens with these GDI names ("\\.\DISPLAY1"), in the same order (left to
+    /// right). Where Windows tells nothing, "Screen 2" by position.
     /// </summary>
-    public static List<string> Of(IReadOnlyList<string> gdiNames)
+    public static List<string> Of(IReadOnlyList<(string Gdi, bool Portrait)> screens)
     {
         Dictionary<string, (string? Name, bool BuiltIn)> known;
         try
@@ -133,21 +133,36 @@ public static class ScreenNames
             Log.Debug("screen names: " + ex.Message);
             known = new Dictionary<string, (string?, bool)>();
         }
-        return Label(gdiNames.Select(g => known.TryGetValue(g, out var s) ? s : (null, false)).ToList());
+        return Label(screens.Select(g => known.TryGetValue(g.Gdi, out var s) ? (s.Name, s.BuiltIn, g.Portrait) : (null, false, g.Portrait)).ToList());
     }
 
     /// <summary>
-    /// A built-in panel is the laptop's screen, any other goes by its own name, else by its number;
-    /// two with the same name (two monitors of one model) get "(1)" and "(2)" in their order.
+    /// A built-in panel is the laptop's screen, any other goes by its own name, else by its number. A
+    /// screen turned upright gets "(Hochkant)". Two that are still called the same (two monitors of
+    /// one model) get where they stand: "(links)" and "(rechts)", for three also "(Mitte)".
     /// </summary>
-    internal static List<string> Label(IReadOnlyList<(string? Name, bool BuiltIn)> screens)
+    /// <param name="screens">The screens from left to right.</param>
+    internal static List<string> Label(IReadOnlyList<(string? Name, bool BuiltIn, bool Portrait)> screens)
     {
         var names = screens.Select((s, i) => s.BuiltIn ? L.T("screens.builtIn") : s.Name ?? L.T("tiling.monitorName", ("number", i + 1))).ToList();
-        foreach (var group in names.Select((n, i) => (n, i)).GroupBy(x => x.n).Where(g => g.Count() > 1).ToList())
+        var notes = screens.Select(s => s.Portrait ? new List<string> { L.T("screens.portrait") } : new List<string>()).ToList();
+        foreach (var group in names.Select((n, i) => (Key: n + "|" + string.Join(",", notes[i]), i)).GroupBy(x => x.Key).Where(g => g.Count() > 1).ToList())
         {
-            int k = 1;
-            foreach (var (n, i) in group) names[i] = $"{n} ({k++})";
+            var members = group.Select(x => x.i).ToList();
+            for (int k = 0; k < members.Count; k++) notes[members[k]].Add(Position(k, members.Count)!);
         }
-        return names;
+        return names.Select((n, i) => notes[i].Count == 0 ? n : $"{n} ({string.Join(", ", notes[i])})").ToList();
     }
+
+    /// <summary>
+    /// Where the screen at <paramref name="index"/> of <paramref name="count"/> stands, counted from the
+    /// left: "links", "Mitte", "rechts", or "3. von links" from four on; null for a single screen.
+    /// </summary>
+    public static string? Position(int index, int count) => count switch
+    {
+        <= 1 => null,
+        2 => L.T(index == 0 ? "screens.left" : "screens.right"),
+        3 => L.T(index switch { 0 => "screens.left", 1 => "screens.middle", _ => "screens.right" }),
+        _ => L.T("screens.nthFromLeft", ("number", index + 1)),
+    };
 }

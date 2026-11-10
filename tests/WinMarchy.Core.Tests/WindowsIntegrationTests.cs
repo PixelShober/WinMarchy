@@ -111,7 +111,7 @@ public class ExtrasTests
 {
     [Fact]
     public void The_optional_extras() =>
-        Assert.Equal(new[] { "fluentsearch", "pwsh", "starship", "fastfetch", "herdr", "pi", "greenshot", "explorerblurmica" }, ToolCatalog.Extras.Select(t => t.Id));
+        Assert.Equal(new[] { "pwsh", "starship", "fastfetch", "herdr", "pi", "greenshot", "bcuninstaller", "explorerblurmica" }, ToolCatalog.Extras.Select(t => t.Id));
 
     [Fact]
     public void Every_extra_can_be_installed_from_its_vendor() =>

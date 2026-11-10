@@ -16,6 +16,9 @@ public interface IAgentHost
     AppLauncher Apps { get; }
     UserSettings Settings { get; }
 
+    /// <summary>WinMarchy is paused: Windows looks and works as without it, only the menu and the pause key work.</summary>
+    bool Paused { get; }
+
     void Notify(string text);
     void ShowMenu(string? name);
     void ShowThemeMenu();
@@ -27,6 +30,9 @@ public interface IAgentHost
     Task NextWallpaperAsync(CancellationToken ct);
     Task ToggleGapsAsync(CancellationToken ct);
     Task ReloadGlazeAsync(CancellationToken ct);
+
+    /// <summary>Pauses WinMarchy, or lets it go on.</summary>
+    Task TogglePauseAsync(CancellationToken ct);
 }
 
 /// <summary>
@@ -45,6 +51,12 @@ public sealed class ActionRunner
         if (!HotkeyAction.TryParse(text, out var action, out var error))
         {
             Log.Warn(L.T("actions.rejected", ("action", text), ("detail", error)));
+            return;
+        }
+        if (_host.Paused && !WorksWhilePaused(action))
+        {
+            Log.Trace("action while paused, not run: " + action, "action");
+            _host.Notify(L.T("pause.blocked"));
             return;
         }
         var clock = Stopwatch.StartNew();
@@ -76,6 +88,25 @@ public sealed class ActionRunner
             Log.Trace($"action {action} done in {clock.ElapsedMilliseconds} ms", "action");
         }
     }
+
+    /// <summary>"do:…" functions that leave Windows' look and the windows alone.</summary>
+    static readonly IReadOnlySet<string> HarmlessCommands = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "menu", "keybindings", "pause", "lock", "copy", "paste", "show-time", "show-battery", "screenshot", "about", "keep-awake", "scale-up", "scale-down",
+    };
+
+    /// <summary>
+    /// What still runs while WinMarchy is paused: its menus (not the wallpaper one), the pause key,
+    /// programs and links, keys sent on, and functions that change nothing of WinMarchy's look or the
+    /// windows. Not: GlazeWM's commands, the launcher (it is off), bar, taskbar, theme and wallpaper.
+    /// </summary>
+    public static bool WorksWhilePaused(HotkeyAction action) => action.Kind switch
+    {
+        ActionKind.Wm => false,
+        ActionKind.App => action.AppId != "launcher",
+        ActionKind.Do => HarmlessCommands.Contains(action.Value.Split(' ', 2)[0]) && action.Value != "menu wallpaper",
+        _ => true,
+    };
 
     async Task WmAsync(HotkeyAction action, CancellationToken ct)
     {
@@ -131,13 +162,12 @@ public sealed class ActionRunner
     }
 
     /// <summary>
-    /// The launcher chosen in Settings listens on Alt+F24 (set by WinMarchy). If it is not running yet,
-    /// it is started first.
+    /// Fluent Search listens on Alt+F24 (set by WinMarchy). If it is not running yet, it is started first.
     /// </summary>
     async Task LauncherAsync(CancellationToken ct)
     {
-        var tool = Launchers.Tool(_host.Settings);
-        if (Process.GetProcessesByName(Launchers.Process(_host.Settings)).Length == 0)
+        var tool = ToolCatalog.FluentSearch;
+        if (Process.GetProcessesByName(Integrations.FluentSearchConfig.Process).Length == 0)
         {
             var exe = ToolCatalog.Detect(tool, Locations.Current, _host.Settings, AppState.Load()).Path;
             if (exe == null)
@@ -146,7 +176,7 @@ public sealed class ActionRunner
                 return;
             }
             AppLauncher.Start(exe);
-            // Both take their hotkey only once they have loaded.
+            // It takes its hotkey only once it has loaded.
             await Task.Delay(3000, ct);
         }
         KeySender.Send(KeyCombo.Parse("Alt+F24"));
@@ -241,6 +271,7 @@ public sealed class ActionRunner
             case "bar-toggle": _host.ToggleBar(); break;
             case "taskbar-toggle": _host.ToggleTaskbar(); break;
             case "keep-awake": _host.ToggleKeepAwake(); break;
+            case "pause": await _host.TogglePauseAsync(ct); break;
             case "gaps-toggle": await _host.ToggleGapsAsync(ct); break;
             case "reload": await _host.ReloadGlazeAsync(ct); break;
             case "lock": Win32.LockWorkstation(); break;

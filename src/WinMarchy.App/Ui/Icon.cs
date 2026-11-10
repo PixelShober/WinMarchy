@@ -39,6 +39,7 @@ public sealed class Icon : FrameworkElement
         ["external"] = G("M9.5 2.5 H13.5 V6.5 M13.5 2.5 L7.5 8.5 M11.5 9.5 V13.5 H2.5 V4.5 H6.5"),
         ["folder"] = G("M1.5 4 H6 L7.5 5.5 H14.5 V13 H1.5 Z"),
         ["play"] = G("M5 3 L13 8 L5 13 Z"),
+        ["pause"] = G("M5 3 V13 M11 3 V13"),
         ["search"] = G("M7 2.5 A4.5 4.5 0 1 1 6.99 2.5 Z M10.3 10.3 L13.8 13.8"),
         ["plus"] = G("M8 3 V13 M3 8 H13"),
         ["minus"] = G("M3 8 H13"),

@@ -11,7 +11,7 @@ namespace WinMarchy.Core.Platform;
 /// <summary>
 /// "Diagnosebericht" on the Log page: what WinMarchy sees right now, in one text file to send along
 /// with a fault report. GlazeWM's monitors, workspaces and windows (process names only, no window
-/// titles), which programs run, what the hotkey script and GlazeWM's config contain, Flow's own log,
+/// titles), which programs run, what the hotkey script and GlazeWM's config contain, Fluent Search's hotkey,
 /// the taskbar and the latest warnings.
 /// </summary>
 public static class Diagnostics
@@ -127,7 +127,7 @@ public static class Diagnostics
         Guard("Fluent Search", () =>
         {
             var exe = ToolCatalog.Detect(ToolCatalog.FluentSearch, loc, s, AppState.Load()).Path;
-            Line($"launcher behind Win: {Integrations.Launchers.Of(s)} · {exe ?? "not found"}");
+            Line($"Fluent Search: {exe ?? "not found"} · Flow Launcher (old) running: {Services.Components.IsRunning(Integrations.LegacyFlow.Process)}");
             foreach (var dir in new[] { Integrations.FluentSearchConfig.SettingsDir(loc, exe) })
             {
                 Line($"{dir}: {(Directory.Exists(dir) ? string.Join(", ", Directory.GetFiles(dir).Select(f => $"{Path.GetFileName(f)} {File.GetLastWriteTime(f):yyyy-MM-dd HH:mm}")) : "missing")}");
@@ -138,25 +138,6 @@ public static class Diagnostics
                     if (item.TryGetProperty("SettingName", out var n) && n.GetString() is "Search hotkey" or "StartAtStartup" && item.TryGetProperty("Value", out var v))
                         Line($"  {n.GetString()}: {v}");
             }
-        });
-        Guard("Flow Launcher", () =>
-        {
-            var exe = ToolCatalog.Detect(ToolCatalog.Flow, loc, s, AppState.Load()).Path;
-            var settings = FlowTheme.SettingsFile(loc, exe);
-            Line($"{exe ?? "not found"} · {settings}{(File.Exists(settings) ? "" : " (missing)")}");
-            if (File.Exists(settings))
-            {
-                using var doc = JsonDocument.Parse(FileSafety.ReadShared(settings), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-                foreach (var key in new[] { "Hotkey", "Theme", "ColorScheme", "BackdropType" })
-                    if (doc.RootElement.TryGetProperty(key, out var v)) Line($"{key}: {v}");
-            }
-            var logs = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(settings)!)!, "Logs");
-            var newest = Directory.Exists(logs)
-                ? Directory.EnumerateFiles(logs, "*.txt", SearchOption.AllDirectories).OrderByDescending(File.GetLastWriteTime).FirstOrDefault()
-                : null;
-            if (newest == null) { Line("no Flow log found"); return; }
-            Line("Flow log " + newest + ", last lines:");
-            foreach (var l in FileSafety.ReadShared(newest).Split('\n').TakeLast(60)) Line("  " + l.TrimEnd());
         });
         Guard("Taskbar", () =>
         {

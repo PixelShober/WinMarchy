@@ -64,6 +64,12 @@ public static class AppModel
     /// <summary>Starts a job unless one of the same kind is running; the Log page and toasts follow it.</summary>
     public static Job? Run(string id, string kind, string title, List<SetupStep> steps, Func<Job, Task>? onFinished = null)
     {
+        // Paused, nothing may change WinMarchy's setup, look or programs; the pause would hide it, and resuming would undo it.
+        if (Agent?.Paused == true)
+        {
+            Toasts.Show(ToastKind.Info, L.T("pause.blocked"));
+            return null;
+        }
         if (Jobs.IsRunning(kind))
         {
             Toasts.Show(ToastKind.Info, L.T("jobs.alreadyRunning", ("title", title)));

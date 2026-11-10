@@ -14,6 +14,13 @@ public static class WindowsAppearance
     public const string AccentKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent";
     public const string DesktopKey = @"Control Panel\Desktop";
 
+    /// <summary>Every registry value <see cref="Apply"/> writes.</summary>
+    public static readonly (string Key, string Name)[] Values =
+    {
+        (PersonalizeKey, "AppsUseLightTheme"), (PersonalizeKey, "SystemUsesLightTheme"), (DwmKey, "AccentColor"),
+        (DwmKey, "ColorizationColor"), (AccentKey, "AccentColorMenu"), (DesktopKey, "AutoColorization"),
+    };
+
     public static void Apply(IntegrationContext ctx, Palette palette)
     {
         int light = palette.IsLight ? 1 : 0;

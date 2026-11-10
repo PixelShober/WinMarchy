@@ -14,6 +14,41 @@ public class BackupStoreTests
     const string Key = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
 
     [Fact]
+    public void A_pause_shows_the_look_before_winmarchy_and_puts_winmarchys_back()
+    {
+        using var tmp = new TempDir();
+        var registry = new MemoryUserRegistry();
+        var wallpaper = new FakeWallpaper { Path = tmp.File("windows.jpg") };
+        File.WriteAllBytes(wallpaper.Path, new byte[] { 1, 2, 3 });
+        registry.Write(Key, "AppsUseLightTheme", RegistryData.Dword(1));
+        var store = new BackupStore(tmp.File("backups"), registry, wallpaper);
+
+        // WinMarchy's theme: dark, its own wallpaper.
+        var point = store.Begin("theme", "Theme");
+        store.CaptureRegistry(point, Key, "AppsUseLightTheme");
+        store.CaptureWallpaper(point);
+        registry.Write(Key, "AppsUseLightTheme", RegistryData.Dword(0));
+        var own = tmp.File("tokyo.jpg");
+        File.WriteAllBytes(own, new byte[] { 4 });
+        wallpaper.Set(own);
+
+        List<Backup.CapturedItem>? kept = null;
+        var targets = new[] { ("registry", Key + "|AppsUseLightTheme"), ("registry", Key + "|SystemUsesLightTheme"), ("wallpaper", "wallpaper") };
+        var now = store.ShowOriginal(targets, items => kept = items.ToList());
+        Assert.Equal(1, registry.Read(Key, "AppsUseLightTheme")!.Number);
+        Assert.Equal(tmp.File("windows.jpg"), wallpaper.Current());
+        // Only what WinMarchy changed, and handed over before anything changed.
+        Assert.Equal(2, now.Count);
+        Assert.Equal(now, kept);
+
+        store.PutBack(now);
+        Assert.Equal(0, registry.Read(Key, "AppsUseLightTheme")!.Number);
+        Assert.Equal(own, wallpaper.Current());
+        // Restore points are untouched: undo still knows the state before WinMarchy.
+        Assert.Equal(2, store.LoadOriginal()!.Items.Count);
+    }
+
+    [Fact]
     public void A_changed_file_comes_back()
     {
         using var tmp = new TempDir();

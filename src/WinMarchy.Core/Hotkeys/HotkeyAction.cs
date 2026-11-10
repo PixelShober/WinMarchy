@@ -47,7 +47,7 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
     {
         "menu", "theme-menu", "keybindings", "wallpaper-next", "bar-toggle", "taskbar-toggle",
         "layout-next", "layout-prev", "layout", "scratch-toggle", "scratch-store", "workspace-next", "workspace-prev",
-        "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "gaps-toggle",
+        "scale-up", "scale-down", "lock", "show-time", "show-battery", "keep-awake", "pause", "gaps-toggle",
         "transparency-toggle", "move-window-monitor", "restore-minimized", "copy", "paste", "reload",
         "toggle-split", "float-toggle", "work-mode", "desktop-new", "desktop-next", "desktop-prev", "wallpaper-menu",
         "focus", "swap", "to-workspace", "screenshot", "about", "bar-shortcut", "bar-menu",

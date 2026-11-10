@@ -4,13 +4,14 @@ using WinMarchy.Core.Themes;
 namespace WinMarchy.Core.Integrations;
 
 /// <summary>
-/// Fluent Search as the launcher behind the Win key. Its settings are one JSON file per settings
-/// page (a list of { "SettingName", "Value" }) in a folder named "Blast": next to FluentSearch.exe
-/// for the portable build, %AppData%\Blast for the installed one. A page that is missing comes from
-/// WinMarchy's template (the settings the user handed over, without search history, pinned results,
-/// paths and user id); WinMarchy then sets what it relies on: the hotkey Alt+F24, no autostart of its
-/// own (WinMarchy starts it), and the "Omarchy" look in the theme's accent colour. Fluent Search is
-/// ended before its files change, so it does not write its old values back.
+/// Fluent Search, the launcher behind the Win key. Its settings are one JSON file per settings page
+/// (a list of { "SettingName", "Value" }) in "Blast\Settings": next to FluentSearch.exe for the
+/// portable build, in %AppData% for the installed one. At the setup a page that is missing comes
+/// from WinMarchy's template (the settings the user handed over, without search history, pinned
+/// results, paths and user id), and WinMarchy sets what it relies on: the hotkey Alt+F24, no
+/// autostart of its own (WinMarchy starts it), and the theme's accent colour. After that the
+/// settings are the user's: updates leave them alone, a theme change only sets the accent colour.
+/// Fluent Search is ended before its files change, so it does not write its old values back.
 /// </summary>
 public static class FluentSearchConfig
 {
@@ -34,35 +35,6 @@ public static class FluentSearchConfig
              File.Exists(Path.Combine(dir, "readme-portable.txt"))))
             return Path.Combine(dir, "Blast", "Settings");
         return Path.Combine(loc.AppData, "Blast", "Settings");
-    }
-
-    /// <summary>
-    /// Every folder with Fluent Search data: "Blast" next to the exe (settings, themes, cache, plugins)
-    /// and in both AppData folders (the installed build's, and where earlier WinMarchy versions wrote
-    /// by mistake). <see cref="ResetAsync"/> clears them all.
-    /// </summary>
-    internal static IEnumerable<string> DataDirs(Locations loc, string exe) => new[]
-    {
-        Path.Combine(Path.GetDirectoryName(exe)!, "Blast"), Path.Combine(loc.AppData, "Blast"), Path.Combine(loc.LocalAppData, "Blast"),
-    };
-
-    /// <summary>
-    /// "Reinstall Fluent Search": ends it and deletes all its data (settings, themes, cache, plugins)
-    /// from every folder it may use. Each folder goes into the restore point as a whole first (without
-    /// the search index, which builds itself again), so undo brings the settings and themes back.
-    /// </summary>
-    public static async Task ResetAsync(IntegrationContext ctx, string exe, CancellationToken ct)
-    {
-        await StopAsync(ct);
-        foreach (var dir in DataDirs(ctx.Loc, exe).Where(Directory.Exists))
-        {
-            // The search index is large and builds itself again; it is not worth a backup.
-            var cache = Path.Combine(dir, "Cache");
-            if (Directory.Exists(cache)) Directory.Delete(cache, true);
-            ctx.Backups.CaptureDirectory(ctx.Point, dir);
-            Directory.Delete(dir, true);
-            Log.Info(L.T("integrations.fluentSearch.cleared", ("path", dir)));
-        }
     }
 
     /// <summary>The settings pages WinMarchy carries a template for, e.g. "System.json".</summary>
@@ -109,11 +81,22 @@ public static class FluentSearchConfig
     public static long Argb(string hex) => 0xFF000000L | Convert.ToInt64(hex.TrimStart('#'), 16);
 
     /// <summary>
-    /// Writes the settings (missing pages from the template, then WinMarchy's values) into the folder
-    /// of the Fluent Search at <paramref name="exe"/>; every file goes into the restore point first.
-    /// Afterwards it runs if <paramref name="start"/> is set.
+    /// The setup: every page WinMarchy has a template for and Fluent Search does not have yet comes
+    /// from the template; then the hotkey, no autostart of its own and the theme's accent colour.
+    /// Pages Fluent Search already has keep everything else. Every file goes into the restore point
+    /// first. Afterwards it runs if <paramref name="start"/> is set.
     /// </summary>
-    public static async Task ApplyAsync(IntegrationContext ctx, Palette palette, string? exe, bool start, CancellationToken ct)
+    public static Task SetupAsync(IntegrationContext ctx, Palette palette, string? exe, bool start, CancellationToken ct) =>
+        WriteAsync(ctx, palette, exe, start, TemplateFiles(), ct);
+
+    /// <summary>
+    /// A theme change: only the accent colour on the "Appearance" page changes; all other settings stay
+    /// as the user left them. Afterwards Fluent Search runs if <paramref name="start"/> is set.
+    /// </summary>
+    public static Task ApplyThemeAsync(IntegrationContext ctx, Palette palette, string? exe, bool start, CancellationToken ct) =>
+        WriteAsync(ctx, palette, exe, start, new[] { "Appearance.json" }, ct);
+
+    static async Task WriteAsync(IntegrationContext ctx, Palette palette, string? exe, bool start, IReadOnlyList<string> pages, CancellationToken ct)
     {
         if (exe == null || !File.Exists(exe))
         {
@@ -121,10 +104,9 @@ public static class FluentSearchConfig
             return;
         }
         await StopAsync(ct);
-        var names = TemplateFiles();
         var dir = SettingsDir(ctx.Loc, exe);
         int written = 0;
-        foreach (var file in names)
+        foreach (var file in pages)
         {
             var path = Path.Combine(dir, file);
             var text = File.Exists(path) ? FileSafety.ReadShared(path) : Template(file, ctx.Loc.UserProfile);

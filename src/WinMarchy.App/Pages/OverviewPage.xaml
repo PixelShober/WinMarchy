@@ -10,6 +10,12 @@
           <TextBlock Text="{ui:T overview.refresh}" Margin="6,0,0,0" />
         </StackPanel>
       </Button>
+      <Button x:Name="PauseButton" DockPanel.Dock="Right" VerticalAlignment="Top" Click="OnPause" Margin="0,0,10,0" Visibility="Collapsed">
+        <StackPanel Orientation="Horizontal">
+          <ui:Icon x:Name="PauseIcon" Kind="pause" Size="14" />
+          <TextBlock x:Name="PauseText" Margin="6,0,0,0" />
+        </StackPanel>
+      </Button>
       <StackPanel MaxWidth="760" HorizontalAlignment="Left">
         <TextBlock Text="{ui:T overview.title}" Style="{StaticResource H1}" />
         <TextBlock Text="{ui:T overview.subtitle}" Style="{StaticResource Muted}" Margin="0,6,0,0" />

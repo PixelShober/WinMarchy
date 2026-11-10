@@ -56,16 +56,30 @@ public class ScreenTests
     [Fact]
     public void Screens_are_named_like_windows_names_them()
     {
-        var names = ScreenNames.Label(new (string?, bool)[] { (null, true), ("DELL U2720Q", false), (null, false) });
+        var names = ScreenNames.Label(new (string?, bool, bool)[] { (null, true, false), ("DELL U2720Q", false, false), (null, false, false) });
         Assert.Equal(new[] { L.T("screens.builtIn"), "DELL U2720Q", L.T("tiling.monitorName", ("number", 3)) }, names);
     }
 
     [Fact]
-    public void Two_screens_of_one_model_are_numbered()
+    public void Two_screens_of_one_model_are_told_apart_by_how_and_where_they_stand()
     {
-        var names = ScreenNames.Label(new (string?, bool)[] { ("DELL P2419H", false), (null, true), ("DELL P2419H", false) });
-        Assert.Equal(new[] { "DELL P2419H (1)", L.T("screens.builtIn"), "DELL P2419H (2)" }, names);
+        // One upright: that is enough.
+        var upright = ScreenNames.Label(new (string?, bool, bool)[] { ("DELL P2423", false, false), ("DELL P2423", false, true), (null, true, false) });
+        Assert.Equal(new[] { "DELL P2423", $"DELL P2423 ({L.T("screens.portrait")})", L.T("screens.builtIn") }, upright);
+        // Both alike: left and right.
+        var alike = ScreenNames.Label(new (string?, bool, bool)[] { ("DELL P2419H", false, false), (null, true, false), ("DELL P2419H", false, false) });
+        Assert.Equal(new[] { $"DELL P2419H ({L.T("screens.left")})", L.T("screens.builtIn"), $"DELL P2419H ({L.T("screens.right")})" }, alike);
+        // Three of a kind, two upright.
+        var three = ScreenNames.Label(new (string?, bool, bool)[] { ("X", false, true), ("X", false, false), ("X", false, true) });
+        Assert.Equal(new[] { $"X ({L.T("screens.portrait")}, {L.T("screens.left")})", "X", $"X ({L.T("screens.portrait")}, {L.T("screens.right")})" }, three);
     }
+
+    [Theory]
+    [InlineData(0, 1, null)]
+    [InlineData(1, 2, "screens.right")]
+    [InlineData(1, 3, "screens.middle")]
+    public void Positions_count_from_the_left(int index, int count, string? key) =>
+        Assert.Equal(key == null ? null : L.T(key), ScreenNames.Position(index, count));
 
     /// <summary>Three screens side by side, as in the log: 3 on the left, 5 in the middle, 1 on the right.</summary>
     static JsonElement Monitors() => JsonDocument.Parse("""
@@ -124,10 +138,12 @@ public class ScreenTests
     [Fact]
     public void Only_programs_winmarchy_installed_from_a_zip_or_msi_are_updated()
     {
-        var state = new AppState { InstalledTools = { ToolCatalog.Yasb.Id, ToolCatalog.Flow.Id } };
+        // "flow": Flow Launcher, installed by an earlier WinMarchy and no longer known.
+        var state = new AppState { InstalledTools = { ToolCatalog.Yasb.Id, ToolCatalog.BulkCrapUninstaller.Id, "flow" } };
         var tools = ToolUpdates.Updatable(state);
         Assert.Contains(ToolCatalog.Yasb, tools);
-        Assert.DoesNotContain(ToolCatalog.Flow, tools);
+        Assert.Contains(ToolCatalog.BulkCrapUninstaller, tools);
+        Assert.Equal(2, tools.Count);
         Assert.DoesNotContain(ToolCatalog.AutoHotkey, tools);
     }
 

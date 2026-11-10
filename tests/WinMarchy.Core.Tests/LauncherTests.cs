@@ -8,7 +8,7 @@ using WinMarchy.Core.Tools;
 
 namespace WinMarchy.Core.Tests;
 
-/// <summary>Flow Launcher or Fluent Search behind the Win key, and Fluent Search's settings.</summary>
+/// <summary>Fluent Search behind the Win key, its settings, and an old Flow Launcher retired.</summary>
 public class LauncherTests
 {
     static readonly Palette Tokyo = ThemeCatalog.Default.Palette;
@@ -17,14 +17,13 @@ public class LauncherTests
         JsonNode.Parse(page)!.AsArray().OfType<JsonObject>().First(i => i["SettingName"]!.GetValue<string>() == name)["Value"];
 
     [Fact]
-    public void Flow_is_the_launcher_unless_fluent_search_is_chosen()
+    public void Fluent_search_is_the_launcher_and_flow_is_gone()
     {
-        Assert.Equal(Launchers.Flow, Launchers.Of(new UserSettings()));
-        Assert.Equal(Launchers.Flow, Launchers.Of(new UserSettings { Launcher = "something" }));
-        var fluent = new UserSettings { Launcher = Launchers.FluentSearch };
-        Assert.Same(ToolCatalog.FluentSearch, Launchers.Tool(fluent));
-        Assert.Equal("FluentSearch", Launchers.Process(fluent));
-        Assert.Equal(Launchers.Flow, Launchers.Other(Launchers.FluentSearch));
+        Assert.Null(ToolCatalog.Find("flow"));
+        Assert.Contains(ToolCatalog.FluentSearch, ToolCatalog.All);
+        Assert.DoesNotContain(ToolCatalog.FluentSearch, ToolCatalog.Extras);
+        Assert.Contains("FluentSearch.exe", AhkScript.Generate(HotkeySet.Build(new CustomHotkeys()),
+            new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", @"C:\WinMarchy\Tools\glazewm\cli\glazewm.exe", true)));
     }
 
     [Fact]
@@ -43,7 +42,6 @@ public class LauncherTests
         Assert.True(tool.PreRelease);
         Assert.Equal(new[] { "Blast" }, tool.KeepFolders);
         Assert.Matches(tool.Asset!, "fluent-search-portable-x64.zip");
-        Assert.True(tool.Extra);
     }
 
     [Fact]
@@ -98,7 +96,7 @@ public class LauncherTests
     }
 
     [Fact]
-    public async Task Settings_land_in_blast_settings_next_to_the_portable_exe_and_can_be_undone()
+    public async Task The_setup_writes_blast_settings_next_to_the_portable_exe_and_can_be_undone()
     {
         using var temp = new TempDir();
         var loc = Locations.Under(temp.Path);
@@ -114,7 +112,7 @@ public class LauncherTests
 
         var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
         var point = store.Begin("launcher", "Fluent Search");
-        await FluentSearchConfig.ApplyAsync(new IntegrationContext(loc, store, point, new UserSettings()), Tokyo, exe, start: false, CancellationToken.None);
+        await FluentSearchConfig.SetupAsync(new IntegrationContext(loc, store, point, new UserSettings()), Tokyo, exe, start: false, CancellationToken.None);
 
         // Every page twice: Fluent Search falls back to "<page>.backup.json".
         Assert.Equal(2 * FluentSearchConfig.TemplateFiles().Count, Directory.GetFiles(dir, "*.json").Length);
@@ -127,31 +125,52 @@ public class LauncherTests
     }
 
     [Fact]
-    public async Task Reinstalling_clears_every_folder_and_undo_brings_settings_and_themes_back()
+    public async Task A_theme_change_only_sets_the_accent_colour()
     {
         using var temp = new TempDir();
         var loc = Locations.Under(temp.Path);
         var exe = temp.File("fluent/FluentSearch.exe");
-        var blast = Path.Combine(Path.GetDirectoryName(exe)!, "Blast");
-        Directory.CreateDirectory(Path.Combine(blast, "Themes"));
-        Directory.CreateDirectory(Path.Combine(blast, "Cache"));
-        File.WriteAllText(Path.Combine(blast, "Themes", "test.json"), "{}");
-        File.WriteAllText(Path.Combine(blast, "Cache", "index.bin"), "big");
-        var roaming = Path.Combine(loc.AppData, "Blast");
-        Directory.CreateDirectory(roaming);
-        File.WriteAllText(Path.Combine(roaming, "System.json"), "[]");
-
+        var dir = Path.Combine(Path.GetDirectoryName(exe)!, "Blast", "Settings");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(exe, "");
+        // The user's own hotkey and look stay; only the colour follows the theme.
+        File.WriteAllText(Path.Combine(dir, "System.json"), "[{\"SettingName\":\"StartAtStartup\",\"Value\":true}]");
+        File.WriteAllText(Path.Combine(dir, "Appearance.json"), "[{\"SettingName\":\"WindowOpacity\",\"Value\":0.8}]");
         var store = new BackupStore(temp.File("backups"), new MemoryUserRegistry(), null);
-        var point = store.Begin("fluentsearch-reinstall", "Fluent Search");
-        await FluentSearchConfig.ResetAsync(new IntegrationContext(loc, store, point, new UserSettings()), exe, CancellationToken.None);
-        Assert.False(Directory.Exists(blast));
-        Assert.False(Directory.Exists(roaming));
+        var point = store.Begin("theme", "Theme");
+
+        await FluentSearchConfig.ApplyThemeAsync(new IntegrationContext(loc, store, point, new UserSettings()), Tokyo, exe, start: false, CancellationToken.None);
+
+        Assert.Equal("[{\"SettingName\":\"StartAtStartup\",\"Value\":true}]", File.ReadAllText(Path.Combine(dir, "System.json")));
+        var appearance = File.ReadAllText(Path.Combine(dir, "Appearance.json"));
+        Assert.Equal(FluentSearchConfig.Argb(Tokyo.Accent), Value(appearance, "ColorSetting")!["ColorValue"]!.GetValue<long>());
+        Assert.Equal(appearance, File.ReadAllText(Path.Combine(dir, "Appearance.backup.json")));
+        Assert.Equal(new[] { "Appearance.backup.json", "Appearance.json", "System.json" }, Directory.GetFiles(dir).Select(Path.GetFileName).Order());
+    }
+
+    [Fact]
+    public async Task An_old_flow_launcher_no_longer_starts_with_windows_and_undo_brings_that_back()
+    {
+        using var temp = new TempDir();
+        var loc = Locations.Under(temp.Path);
+        var registry = new MemoryUserRegistry();
+        registry.Write(LegacyFlow.RunKey, LegacyFlow.RunValue, new RegistryData("string", @"C:\Users\Test\AppData\Local\FlowLauncher\Flow.Launcher.exe", 0));
+        var settings = LegacyFlow.SettingsFile(loc);
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, "{ \"Hotkey\": \"Alt + F24\", \"StartFlowLauncherOnSystemStartup\": true }");
+        Assert.True(LegacyFlow.Present(loc, registry));
+
+        var store = new BackupStore(temp.File("backups"), registry, null);
+        var point = store.Begin("update", "Update");
+        Assert.True(await LegacyFlow.RetireAsync(new IntegrationContext(loc, store, point, new UserSettings()), CancellationToken.None));
+        Assert.Null(registry.Read(LegacyFlow.RunKey, LegacyFlow.RunValue));
+        Assert.False(LegacyFlow.StartsWithWindows(File.ReadAllText(settings)));
+        Assert.Contains("\"Hotkey\": \"Alt + F24\"", File.ReadAllText(settings));
+        Assert.False(LegacyFlow.Present(loc, registry));
 
         store.Restore(point);
-        Assert.True(File.Exists(Path.Combine(blast, "Themes", "test.json")));
-        Assert.True(File.Exists(Path.Combine(roaming, "System.json")));
-        // The search index builds itself again; it is not kept.
-        Assert.False(File.Exists(Path.Combine(blast, "Cache", "index.bin")));
+        Assert.NotNull(registry.Read(LegacyFlow.RunKey, LegacyFlow.RunValue));
+        Assert.True(LegacyFlow.StartsWithWindows(File.ReadAllText(settings)));
     }
 
     [Fact]

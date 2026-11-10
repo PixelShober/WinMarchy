@@ -12,7 +12,7 @@
 
 ---
 
-Omarchys Look und Tastenkürzel auf Windows, ohne Admin-Rechte und ohne Programme, die im Büro nicht erlaubt sind. WinMarchy richtet [GlazeWM](https://github.com/glzr-io/glazewm) als Tiling-Window-Manager ein, legt eine Leiste nach Art von Waybar oben an den Bildschirm, überträgt die Kürzel aus Omarchy und färbt Terminal, VS Code, Flow Launcher und Windows mit einem der 22 Omarchy-Themes ein.
+Omarchys Look und Tastenkürzel auf Windows, ohne Admin-Rechte und ohne Programme, die im Büro nicht erlaubt sind. WinMarchy richtet [GlazeWM](https://github.com/glzr-io/glazewm) als Tiling-Window-Manager ein, legt eine Leiste nach Art von Waybar oben an den Bildschirm, überträgt die Kürzel aus Omarchy und färbt Terminal, VS Code, Fluent Search und Windows mit einem der 22 Omarchy-Themes ein.
 
 Jede Änderung landet vorher in einem Sicherungspunkt. Unter **Rückgängig** spielst du einzelne Schritte zurück oder setzt alles auf den Stand vor WinMarchy.
 
@@ -34,9 +34,9 @@ Jeder Pull Request baut eine `WinMarchy.exe`, zu finden als Artefakt „WinMarch
 
 ### Updates
 
-Ist Fluent Search gewählt, läuft Flow Launcher auch nach einem Theme-Wechsel nicht mit. Startet eine neue Version zum ersten Mal, schreibt sie GlazeWMs Konfiguration, das Tastenkürzel-Skript und die Leiste neu, damit Änderungen daran sofort gelten (in einem eigenen Wiederherstellungspunkt). Installierte Versionen schauen alle sechs Stunden in die GitHub-Releases. Eine neue Version wird geladen, gegen die SHA-256 aus `latest.json` geprüft und installiert, sobald das Fenster zu ist. GlazeWM, Leiste und Tastenkürzel laufen dabei weiter. Abschalten lässt sich das unter **Einstellungen → Updates**.
+Startet eine neue Version zum ersten Mal, schreibt sie GlazeWMs Konfiguration, das Tastenkürzel-Skript und die Leiste neu, damit Änderungen daran sofort gelten (in einem eigenen Wiederherstellungspunkt). Die Einstellungen von Fluent Search fasst ein Update nicht an. Installierte Versionen schauen alle sechs Stunden in die GitHub-Releases. Eine neue Version wird geladen, gegen die SHA-256 aus `latest.json` geprüft und installiert, sobald das Fenster zu ist. GlazeWM, Leiste und Tastenkürzel laufen dabei weiter. Abschalten lässt sich das unter **Einstellungen → Updates**.
 
-Für die Programme, die WinMarchy selbst installiert hat, sucht es ebenfalls alle sechs Stunden nach neuen Versionen. Die Seite **Start** zeigt bei jedem „Aktuell“ oder einen Knopf wie „Auf v1.8.1“, bei mehreren auch **Alle aktualisieren**. Die neue Version kommt vom Hersteller und wird geprüft wie bei der Einrichtung. Laufende Programme werden dafür kurz beendet und danach wieder gestartet. Ein offenes Terminal behält seine PowerShell, bis es geschlossen ist. Flow Launcher aktualisiert sich selbst, ein Programm, das jemand anders installiert hat, bleibt dessen Sache. Von selbst tauscht WinMarchy nur GlazeWM aus: bei jedem Start, wenn ein neueres Release des WinMarchy-Builds da ist. Die anderen Programme lässt es in Ruhe, damit nichts mitten in der Arbeit kurz verschwindet. Sind Updates unter **Einstellungen → Updates** aus, aktualisiert sich auch GlazeWM nicht mehr selbst.
+Für die Programme, die WinMarchy selbst installiert hat, sucht es ebenfalls alle sechs Stunden nach neuen Versionen. Die Seite **Start** zeigt bei jedem „Aktuell“ oder einen Knopf wie „Auf v1.8.1“, bei mehreren auch **Alle aktualisieren**. Die neue Version kommt vom Hersteller und wird geprüft wie bei der Einrichtung. Laufende Programme werden dafür kurz beendet und danach wieder gestartet. Ein offenes Terminal behält seine PowerShell, bis es geschlossen ist. Ein Programm, das jemand anders installiert hat, bleibt dessen Sache. Von selbst tauscht WinMarchy nur GlazeWM aus: bei jedem Start, wenn ein neueres Release des WinMarchy-Builds da ist. Die anderen Programme lässt es in Ruhe, damit nichts mitten in der Arbeit kurz verschwindet. Sind Updates unter **Einstellungen → Updates** aus, aktualisiert sich auch GlazeWM nicht mehr selbst.
 
 ## Was WinMarchy installiert
 
@@ -47,7 +47,7 @@ Alles kommt direkt aus einem GitHub-Release, wird vor dem Entpacken geprüft (SH
 | GlazeWM | Fenster kacheln, Workspaces. Der WinMarchy-Build aus [PixelShober/glazewm](https://github.com/PixelShober/glazewm) | GPL-3.0 |
 | YASB | Leiste oben, mit Menüs, die von oben aufklappen | MIT |
 | AutoHotkey v2 | Tastenkürzel, auch die Win-Taste allein | GPL-2.0 |
-| Flow Launcher | Programme suchen (Win allein) | MIT |
+| Fluent Search | Programme suchen (Win allein) | Freeware, nicht Open Source (siehe unten) |
 
 **YASB** ist die Leiste. Die Menüs lassen sich auch per Tastenkürzel aufklappen: Aktion `do:bar-menu` mit `logo`, `calendar`, `audio`, `network`, `media`, `cpu` oder `memory`, etwa auf **Tastenkürzel → Neu**. Kalender und Lautstärke liegen schon auf `Win+Alt+D` und `Win+Alt+A`. Lässt Windows Desktop-Apps nicht an den Standort (Einstellungen → Datenschutz → Standort, in Firmen oft per Richtlinie), gibt Windows 11 keine WLAN-Liste heraus; ein Klick aufs Netz öffnet dann die WLAN-Liste von Windows. Die Lautstärke-Anzeige folgt den Fn-Tasten erst mit YASB 2.0.8, das bisher nur als Vorabversion erschienen ist; sobald es regulär da ist, bietet die Seite **Start** es an. Workspaces links, die Uhr in der Mitte, Infobereich, Netz, Ton, CPU und Akku rechts, wie die Waybar in Omarchy. Ein Klick auf die Uhr klappt den Kalender mit Kalenderwochen und Feiertagen auf, auf den Ton die Lautstärke mit den Ausgabegeräten, auf das Netz die WLAN-Liste, auf die CPU den Verlauf. Das Logo öffnet ein Menü mit WinMarchy-Menü, Tastenkürzeln, Theme, Hintergrund, deinen eigenen Einträgen und den Punkten zum Sperren, Abmelden und Herunterfahren. Eigene Einträge legst du unter **Tiling → Eigene Einträge in der Leiste** an (Name und Aktion wie bei Tastenkürzeln), auf Wunsch auch als Knopf direkt in der Leiste. Farben und Schrift kommen aus dem Theme. Die Symbole stammen aus Segoe Fluent Icons, die Windows 11 mitbringt; unter Windows 10 muss die Schrift einmal von Microsoft installiert werden. YASBs MSI ist für alle Benutzer gebaut; WinMarchy packt es nur aus, Administratorrechte braucht es dafür nicht.
 
@@ -57,16 +57,20 @@ Optionale Extras, in der Einrichtung einzeln anzuhaken:
 
 | Programm | Wofür | Lizenz |
 |-|-|-|
-| Fluent Search | Programme suchen (Win allein) statt Flow Launcher, umschaltbar unter **Einstellungen → Programmsuche** | Freeware, nicht Open Source (siehe unten) |
 | PowerShell 7 | Shell im Terminal | MIT |
 | Starship | Omarchys Eingabezeile in PowerShell, in den Farben des Themes | ISC |
 | Fastfetch | Systeminfo mit IP- und MAC-Adresse in jedem neuen Terminal-Tab, wie „Über“ in Omarchy (auch im Logo-Menü der Leiste und unter WinMarchy-Menü → Info) | MIT |
 | Herdr | Terminal-Arbeitsplatz für Coding-Agents (Win+Strg+Eingabe), unter Windows noch Beta | Apache-2.0 |
 | Pi | Coding-Agent im Terminal (Win+Alt+Eingabe), braucht Git Bash | MIT |
 | Greenshot | Bildschirmfotos mit Editor statt Snipping Tool, sobald installiert (umschaltbar unter **Einstellungen**) | GPL-3.0 |
+| Bulk Crap Uninstaller | Programme gründlich entfernen, samt Resten in Ordnern und Registry; die portable Version | Apache-2.0 |
 | ExplorerBlurMica (experimentell) | Unschärfe hinter Explorer, eingefärbt mit dem Theme (ein- und ausschalten unter **Einstellungen**) | LGPL-3.0 |
 
-**Fluent Search** ist die Alternative zu Flow Launcher. Installiert sein dürfen beide, unter **Einstellungen → Programmsuche** wählst du, welches die Win-Taste öffnet; nur das läuft, das andere bleibt liegen. WinMarchy lädt die portable Version des neuesten Nightly-Builds von GitHub (der letzte stabile Build dort ist vom Mai 2025), geprüft mit GitHubs SHA-256, und bietet neue Nightlies auf der Seite **Start** an. Einstellungen, Themes und Suchindex liegen im Ordner `Blast` neben `FluentSearch.exe` und bleiben bei Updates erhalten. WinMarchy schreibt nur in `Blast\Settings`: Fehlt dort eine Seite, kommt sie aus WinMarchys Vorlage (Suchmaschinen, Plugins, Darstellung, Indexierung von C:\ ohne Windows-Ordner; ohne Verlauf, angeheftete Treffer, Benutzer-ID und Laufwerkspfade). Dazu setzt es das Kürzel Alt+F24, das es beim Druck auf Win sendet, schaltet Fluent Searchs eigenen Autostart aus und gibt ihm die Akzentfarbe des Themes, auch als Fensterrahmen. Jede Seite schreibt es zweimal, als `.json` und als `.backup.json`, weil Fluent Search auf die Sicherungskopie zurückgreift. Jede Datei landet vorher im Wiederherstellungspunkt. **Einrichtung → Fluent Search neu installieren** löscht alle Einstellungen, Themes und den Suchindex von Fluent Search, auch in AppData, lädt den neuesten Build und richtet ihn neu ein; Einstellungen und Themes liegen danach im Wiederherstellungspunkt.
+**Fluent Search** liegt auf der Win-Taste. WinMarchy lädt die portable Version des neuesten Nightly-Builds von GitHub (der letzte stabile Build dort ist vom Mai 2025), geprüft mit GitHubs SHA-256, und bietet neue Nightlies auf der Seite **Start** an. Einstellungen, Themes und Suchindex liegen im Ordner `Blast` neben `FluentSearch.exe` und bleiben bei Updates erhalten. WinMarchy schreibt nur in `Blast\Settings`: Fehlt dort eine Seite, kommt sie aus WinMarchys Vorlage (Suchmaschinen, Plugins, Darstellung, Indexierung von C:\ ohne Windows-Ordner; ohne Verlauf, angeheftete Treffer, Benutzer-ID und Laufwerkspfade). Dazu setzt es bei der Einrichtung das Kürzel Alt+F24, das es beim Druck auf Win sendet, schaltet Fluent Searchs eigenen Autostart aus und gibt ihm die Akzentfarbe des Themes, auch als Fensterrahmen. Danach gehören die Einstellungen dir: Updates von WinMarchy und von Fluent Search lassen sie, wie sie sind, ein Theme-Wechsel setzt nur die Akzentfarbe neu. Jede Seite schreibt WinMarchy zweimal, als `.json` und als `.backup.json`, weil Fluent Search auf die Sicherungskopie zurückgreift. Jede Datei landet vorher im Wiederherstellungspunkt.
+
+In früheren Testversionen lag **Flow Launcher** auf der Win-Taste. Beim ersten Start einer neuen Version beendet WinMarchy ein Flow Launcher, das es selbst eingerichtet hat (erkennbar am Kürzel Alt+F24), nimmt es aus dem Autostart von Windows (Eintrag unter „Run“ und Flows eigene Einstellung, beides im Wiederherstellungspunkt) und installiert Fluent Search, falls es fehlt. Flow selbst bleibt installiert und lässt sich unter Windows-Einstellungen → Apps entfernen.
+
+**Bulk Crap Uninstaller** gibt es nur als 7-Zip-Archiv; WinMarchy entpackt es mit [SharpCompress](https://github.com/adamhathcock/sharpcompress) (MIT). Ohne Administratorrechte entfernt es nur, was für dein Konto installiert ist.
 
 Fluent Search ist Freeware, aber nicht Open Source. Seine Lizenz liegt laut Entwickler nur dem Installer bei (`COPYING.txt`), auf GitHub und im Netz ist sie nicht veröffentlicht; die portable Version enthält sie nicht. Ob es in einer Firma genutzt werden darf, ist damit nicht belegt. Das muss die IT vor dem Einsatz klären.
 
@@ -97,7 +101,7 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 
 | Kürzel | Was passiert |
 |-|-|
-| `Win` allein | Programme suchen (Flow Launcher oder Fluent Search) |
+| `Win` allein | Programme suchen (Fluent Search) |
 | `Win+Eingabe` | Terminal |
 | `Win+Space` | WinMarchy-Menü; Tippen sucht in deinen Favoriten, in den Programmen des Startmenüs und im Menü |
 | `Win+K` | Alle Kürzel anzeigen, Favoriten zuerst (Eingabe führt das gewählte aus) |
@@ -117,6 +121,13 @@ Die Win-Taste übernimmt die Rolle von Super. Die wichtigsten:
 | `Win+Strg+T` | Theme wählen, mit Fortschrittsbalken |
 | `Win+Strg+Alt+Space` | Hintergrund wählen, auch eigene Bilder |
 | `Druck` | Bildschirmfoto. Mit Greenshot liegt es sofort in der Zwischenablage, ein Menü bietet Speichern und Bearbeiten an |
+| `Win+Alt+Esc` | WinMarchy pausieren oder fortsetzen |
+
+### Pausieren
+
+`Win+Alt+Esc`, **WinMarchy pausieren** im WinMarchy-Menü, im Tray-Menü oder der Knopf **Pausieren** auf der Seite **Start** stellen WinMarchy für eine Weile ab. Windows sieht dann aus und verhält sich wie ohne WinMarchy: GlazeWM endet und zeigt dabei alle Fenster, die auf anderen Workspaces versteckt waren; Leiste und Fluent Search gehen aus, die Taskleiste ist wieder da, und die Win-Taste öffnet das Startmenü. Hintergrund, Hell oder Dunkel und die Akzentfarbe sind wie vor WinMarchy; die Werte dafür kommen aus dem ersten Wiederherstellungspunkt, an dem dabei nichts geändert wird. Nur `Win+Leertaste` und `Win+Alt+Esc` bleiben. Im Menü steht dann **WinMarchy fortsetzen** oben; was das Theme, den Hintergrund, die Leiste oder die Fenster ändern würde, geht erst nach der Pause.
+
+Fortsetzen bringt Theme und Hintergrund zurück, startet GlazeWM, Leiste und Fluent Search und versteckt die Taskleiste wieder. GlazeWM kachelt die offenen Fenster dann neu, auf dem Workspace, der auf ihrem Bildschirm zu sehen ist. Ein Neustart von WinMarchy oder Windows beendet die Pause von selbst. ExplorerBlurMica bleibt während der Pause an: Ausschalten ließe es sich nur mit einem Neustart des Explorers, der alle Explorer-Fenster schließt.
 
 Die vollständige Liste und welche Kürzel aus Omarchy und deiner `bindings.lua` wie übertragen wurden, steht in [docs/shortcuts.md](docs/shortcuts.md). Eine `bindings.lua`, Hyprland-`bindings.conf` oder einen WinMarchy-Export liest **Tastenkürzel → Importieren**; du wählst dann aus, was du übernimmst. Wie die Layouts Dwindle, Spalten und Scrolling pro Bildschirm auf GlazeWM abgebildet sind und wie einzelne Fenster schweben, erklärt [docs/tiling.md](docs/tiling.md).
 
@@ -132,9 +143,9 @@ Greift eine Gruppenrichtlinie oder Intune ein (Hintergrund, Sperrbildschirm, Far
 
 Tut ein Kürzel nichts oder startet etwas nicht, hilft die Seite **Protokoll**:
 
-1. **Ausführlich protokollieren** einschalten. Ab dann steht unter „Alles“ jedes Tastenkürzel, das ankommt, jeder Befehl an GlazeWM mit Dauer und Antwort, und was Flow, Taskleiste, Scratchpad, Scrolling, Bildschirm-Zuordnung und die Arbeitsmodi gerade tun.
+1. **Ausführlich protokollieren** einschalten. Ab dann steht unter „Alles“ jedes Tastenkürzel, das ankommt, jeder Befehl an GlazeWM mit Dauer und Antwort, und was Fluent Search, Taskleiste, Scratchpad, Scrolling, Bildschirm-Zuordnung und die Arbeitsmodi gerade tun.
 2. Den Fehler nachstellen.
-3. **Diagnosebericht** drücken. Er landet als Textdatei in `C:\WinMarchy\Logs` und zeigt, was WinMarchy sieht: laufende Programme, Bildschirme, GlazeWMs Monitore, Workspaces und Fenster (ohne Titel), die erzeugten Tastenkürzel, Flows Einstellungen und letzte Protokollzeilen, Taskleiste und Leiste.
+3. **Diagnosebericht** drücken. Er landet als Textdatei in `C:\WinMarchy\Logs` und zeigt, was WinMarchy sieht: laufende Programme, Bildschirme, GlazeWMs Monitore, Workspaces und Fenster (ohne Titel), die erzeugten Tastenkürzel, das Kürzel von Fluent Search, Taskleiste und Leiste.
 4. Danach den Schalter wieder ausschalten, das Protokoll wird sonst schnell lang. Beim Ausschalten legt WinMarchy die Protokolldatei von heute in die Zwischenablage (zum Einfügen in eine Mail oder einen Chat) und öffnet ihren Ordner.
 
 Fenstertitel, Passwörter und Inhalte schreibt WinMarchy in beides nicht.
@@ -173,8 +184,9 @@ Der Titel des Pull Requests bestimmt die Version (Conventional Commits): `feat:`
 - [Starship](https://starship.rs), ISC, und [Fastfetch](https://github.com/fastfetch-cli/fastfetch), MIT.
 - [ExplorerBlurMica](https://github.com/Maplespe/ExplorerBlurMica) von Maplespe, LGPL-3.0.
 - [AutoHotkey](https://www.autohotkey.com), GPL-2.0.
-- [Flow Launcher](https://www.flowlauncher.com), MIT.
 - [Fluent Search](https://github.com/adirh3/Fluent-Search) von Adir Hudayfi, Freeware.
+- [Bulk Crap Uninstaller](https://github.com/BCUninstaller/Bulk-Crap-Uninstaller) von Marcin Szeniak, Apache-2.0.
+- [SharpCompress](https://github.com/adamhathcock/sharpcompress), MIT.
 
 ## Lizenz
 

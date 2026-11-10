@@ -162,6 +162,37 @@ public class HotkeySetTests
 
 public class AhkScriptTests
 {
+    [Fact]
+    public void Paused_only_the_menu_and_the_pause_key_keep_working()
+    {
+        var script = AhkScript.Generate(HotkeySet.Build(new CustomHotkeys()), new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", @"C:\glazewm.exe", true));
+        var exempt = script.Split('\n').Where(l => l.Contains(", \"S\")")).ToList();
+        Assert.Equal(2, exempt.Count);
+        Assert.Contains(exempt, l => l.Contains("\"do:menu\""));
+        Assert.Contains(exempt, l => l.Contains("\"do:pause\"") && l.StartsWith("Hotkey(\"$#!Escape\""));
+        Assert.Contains("OnMessage(0x8057, PauseMessage)", script);
+        Assert.Equal(0x8057, Services.Components.AhkPauseMessage);
+    }
+
+    [Theory]
+    [InlineData("do:pause", true)]
+    [InlineData("do:menu", true)]
+    [InlineData("do:menu system", true)]
+    [InlineData("do:menu wallpaper", false)]
+    [InlineData("app:browser", true)]
+    [InlineData("app:launcher", false)]
+    [InlineData("wm:focus --workspace 1", false)]
+    [InlineData("do:theme-menu", false)]
+    [InlineData("do:wallpaper-next", false)]
+    [InlineData("do:layout-next", false)]
+    [InlineData("do:lock", true)]
+    [InlineData("send:MediaPlayPause", true)]
+    public void Paused_only_actions_that_change_nothing_of_winmarchy_run(string text, bool runs)
+    {
+        Assert.True(HotkeyAction.TryParse(text, out var action, out _));
+        Assert.Equal(runs, Agent.ActionRunner.WorksWhilePaused(action));
+    }
+
     static string Script(bool winAlone = true) =>
         AhkScript.Generate(HotkeySet.Build(new CustomHotkeys()),
             new AhkContext(@"C:\WinMarchy\App\WinMarchy.exe", @"C:\WinMarchy\Tools\glazewm\cli\glazewm.exe", winAlone));
@@ -181,7 +212,7 @@ public class AhkScriptTests
     {
         var s = Script();
         Assert.Contains("Hotkey(\"$#Enter\", (*) => Act(\"app:terminal\"))", s);
-        Assert.Contains("Hotkey(\"$#Space\", (*) => Act(\"do:menu\"))", s);
+        Assert.Contains("Hotkey(\"$#Space\", (*) => Act(\"do:menu\"), \"S\")", s);
         Assert.Contains("Hotkey(\"$#c\", (*) => UniversalCopy())", s);
     }
 

@@ -132,6 +132,10 @@ static class Placement
         return (cls.ToString(), process);
     }
 
+    /// <summary>Whether a mouse button is down right now, i.e. a click is what moved the focus.</summary>
+    public static bool MouseButtonDown() =>
+        (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0 || (GetAsyncKeyState(0x04) & 0x8000) != 0;
+
     /// <summary>Windows of the shell itself: taskbars, Start and search, the desktop.</summary>
     public static bool IsShellWindow(string windowClass) => windowClass is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd"
         or "Windows.UI.Core.CoreWindow" or "XamlExplorerHostIslandWindow" or "TopLevelWindowForOverflowXamlIsland"
@@ -139,6 +143,7 @@ static class Placement
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, System.Text.StringBuilder name, int max);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();

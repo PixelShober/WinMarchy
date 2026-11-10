@@ -332,6 +332,43 @@
     </Setter>
   </Style>
 
+  <!-- A plain choice (e.g. "Main screen" on the Tiling page): a round marker in the theme's colours,
+       the text in the theme's text colour, also in dark mode. -->
+  <Style TargetType="RadioButton">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+    <Setter Property="Foreground" Value="{DynamicResource Text}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid Background="Transparent">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,0,0">
+              <Ellipse x:Name="Ring" Fill="{DynamicResource Surface}" Stroke="{DynamicResource BorderStrong}" StrokeThickness="1" />
+              <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{DynamicResource Accent}" Visibility="Collapsed" />
+            </Grid>
+            <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource Accent}" />
+              <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource Accent}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.5" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ===================================================================== inputs -->
   <Style TargetType="TextBox">
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />

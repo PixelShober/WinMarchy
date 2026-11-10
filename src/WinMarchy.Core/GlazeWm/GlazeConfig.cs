@@ -123,7 +123,6 @@ public static class GlazeConfig
         // The bar and its drop-down menus stay out of the tiling.
         Rule(sb, "ignore", ("window_process", "equals", "yasb"));
         Rule(sb, "ignore", ("window_title", "equals", OverlayTitle));
-        Rule(sb, "ignore", ("window_process", "equals", "Flow.Launcher"));
         Rule(sb, "ignore", ("window_process", "equals", "FluentSearch"));
         Rule(sb, "ignore", ("window_title", "regex", "[Pp]icture.in.[Pp]icture|Bild im Bild"), ("window_class", "regex", "Chrome_WidgetWin_1|MozillaDialogClass"));
         Rule(sb, "set-floating --centered", ("window_process", "equals", "Taskmgr"));

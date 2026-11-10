@@ -18,7 +18,7 @@ Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotk
 |-|-|-|
 | `Super+L` (Layout wechseln) | `Win+Strg+J` | `Win+L` sperrt den Rechner. Das lässt sich ohne Gruppenrichtlinie nicht abschalten, und die will in Firmen niemand anfassen. `Win+Alt+L` kam im Test nie bei WinMarchy an, Windows behält die Taste offenbar auch mit Alt. `Win+Strg+J` liegt neben `Win+J`, das die Teilung dreht. |
 | `Super+Alt+Space` (Omarchy-Menü) und `Super+Space` (Programme) | `Win+Space` | Ein Menü für beides: Tippen sucht in WinMarchys Einträgen und in den Programmen des Startmenüs. |
-| Super allein | `Win` allein | Öffnet Flow Launcher oder Fluent Search (Einstellungen → Programmsuche). Beide hören auf `Alt+F24`, eine Taste, die keine Tastatur hat; läuft der gewählte nicht, startet WinMarchy ihn. |
+| Super allein | `Win` allein | Öffnet Fluent Search. Es hört auf `Alt+F24`, eine Taste, die keine Tastatur hat; läuft es nicht, startet WinMarchy es. |
 | Scrolling-Layout | `Win+Strg+J` bis „Scrolling“ | GlazeWM kann das nicht selbst, WinMarchy setzt die Spalten. Siehe [tiling.md](tiling.md). |
 | `Super+Shift+L` (Sperrbildschirm-Explorer) | nicht belegt | Windows hat kein Gegenstück. |
 | Spotify-Playlists mit Autoplay | Playlist öffnet sich | Unter Windows gibt es kein `playerctl`. Spotify zeigt die Playlist, starten musst du selbst. |
@@ -111,7 +111,7 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 
 | Windows | Was passiert | Omarchy |
 |-|-|-|
-| `Win+Space` | WinMarchy-Menü und Programme (Tippen sucht auch in den Programmen des Startmenüs. Win allein öffnet Flow Launcher.) | Super + Alt + SPACE und Super + SPACE |
+| `Win+Space` | WinMarchy-Menü und Programme (Tippen sucht auch in den Programmen des Startmenüs. Win allein öffnet Fluent Search.) | Super + Alt + SPACE und Super + SPACE |
 | `Win+Escape` | Systemmenü | gleich |
 | `Win+K` | Tastenkürzel anzeigen | gleich |
 | `Win+Strg+T` | Theme wählen | Super + Strg + Umschalt + SPACE |
@@ -153,6 +153,7 @@ Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte 
 | Windows | Was passiert | Omarchy |
 |-|-|-|
 | `Win+Strg+L` | Sperren | gleich |
+| `Win+Alt+Escape` | WinMarchy pausieren oder fortsetzen (Pausiert ist alles wie unter Windows ohne WinMarchy: kein Tiling, keine Leiste, keine Kürzel, Taskleiste, Hintergrund und Farben von vorher. Win+Leertaste und dieses Kürzel gehen weiter.) | – (Omarchy hat keine Pause) |
 | `Win+Strg+I` | Bildschirm wach halten · *optional* | Super + Strg + I (Idle-Sperre) |
 | `Win+Strg+A` | Audio · *optional* | gleich |
 | `Win+Strg+B` | Bluetooth · *optional* | gleich |

@@ -13,6 +13,8 @@ public partial class OverviewPage : UserControl, IPage
     bool _checking;
     /// <summary>The programs with a newer release, for "Update all".</summary>
     List<ToolDef> _newer = new();
+    /// <summary>Follows the agent's pause (the agent starts after this page may have been made).</summary>
+    bool _followsPause;
 
     public OverviewPage()
     {
@@ -23,6 +25,11 @@ public partial class OverviewPage : UserControl, IPage
 
     public void OnShown()
     {
+        if (!_followsPause && AppModel.Agent is { } agent)
+        {
+            agent.PausedChanged += () => Dispatcher.InvokeAsync(RenderPause);
+            _followsPause = true;
+        }
         Refresh();
         _ = CheckVersionsAsync(ToolUpdates.MaxAge);
     }
@@ -36,6 +43,23 @@ public partial class OverviewPage : UserControl, IPage
         RenderTools();
         RenderTheme();
         RenderWorkspace();
+        RenderPause();
+    }
+
+    /// <summary>"Pause WinMarchy" or "Resume WinMarchy", once it is set up and runs in the background.</summary>
+    void RenderPause()
+    {
+        var agent = AppModel.Agent;
+        PauseButton.Visibility = agent != null && AppState.Load().SetupDone ? Visibility.Visible : Visibility.Collapsed;
+        bool paused = agent?.Paused == true;
+        PauseIcon.Kind = paused ? "play" : "pause";
+        PauseText.Text = L.T(paused ? "overview.resume" : "overview.pause");
+        PauseButton.ToolTip = L.T(paused ? "overview.resumeHint" : "overview.pauseHint");
+    }
+
+    void OnPause(object sender, RoutedEventArgs e)
+    {
+        if (AppModel.Agent is { } agent) _ = agent.TogglePauseAsync(CancellationToken.None);
     }
 
     void RenderTools()

@@ -9,7 +9,7 @@ using WinMarchy.Core.Tools;
 namespace WinMarchy.Core.Services;
 
 /// <summary>Which programs the full setup installs if they are missing.</summary>
-public sealed record SetupOptions(bool InstallGlazeWm, bool InstallBar, bool InstallAutoHotkey, bool InstallFlow, bool DownloadWallpapers)
+public sealed record SetupOptions(bool InstallGlazeWm, bool InstallBar, bool InstallAutoHotkey, bool InstallLauncher, bool DownloadWallpapers)
 {
     /// <summary>Ticked extras: PowerShell 7, Starship, Fastfetch, Herdr, Pi … (tool ids).</summary>
     public IReadOnlyCollection<string> Extras { get; init; } = Array.Empty<string>();
@@ -132,7 +132,7 @@ public sealed class Engine
         if (Components.AhkExe != null)
         {
             var glazeCli = ToolCatalog.GlazeCli(Components.GlazeExe) ?? "";
-            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s), Extra: Extra(s), LauncherProcess: Launchers.Process(s) + ".exe"));
+            var script = AhkScript.Generate(set, new AhkContext(Components.SelfExe, glazeCli, s.WinKeyOpensLauncher, LeaveAlone: LeaveAlone(s), Extra: Extra(s), LauncherProcess: FluentSearchConfig.Process + ".exe"));
             step.Report(L.T("hotkeys.validating"));
             var (ok, output) = await Components.ValidateAhkAsync(script, ct);
             if (!ok) throw new WinMarchyException("ahkInvalid", ("detail", output));
@@ -154,23 +154,41 @@ public sealed class Engine
     }
 
     /// <summary>
-    /// The first start of a new WinMarchy version: GlazeWM's config, the hotkey script, Fluent Search's
-    /// settings (if installed) and the bar's config are written again, so what the new version changed in them (window rules, workspaces,
-    /// shortcuts) takes effect without a visit to the Tiling page. In a restore point of their own.
+    /// The first start of a new WinMarchy version: GlazeWM's config, the hotkey script and the bar's
+    /// config are written again, so what the new version changed in them (window rules, workspaces,
+    /// shortcuts) takes effect without a visit to the Tiling page. Fluent Search's settings are the
+    /// user's and stay as they are. Where an earlier version had Flow Launcher behind the Win key,
+    /// Fluent Search takes over (installed and set up if missing) and Flow no longer starts. All in a
+    /// restore point of its own.
     /// </summary>
     public List<SetupStep> AfterUpdateSteps()
     {
         RestorePoint? point = null;
+        var launcher = ToolCatalog.FluentSearch;
+        bool launcherMissing = !Components.Status(launcher).Installed;
         return new List<SetupStep>
         {
             BeginStep("update", L.T("jobs.afterUpdate", ("version", AppInfo.Version)), p => point = p),
             new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)),
-            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Context(point!, step), CurrentTheme.Palette,
-                    Components.Status(ToolCatalog.FluentSearch).Path, start: Launchers.Of(S) == Launchers.FluentSearch, ct),
-                () => Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notSetUp")),
             new(L.T("steps.barSetup"), (step, _) =>
             {
                 WriteBarConfig(Context(point!, step));
+                return Task.CompletedTask;
+            }),
+            new(L.T("steps.flowRetire"), async (step, ct) =>
+                {
+                    await LegacyFlow.RetireAsync(Context(point!, step), ct);
+                    AppState.Update(st => st.InstalledTools.Remove("flow"));
+                },
+                () => LegacyFlow.Present(_loc, Backups.Registry) || AppState.Load().InstalledTools.Contains("flow") ? null : L.T("steps.notNeeded")),
+            // Last: a download that fails (no network) leaves the rest done, and the next start tries again.
+            new(L.T("steps.install", ("tool", launcher.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(launcher, step, ct); },
+                () => launcherMissing ? null : L.T("steps.alreadyInstalled", ("path", Components.Status(launcher).Path))),
+            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.SetupAsync(Context(point!, step), CurrentTheme.Palette,
+                    Components.Status(launcher).Path, start: true, ct),
+                () => launcherMissing ? null : L.T("steps.notNeeded")),
+            new(L.T("steps.updateDone"), (step, _) =>
+            {
                 AppState.Update(s => s.GeneratedBy = AppInfo.Version);
                 return Task.CompletedTask;
             }),
@@ -343,10 +361,8 @@ public sealed class Engine
                 () => targets.PowerShell ? null : L.T("steps.off")),
             new(L.T("steps.vscode"), (step, ct) => VsCodeTheme.ApplyAsync(Ctx(step), theme, ct),
                 () => targets.VsCode ? null : L.T("steps.off")),
-            new(L.T("steps.flow"), (step, ct) => FlowTheme.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.Flow).Path, ct, start: Launchers.Of(S) == Launchers.Flow),
-                () => !targets.Flow ? L.T("steps.off") : Launchers.Of(S) == Launchers.Flow || Components.Status(ToolCatalog.Flow).Installed ? null : L.T("steps.notSetUp")),
-            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Ctx(step), palette, Components.Status(ToolCatalog.FluentSearch).Path,
-                    start: Launchers.Of(S) == Launchers.FluentSearch, ct),
+            new(L.T("steps.fluentSearchTheme"), (step, ct) => FluentSearchConfig.ApplyThemeAsync(Ctx(step), palette, Components.Status(ToolCatalog.FluentSearch).Path,
+                    start: true, ct),
                 () => !targets.FluentSearch ? L.T("steps.off") : Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notSetUp")),
             new(L.T("steps.files"), (step, _) => { FilesTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
                 () => targets.Files ? null : L.T("steps.off")),
@@ -468,9 +484,6 @@ public sealed class Engine
                 if (tool == ToolCatalog.Fastfetch) YasbBar.WriteConfig(Context(pointOf(), step), Components.SelfExe, BarOptions);
                 return Task.CompletedTask;
             });
-        if (tool == ToolCatalog.FluentSearch)
-            return new SetupStep(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Context(pointOf(), step), CurrentTheme.Palette,
-                Exe() ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)), start: Launchers.Of(S) == Launchers.FluentSearch, ct));
         // Installed, Greenshot takes over the screenshots (unless Snipping Tool was chosen on purpose).
         if (tool == ToolCatalog.Greenshot) return GreenshotStep(pointOf);
         if (tool == ToolCatalog.ExplorerBlurMica)
@@ -521,60 +534,31 @@ public sealed class Engine
         return steps;
     }
 
-    // ------------------------------------------------------------------ launcher
+    // ------------------------------------------------------------------ pause
+
+    /// <summary>What the pause shows as it was before WinMarchy: Windows' colours and the wallpaper.</summary>
+    static IEnumerable<(string Kind, string Target)> LookTargets =>
+        WindowsAppearance.Values.Select(v => ("registry", v.Key + "|" + v.Name)).Append(("wallpaper", "wallpaper"));
 
     /// <summary>
-    /// Settings → Program search: the launcher <paramref name="id"/> takes over the Win key. It is
-    /// installed if it is missing, gets its settings and the theme, the hotkey script asks for it, and
-    /// the other launcher is ended (it stays installed). Changed files go into a restore point.
+    /// Paused: Windows' colours and the wallpaper as they were before WinMarchy. What WinMarchy has
+    /// set is noted in state.json first, so even a WinMarchy that ends during the pause puts it back
+    /// at its next start (<see cref="ShowWinMarchyLook"/>). Restore points stay as they are.
     /// </summary>
-    public List<SetupStep> LauncherSteps(string id)
+    public void ShowPlainWindows()
     {
-        RestorePoint? point = null;
-        var tool = Launchers.Tool(id);
-        var steps = new List<SetupStep>
-        {
-            BeginStep("launcher", L.T("jobs.launcher", ("tool", tool.Name)), p => point = p),
-            new(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); },
-                () => Components.Status(tool).Installed ? L.T("steps.alreadyInstalled", ("path", Components.Status(tool).Path)) : null),
-            new(L.T(id == Launchers.FluentSearch ? "steps.fluentSearch" : "steps.flow"), async (step, ct) =>
-            {
-                var changed = S.Clone();
-                changed.Launcher = id;
-                _save(changed);
-                var exe = Components.Status(tool).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name));
-                if (id == Launchers.FluentSearch) await FluentSearchConfig.ApplyAsync(Context(point!, step), CurrentTheme.Palette, exe, start: false, ct);
-                else await FlowTheme.ApplyAsync(Context(point!, step), CurrentTheme.Palette, exe, ct);
-                Components.StartLauncher();
-            }),
-        };
-        steps.Add(new(L.T("steps.hotkeys"), (step, ct) => ApplyHotkeysAsync(Context(point!, step), step, ct)));
-        return steps;
+        if (AppState.Load().PausedLook != null) return;
+        Backups.ShowOriginal(LookTargets, now => AppState.Update(s => s.PausedLook = now));
+        Win32.BroadcastSettingChange("ImmersiveColorSet");
     }
 
-    /// <summary>
-    /// Setup → Reinstall Fluent Search: all its data goes (settings, themes, cache, in every folder it
-    /// may use; all in a restore point), the newest build comes from GitHub, and it gets the settings
-    /// from WinMarchy's template, the hotkey and the theme's colour again.
-    /// </summary>
-    public List<SetupStep> FluentSearchReinstallSteps()
+    /// <summary>The end of a pause: WinMarchy's colours and wallpaper come back.</summary>
+    public void ShowWinMarchyLook()
     {
-        RestorePoint? point = null;
-        var tool = ToolCatalog.FluentSearch;
-        bool chosen = Launchers.Of(S) == Launchers.FluentSearch;
-        var steps = new List<SetupStep>
-        {
-            BeginStep("fluentsearch-reinstall", L.T("jobs.fluentSearchReinstall"), p => point = p),
-            new(L.T("steps.fluentSearchClear"), async (step, ct) =>
-            {
-                var exe = Components.Status(tool).Path ?? Path.Combine(tool.ToolDir, tool.Exe);
-                await FluentSearchConfig.ResetAsync(Context(point!, step), exe, ct);
-            }),
-            new(L.T("steps.install", ("tool", tool.Name)), async (step, ct) => { await ToolInstaller.InstallAsync(tool, step, ct); }),
-            new(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.ApplyAsync(Context(point!, step), CurrentTheme.Palette,
-                Components.Status(tool).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name)), start: chosen, ct)),
-        };
-        return steps;
+        if (AppState.Load().PausedLook is not { } look) return;
+        Backups.PutBack(look);
+        AppState.Update(s => s.PausedLook = null);
+        Win32.BroadcastSettingChange("ImmersiveColorSet");
     }
 
     // ------------------------------------------------------------------ program updates
@@ -711,7 +695,11 @@ public sealed class Engine
                 : ToolCatalog.IsWinMarchyBuild(Components.GlazeExe) ? L.T("steps.alreadyInstalled", ("path", Components.GlazeExe)) : null));
         Install(Bars.Tool, o.InstallBar);
         Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
-        Install(ToolCatalog.Flow, o.InstallFlow);
+        Install(ToolCatalog.FluentSearch, o.InstallLauncher);
+        // Its settings come before the theme, which then only sets the accent colour.
+        steps.Add(new SetupStep(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.SetupAsync(Context(point!, step), CurrentTheme.Palette,
+                Components.Status(ToolCatalog.FluentSearch).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", ToolCatalog.FluentSearch.Name)), start: false, ct),
+            () => o.InstallLauncher || Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notChosen")));
         foreach (var extra in ToolCatalog.Extras)
         {
             Install(extra, o.Extras.Contains(extra.Id));
@@ -785,9 +773,9 @@ public sealed class Engine
         {
             new(L.T("steps.stopPrograms"), async (step, ct) =>
             {
-                // Flow and Files write their settings on exit: stop them before the files go back.
-                await FlowTheme.StopAsync(Process.GetProcessesByName("Flow.Launcher"), ct);
+                // Fluent Search, Files and an old Flow Launcher write their settings on exit: stop them before the files go back.
                 await FluentSearchConfig.StopAsync(ct);
+                await LegacyFlow.StopAsync(ct);
                 foreach (var p in Process.GetProcessesByName("Files")) { try { p.CloseMainWindow(); } catch { } }
                 if (point.IsOriginal)
                 {
@@ -824,9 +812,8 @@ public sealed class Engine
         {
             steps.Add(new SetupStep(L.T("steps.removeTools"), (step, _) =>
             {
-                foreach (var id in AppState.Load().InstalledTools.ToList())
+                foreach (var tool in AppState.Load().InstalledTools.Select(ToolCatalog.Find).OfType<ToolDef>().ToList())
                 {
-                    var tool = ToolCatalog.Get(id);
                     ToolInstaller.Remove(tool, _loc);
                     step.Report(L.T("tools.removed", ("tool", tool.Name)));
                 }

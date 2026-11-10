@@ -36,7 +36,7 @@ public partial class SetupPage : UserControl, IPage
         ToolChoices.Children.Clear();
         ExtraChoices.Children.Clear();
         _tools.Clear();
-        foreach (var tool in new[] { ToolCatalog.GlazeWm, Bars.Tool, ToolCatalog.AutoHotkey, ToolCatalog.Flow })
+        foreach (var tool in new[] { ToolCatalog.GlazeWm, Bars.Tool, ToolCatalog.AutoHotkey, ToolCatalog.FluentSearch })
             ToolChoices.Children.Add(Choice(tool, tickedIfMissing: true));
         // Extras stay unticked: nobody needs them for the Omarchy desktop.
         foreach (var tool in ToolCatalog.Extras) ExtraChoices.Children.Add(Choice(tool, tickedIfMissing: false));
@@ -120,21 +120,6 @@ public partial class SetupPage : UserControl, IPage
         if (job != null) Job.Follow(job.Id);
     }
 
-    /// <summary>All of Fluent Search's settings, themes and cache go, the newest build comes, and WinMarchy sets it up again.</summary>
-    async void OnReinstallFluent(object sender, RoutedEventArgs e)
-    {
-        if (!await Dialogs.ConfirmAsync(L.T("setup.fluentSearchReinstallTitle"), L.T("setup.fluentSearchReinstallConfirm"), L.T("setup.fluentSearchReinstall"), danger: true)) return;
-        var job = AppModel.Run("fluentsearch-reinstall", "setup", L.T("jobs.fluentSearchReinstall"), AppModel.Engine.FluentSearchReinstallSteps(), async j =>
-        {
-            await Dispatcher.InvokeAsync(() =>
-            {
-                if (j.State == JobState.Done) Toasts.Show(ToastKind.Ok, L.T("setup.fluentSearchReinstallDone"));
-                OnShown();
-            });
-        });
-        if (job != null) Job.Follow(job.Id);
-    }
-
     void OnStart(object sender, RoutedEventArgs e)
     {
         AppModel.Update(s =>
@@ -144,7 +129,7 @@ public partial class SetupPage : UserControl, IPage
             s.ShowBar = _bar.IsChecked == true;
         });
         bool Want(string id) => _tools.TryGetValue(id, out var b) && b.IsEnabled && b.IsChecked == true;
-        var options = new SetupOptions(Want("glazewm"), Want(Bars.Tool.Id), Want("autohotkey"), Want("flow"), _wallpapers.IsChecked == true)
+        var options = new SetupOptions(Want("glazewm"), Want(Bars.Tool.Id), Want("autohotkey"), Want(ToolCatalog.FluentSearch.Id), _wallpapers.IsChecked == true)
         {
             Extras = WantedExtras().Select(t => t.Id).ToList(),
         };

@@ -40,7 +40,8 @@
     "glazeConnected": "Connected to GlazeWM",
     "glazeConnecting": "Connecting to GlazeWM …",
     "glazeStopped": "GlazeWM is not running",
-    "glazeUnreachable": "GlazeWM running, no connection"
+    "glazeUnreachable": "GlazeWM running, no connection",
+    "paused": "Paused · Win+Alt+Esc resumes"
   },
 
   "overview": {
@@ -53,7 +54,7 @@
     "notSetUpLegacy": "Winarchy Lite is already in use on this PC. Setup takes over its themes and wallpapers, stops the old shortcut script and removes its autostart entry. All of it can be undone.",
     "setupNow": "Set up now",
     "programs": "Programs",
-    "programsHint": "Every six hours WinMarchy looks for new versions of the programs it installed itself. Flow Launcher updates itself. If something is missing, Setup downloads it straight from the vendor.",
+    "programsHint": "Every six hours WinMarchy looks for new versions of the programs it installed itself. If something is missing, the setup downloads it straight from the vendor.",
     "theme": "Theme",
     "changeTheme": "Change",
     "workspace": "Workspace",
@@ -67,14 +68,17 @@
     "updateTo": "To {version}",
     "updateToHint": "{tool} closes for a moment, is swapped and starts again.",
     "current": "Current",
-    "updatesDone": "Programs are updated."
+    "updatesDone": "Programs are updated.",
+    "pause": "Pause",
+    "resume": "Resume",
+    "pauseHint": "Windows looks and behaves as without WinMarchy until you resume (also with Win+Alt+Esc). A restart ends the pause.",
+    "resumeHint": "Shortcuts, GlazeWM, bar, Fluent Search, theme and wallpaper come back."
   },
 
   "tools": {
     "roles": {
       "glazewm": "Window tiling",
       "autohotkey": "Shortcuts",
-      "flow": "App launcher",
       "pwsh": "Shell",
       "terminal": "Terminal",
       "files": "File manager",
@@ -86,7 +90,8 @@
       "starship": "Prompt",
       "fastfetch": "System info",
       "explorerblurmica": "Explorer effect",
-      "fluentsearch": "Search programs (instead of Flow)"
+      "fluentsearch": "Search apps (Win key)",
+      "bcuninstaller": "Remove programs"
     },
     "running": "Running",
     "installedBadge": "Installed",
@@ -116,7 +121,6 @@
     "why": {
       "glazewm": "Tiles the windows and runs the workspaces. Nothing works without it.",
       "autohotkey": "Catches the shortcuts, including the Win key on its own.",
-      "flow": "The launcher behind the Win key, like Walker in Omarchy.",
       "pwsh": "PowerShell 7 for the terminal. Windows only ships the old 5.1.",
       "herdr": "Terminal workspace for coding agents, Win+Ctrl+Enter. Still beta on Windows.",
       "pi": "The Pi coding agent in the terminal, Win+Alt+Enter.",
@@ -124,7 +128,9 @@
       "yasb": "The bar at the top: workspaces, a clock with calendar, sound, Wi-Fi and battery. Small menus drop down from it; you add entries of your own on the Tiling page.",
       "starship": "Omarchy's prompt for PowerShell: folder, Git branch and status, in the theme's colours. Where Windows PowerShell loads no profiles, WinMarchy ticks PowerShell 7 as well.",
       "fastfetch": "Shows in every new terminal tab what is inside your computer, with IP and MAC address, like Omarchy's About. Also in the bar's logo menu and under About in the WinMarchy menu.",
-      "explorerblurmica": "Blur behind Explorer in the theme's colour. Registered for your account only; switch it off under Settings."
+      "explorerblurmica": "Blur behind Explorer in the theme's colour. Registered for your account only; switch it off under Settings.",
+      "fluentsearch": "The launcher behind the Win key, like Walker in Omarchy: search apps, files and settings. Freeware, but not open source.",
+      "bcuninstaller": "Removes programs thoroughly, leftovers in folders and the registry included, several at once. Portable build; without admin rights only for your account."
     },
     "detected": "{tool} found",
     "notDetected": "{tool} not found",
@@ -146,17 +152,12 @@
     "extrasDone": "Extras installed.",
     "piNeedsBash": "Needs Git Bash, which is missing here.",
     "experimental": "Experimental",
-    "glazeOfficial": "Official release, gets replaced",
-    "fluentSearchReinstall": "Reinstall Fluent Search",
-    "fluentSearchReinstallHint": "Deletes all of Fluent Search's settings, themes and search index, downloads the newest version and sets it up again with WinMarchy's settings.",
-    "fluentSearchReinstallTitle": "Reinstall Fluent Search?",
-    "fluentSearchReinstallConfirm": "WinMarchy deletes all of Fluent Search's settings, themes and search index, also in AppData, downloads the newest version and sets it up again. Settings and themes are kept in the restore point and can be brought back; the search index builds itself again.",
-    "fluentSearchReinstallDone": "Fluent Search is reinstalled and set up."
+    "glazeOfficial": "Official release, gets replaced"
   },
 
   "themes": {
     "title": "Themes",
-    "subtitle": "Omarchy's 22 themes. A theme colours GlazeWM, the bar, the terminal, VS Code, Flow Launcher and Windows.",
+    "subtitle": "The 22 Omarchy themes. A theme colours GlazeWM, the bar, Terminal, VS Code, Fluent Search and Windows.",
     "import": "Import folder",
     "importTitle": "Choose a folder with Omarchy themes",
     "importDone": "{count} themes imported.",
@@ -173,7 +174,6 @@
       "terminal": "Terminal",
       "powershell": "PowerShell",
       "vscode": "VS Code",
-      "flow": "Flow Launcher",
       "files": "Files",
       "windows": "Windows",
       "wallpaper": "Wallpaper",
@@ -181,7 +181,7 @@
       "bar": "Bar",
       "shell": "Starship and Fastfetch",
       "explorerBlur": "Explorer (ExplorerBlurMica)",
-      "fluentsearch": "Colour Fluent Search"
+      "fluentsearch": "Fluent Search"
     },
     "wallpapers": "{total} wallpapers, {have} already downloaded ({size})",
     "noWallpapers": "This theme has no wallpapers.",
@@ -383,7 +383,8 @@
     "bar-shortcut": "Own bar entry",
     "bar-menu": "Open a menu of the bar (calendar, audio, network …)",
     "work-mode": "Work mode 1 to 3 (number after it)",
-    "float-toggle": "Float the window or put it back into the layout (corner: small in the corner)"
+    "float-toggle": "Float the window or put it back into the layout (corner: small in the corner)",
+    "pause": "Pause or resume WinMarchy"
   },
 
   "tiling": {
@@ -410,7 +411,7 @@
     "barModules": "The bar shows",
     "monitors": "Screens, layouts and workspaces",
     "monitorsText": "As in Omarchy's Screens plugin: each screen gets its layout and fixed workspaces. Win+3 always opens workspace 3 on its screen and in that screen's layout, and a work mode only takes that screen's workspaces there.",
-    "monitorsHint": "Screens count from left to right, the way GlazeWM counts them. Unplug one and its workspaces move to another. Its row stays here until you clear it, so the split fits again at the dock.",
+    "monitorsHint": "Screens are listed from left to right, the way they are arranged in Windows Settings under Display; GlazeWM counts them the same way. Unplug one and its workspaces move to another. Its row stays here until you clear it, so the split fits again at the dock.",
     "monitorsSplit": "Split again",
     "monitorsInvalid": "{name}: only workspace numbers from 1 to 6, such as 1-2 or 3, 4.",
     "monitorsTwice": "Workspace {workspace} is listed for {a} and for {b}. Each workspace belongs to one screen.",
@@ -456,7 +457,8 @@
     "monitorsSuggested": "Nothing is set yet, so this is the suggestion: the main screen gets 1 and 2, the others the rest. \"Apply\" makes it stick. Screens count from left to right, the way GlazeWM counts them.",
     "monitorWorkspacesOf": "Workspaces of {name}",
     "workspaceLimit": "There is no workspace {number}. There are {count} workspaces.",
-    "workspaceLimitOne": "There is no workspace {number} on a single screen. There are {count} here, six from the second screen on."
+    "workspaceLimitOne": "There is no workspace {number} on a single screen. There are {count} here, six from the second screen on.",
+    "monitorSizeAt": "{width} × {height}, {position}"
   },
 
   "layouts": {
@@ -588,14 +590,7 @@
     "explorerBlurOff": "ExplorerBlurMica is off. It is fully gone after the next sign-in.",
     "glazeOfficialFound": "Found: an official release ({path}). It lacks what WinMarchy needs. The button installs the WinMarchy build into C:\\WinMarchy\\Tools and starts it instead. The official one stays installed but no longer runs.",
     "glazeForkInstall": "Install the WinMarchy build",
-    "languageText": "Language of this window, the WinMarchy menu and the messages.",
-    "launcher": "Program search",
-    "launcherText": "What opens when you press the Win key on its own. Both may be installed; only the chosen one runs.",
-    "launcherActive": "{tool} is on the Win key.",
-    "launcherMissing": "{tool} is not installed; switching downloads it from its vendor.",
-    "launcherOther": "{tool} stays installed but does not run.",
-    "launcherFluentLicense": "Fluent Search is freeware but not open source. Its licence comes only with its installer (COPYING.txt); please let IT decide whether the company may use it.",
-    "launcherDone": "{tool} is now on the Win key."
+    "languageText": "Language of this window, the WinMarchy menu and the messages."
   },
 
   "log": {
@@ -618,11 +613,11 @@
     "policiesTitle": "Policies on this PC",
     "policiesReport": "Open report",
     "diagnose": "Diagnosis report",
-    "diagnoseHint": "Writes to a file what WinMarchy sees right now: GlazeWM, monitors, Flow, taskbar, bar, shortcuts. No window titles.",
+    "diagnoseHint": "Writes what WinMarchy sees right now into a file: GlazeWM, screens, Fluent Search, taskbar, bar, shortcuts. No window titles.",
     "diagnoseFile": "diagnosis",
     "diagnoseWritten": "Diagnosis report written: {path}",
     "verbose": "Verbose log",
-    "verboseHint": "For troubleshooting: every shortcut, every GlazeWM command and what Flow, the taskbar, the scratchpad, scrolling and the work modes do. Shown under \"All\". When you switch it off, today's log file goes to the clipboard and its folder opens.",
+    "verboseHint": "For troubleshooting: every shortcut, every GlazeWM command and what Fluent Search, the taskbar, the scratchpad, scrolling and the work modes do. Shown under \"All\". When you switch it off, today's log file goes to the clipboard and its folder opens.",
     "verboseOn": "Verbose log is on.",
     "verboseOff": "Verbose log is off.",
     "verboseOffCopied": "Verbose logging is off. {file} is in the clipboard and its folder is open.",
@@ -667,9 +662,7 @@
     "toolUpdates": "Update programs",
     "glazeUpdate": "Update GlazeWM to {version}",
     "toolUpdate": "Update {tool}",
-    "launcher": "Put {tool} on the Win key",
-    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again",
-    "fluentSearchReinstall": "Reinstall Fluent Search"
+    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again"
   },
 
   "steps": {
@@ -689,7 +682,6 @@
     "terminal": "Colour Windows Terminal",
     "powershell": "Colour PowerShell",
     "vscode": "Colour VS Code",
-    "flow": "Colour Flow Launcher",
     "files": "Colour Files",
     "windows": "Set Windows colours",
     "wallpaper": "Set wallpaper",
@@ -719,7 +711,10 @@
     "greenshotFixed": "Reset Greenshot",
     "notInstalled": "{tool} is not installed",
     "fluentSearch": "Set up Fluent Search",
-    "fluentSearchClear": "Delete Fluent Search's settings, themes and cache"
+    "flowRetire": "Retire Flow Launcher",
+    "notNeeded": "not needed",
+    "fluentSearchTheme": "Colour Fluent Search",
+    "updateDone": "Note the new version"
   },
 
   "integrations": {
@@ -742,9 +737,7 @@
       "installFailed": "Could not install the extension {extension}. VS Code gets the colours through colorCustomizations instead."
     },
     "flow": {
-      "done": "Flow Launcher has the “WinMarchy” theme and listens on Alt+F24.",
-      "notFound": "Flow Launcher is not installed.",
-      "restartAgain": "Flow Launcher closed right after the restart. Trying once more."
+      "retired": "Flow Launcher is closed and no longer starts with Windows; Fluent Search is now behind the Win key. Flow can be uninstalled under Settings → Apps."
     },
     "files": {
       "done": "Colours set: {path}",
@@ -787,8 +780,7 @@
     "fluentSearch": {
       "notFound": "Fluent Search is not installed.",
       "done": "Fluent Search listens on Alt+F24 and wears the theme's accent colour. Settings: {path}",
-      "written": "Fluent Search: wrote {count} settings files to {path}",
-      "cleared": "Deleted Fluent Search data (kept in the restore point): {path}"
+      "written": "Fluent Search: wrote {count} settings files to {path}"
     }
   },
 
@@ -871,7 +863,7 @@
     "barMenuNoYasb": "The bar's menus need YASB, and YASB has to be running.",
     "barMenuOff": "“{entry}” is off in the bar. Switch it on under Tiling → The bar shows.",
     "barMenuUnknown": "The bar has no menu “{menu}”. There are logo, calendar, audio, network, media, cpu and memory.",
-    "launcherMissing": "{tool} is missing. Settings → Program search installs it."
+    "launcherMissing": "{tool} is missing. It can be installed under Setup."
   },
 
   "agent": {
@@ -893,8 +885,6 @@
     "noWallpapers": "No wallpapers downloaded for this theme yet.",
     "restored": "Everything reset. WinMarchy stays in the notification area until you quit it.",
     "glazeConnectFailed": "GlazeWM is running, but WinMarchy cannot reach it: {detail}",
-    "flowStarted": "Flow Launcher started.",
-    "flowRestarted": "Flow Launcher had stopped and was started again.",
     "glazeReconnecting": "The connection to GlazeWM was stuck, GlazeWM itself answers. WinMarchy connects again.",
     "glazeHung": "GlazeWM has not answered any command for more than ten seconds. WinMarchy restarts it.",
     "glazeRestarting": "GlazeWM hung and restarts. Your windows stay open.",
@@ -908,7 +898,7 @@
     "glazeStillRunning": "The old GlazeWM does not end, so no new one starts.",
     "glazeBack": "GlazeWM answers again.",
     "glazeNoAnswerAfterStart": "GlazeWM does not answer 20 seconds after starting. Its error log says: {detail}",
-    "glazeNoErrors": "nothing (errors.log is empty)",
+    "glazeNoErrors": "nothing new (errors.log has no entries from that time)",
     "glazeStillDown": "GlazeWM does not answer after a second start either. What GlazeWM reports about it is in the log.",
     "glazeQuit": "GlazeWM was quit from its own menu. WinMarchy does not start it by itself; \"Reload GlazeWM\" (Win+Shift+Alt+R or WinMarchy menu → Update) starts it again.",
     "glazeCrashed": "GlazeWM crashed (code {code}), WinMarchy starts it again. Its error log says: {detail}",
@@ -917,7 +907,9 @@
     "glazeBusyAfterWake": "GlazeWM does not answer right now. The PC just woke up, was unlocked or changed its screens; WinMarchy waits up to a minute before restarting GlazeWM.",
     "glazeUpToDate": "GlazeWM now runs version {version}.",
     "glazeUpkeepFailed": "GlazeWM could not be updated at start: {detail}",
-    "glazeHungDetail": "GlazeWM {version} hung. Its error log says: {detail}"
+    "glazeHungDetail": "GlazeWM {version} hung. Its error log says: {detail}",
+    "launcherStarted": "Fluent Search started.",
+    "launcherRestarted": "Fluent Search was no longer running and has been started again."
   },
 
   "tray": {
@@ -928,7 +920,9 @@
     "reload": "Reload GlazeWM",
     "bar": "Top bar on or off",
     "taskbar": "Taskbar on or off",
-    "quit": "Quit"
+    "quit": "Quit",
+    "pause": "Pause WinMarchy",
+    "resume": "Resume WinMarchy"
   },
 
   "menu": {
@@ -960,7 +954,9 @@
       "restore": "Undo",
       "update": "Update",
       "about": "About",
-      "system": "System"
+      "system": "System",
+      "pause": "Pause WinMarchy",
+      "resume": "Resume WinMarchy"
     },
     "learn": {
       "keybindings": "Shortcuts",
@@ -1203,6 +1199,24 @@
   },
 
   "screens": {
-    "builtIn": "Laptop screen"
+    "builtIn": "Laptop screen",
+    "portrait": "portrait",
+    "left": "left",
+    "middle": "middle",
+    "right": "right",
+    "nthFromLeft": "number {number} from the left"
+  },
+
+  "pause": {
+    "blocked": "WinMarchy is paused. Win+Alt+Esc or the WinMarchy menu resumes it.",
+    "notSetUp": "WinMarchy can be paused once it is set up.",
+    "jobRunning": "A WinMarchy task is running. Pausing works once it is done.",
+    "pausing": "WinMarchy paused: shortcuts, GlazeWM, bar and Fluent Search off; taskbar, wallpaper and colours as before WinMarchy.",
+    "resuming": "WinMarchy goes on.",
+    "paused": "WinMarchy is paused. Win+Alt+Esc resumes it.",
+    "resumed": "WinMarchy is running again.",
+    "lookFailed": "Could not switch the wallpaper and colours: {detail}",
+    "endedByRestart": "WinMarchy was paused when it last ended. The pause is over, wallpaper and colours are back.",
+    "trayTitle": "WinMarchy (paused)"
   }
 }

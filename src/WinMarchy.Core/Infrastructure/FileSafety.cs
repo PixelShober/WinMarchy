@@ -4,7 +4,7 @@ using System.Text;
 
 namespace WinMarchy.Core;
 
-/// <summary>Zip extraction, atomic writes and shortcut files.</summary>
+/// <summary>Zip and 7-Zip extraction, atomic writes and shortcut files.</summary>
 public static class FileSafety
 {
     static readonly UTF8Encoding Utf8NoBom = new(false);
@@ -25,6 +25,34 @@ public static class FileSafety
             if (entry.Name.Length == 0) { Directory.CreateDirectory(dest); continue; }
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             entry.ExtractToFile(dest, overwrite: true);
+            count++;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Extracts a 7-Zip archive (a vendor's portable build), refusing entries that would land outside
+    /// the target folder. The archive is read front to back once: a solid archive packs all files in
+    /// one stream, and taking them out one by one would unpack it again for each.
+    /// </summary>
+    public static int Extract7z(string archive, string dir, CancellationToken ct)
+    {
+        Directory.CreateDirectory(dir);
+        var root = Path.GetFullPath(dir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        int count = 0;
+        using var sevenZip = SharpCompress.Archives.SevenZip.SevenZipArchive.OpenArchive(archive, new SharpCompress.Readers.ReaderOptions());
+        using var reader = sevenZip.ExtractAllEntries();
+        while (reader.MoveToNextEntry())
+        {
+            ct.ThrowIfCancellationRequested();
+            var entry = reader.Entry;
+            var name = (entry.Key ?? "").Replace('\\', '/').Replace('/', Path.DirectorySeparatorChar);
+            var dest = Path.GetFullPath(Path.Combine(root, name));
+            if (!dest.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                throw new WinMarchyException("zipInvalidPath", ("entry", entry.Key ?? ""));
+            if (entry.IsDirectory) { Directory.CreateDirectory(dest); continue; }
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            using (var output = File.Create(dest)) reader.WriteEntryTo(output);
             count++;
         }
         return count;
@@ -96,7 +124,7 @@ public static class FileSafety
         }
     }
 
-    /// <summary>Reads a file another program may have open (Flow Launcher, Terminal).</summary>
+    /// <summary>Reads a file another program may have open (Fluent Search, Terminal).</summary>
     public static string ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);

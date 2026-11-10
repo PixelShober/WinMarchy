@@ -56,11 +56,6 @@ public sealed class Locations
     public string YasbConfig => Path.Combine(YasbDir, "config.yaml");
     public string YasbStyles => Path.Combine(YasbDir, "styles.css");
 
-    // Flow Launcher
-    public string FlowSettings => Path.Combine(AppData, "FlowLauncher", "Settings", "Settings.json");
-    public string FlowThemesDir => Path.Combine(AppData, "FlowLauncher", "Themes");
-    public string FlowThemeFile => Path.Combine(FlowThemesDir, "WinMarchy.xaml");
-
     // Windows Terminal (Store, Preview, unpackaged)
     public IEnumerable<string> TerminalSettingsCandidates => new[]
     {

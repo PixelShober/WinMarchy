@@ -107,16 +107,23 @@ public sealed class Components
     /// </summary>
     public async Task<bool> RestartGlazeAsync(CancellationToken ct)
     {
+        if (!await EndGlazeAsync(ct)) return false;
+        await Task.Delay(1000, ct);
+        return StartGlaze();
+    }
+
+    /// <summary>
+    /// Ends the window manager (not its watcher, which then shows the windows it had hidden) and waits
+    /// up to five seconds until it is gone. False if it still runs.
+    /// </summary>
+    public static async Task<bool> EndGlazeAsync(CancellationToken ct)
+    {
         foreach (var (pid, _) in GlazeProcesses())
             if (EndProcess(pid)) Log.Info(L.T("agent.glazeEnded", ("pid", pid)));
         for (int i = 0; i < 50 && GlazeRunning; i++) await Task.Delay(100, ct);
-        if (GlazeRunning)
-        {
-            Log.Warn(L.T("agent.glazeStillRunning"));
-            return false;
-        }
-        await Task.Delay(1000, ct);
-        return StartGlaze();
+        if (!GlazeRunning) return true;
+        Log.Warn(L.T("agent.glazeStillRunning"));
+        return false;
     }
 
     /// <summary>Ends a process and waits for it a moment. False if Windows does not let it end.</summary>
@@ -141,24 +148,49 @@ public sealed class Components
     }
 
     /// <summary>The last lines GlazeWM wrote into its errors.log (%USERPROFILE%\.glzr\glazewm), newest last.</summary>
-    public IReadOnlyList<string> GlazeErrors(int lines) => GlazeErrors(_loc, lines);
+    /// <param name="since">Only lines written at or after this time; null for all.</param>
+    public IReadOnlyList<string> GlazeErrors(int lines, DateTime? since = null) => GlazeErrors(_loc, lines, since);
 
     /// <summary>
-    /// The last lines of GlazeWM's errors.log, newest last. GlazeWM names windows with the start of
-    /// their title; that part is left out, the log and the diagnostic report carry no window titles.
+    /// The last lines of GlazeWM's errors.log, newest last, without the terminal colour codes GlazeWM
+    /// writes into it. GlazeWM names windows with the start of their title; that part is left out,
+    /// the log and the diagnostic report carry no window titles.
     /// </summary>
-    public static IReadOnlyList<string> GlazeErrors(Locations loc, int lines)
+    /// <param name="since">Only lines written at or after this time; null for all. The file keeps
+    /// errors of earlier days, which say nothing about a hang now.</param>
+    public static IReadOnlyList<string> GlazeErrors(Locations loc, int lines, DateTime? since = null)
     {
         var file = loc.GlazeWmErrorLog;
         if (!File.Exists(file)) return Array.Empty<string>();
         try
         {
-            return FileSafety.ReadShared(file).Split('\n').Select(l => WithoutTitles(l.TrimEnd())).Where(l => l.Length > 0).TakeLast(lines).ToList();
+            return ErrorLines(FileSafety.ReadShared(file), lines, since);
         }
         catch (IOException)
         {
             return Array.Empty<string>();
         }
+    }
+
+    /// <summary>
+    /// The lines of an errors.log text: colour codes and window titles removed, lines older than
+    /// <paramref name="since"/> left out (a line without a time belongs to the one before it).
+    /// </summary>
+    public static IReadOnlyList<string> ErrorLines(string text, int lines, DateTime? since)
+    {
+        var kept = new List<string>();
+        bool recent = since == null;
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = WithoutTitles(System.Text.RegularExpressions.Regex.Replace(raw, @"\x1b\[[0-9;]*m", "").Trim());
+            if (line.Length == 0) continue;
+            if (since is { } from && line.Split(' ', 2)[0] is var stamp &&
+                DateTime.TryParse(stamp, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var at))
+                recent = at >= from.ToUniversalTime();
+            if (recent) kept.Add(line);
+        }
+        return kept.TakeLast(lines).ToList();
     }
 
     /// <summary>
@@ -204,26 +236,29 @@ public sealed class Components
     }
 
     /// <summary>
-    /// Starts the launcher chosen in Settings (Flow Launcher or Fluent Search) if it is installed and
-    /// not running, and ends the other one: both would answer the Win key. True if it was started.
+    /// Starts Fluent Search, the launcher behind the Win key, if it is installed and not running. A
+    /// Flow Launcher that an earlier WinMarchy set up and that still runs (started by its own logon
+    /// task or by hand) is ended: it listens on the same key. True if Fluent Search was started.
     /// </summary>
     public bool StartLauncher()
     {
-        var chosen = Launchers.Of(_settings());
-        foreach (var p in Process.GetProcessesByName(Launchers.Process(Launchers.Other(chosen))))
+        if (Integrations.LegacyFlow.SetUpByWinMarchy(_loc))
         {
-            using (p)
+            foreach (var p in Process.GetProcessesByName(Integrations.LegacyFlow.Process))
             {
-                try { p.Kill(); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                using (p)
+                {
+                    try { p.Kill(); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                }
             }
         }
-        if (IsRunning(Launchers.Process(chosen))) return false;
-        if (Status(Launchers.Tool(chosen)).Path is not { } exe)
+        if (IsRunning(Integrations.FluentSearchConfig.Process)) return false;
+        if (Status(ToolCatalog.FluentSearch).Path is not { } exe)
         {
-            Log.Trace($"launcher: {chosen} not installed", "flow");
+            Log.Trace("launcher: Fluent Search not installed", "launcher");
             return false;
         }
-        Log.Trace("launcher: starting " + exe, "flow");
+        Log.Trace("launcher: starting " + exe, "launcher");
         return Platform.AppLauncher.Start(exe);
     }
 
@@ -326,6 +361,35 @@ public sealed class Components
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int max);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+
+    /// <summary>The message the hotkey script takes as "pause" (wParam 1) or "resume" (wParam 0); see runtime.ahk.</summary>
+    public const int AhkPauseMessage = 0x8057;
+
+    /// <summary>
+    /// Pauses WinMarchy's hotkey script (AutoHotkey's Suspend) or lets it go on: while paused only the
+    /// WinMarchy menu and the pause key work, and the Win key is Windows' own again. True if the
+    /// script was told.
+    /// </summary>
+    public static bool SuspendAhk(bool paused)
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        bool told = false;
+        EnumWindows((hwnd, _) =>
+        {
+            var cls = new StringBuilder(64);
+            if (GetClassName(hwnd, cls, cls.Capacity) > 0 && cls.ToString() == "AutoHotkey")
+            {
+                var title = new StringBuilder(1024);
+                GetWindowText(hwnd, title, title.Capacity);
+                if (title.ToString().Contains("winmarchy-hotkeys.ahk", StringComparison.OrdinalIgnoreCase))
+                    told |= PostMessage(hwnd, AhkPauseMessage, new IntPtr(paused ? 1 : 0), IntPtr.Zero);
+            }
+            return true;
+        }, IntPtr.Zero);
+        return told;
+    }
+
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
 
     public void StopAhk()
     {

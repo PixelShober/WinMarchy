@@ -44,14 +44,16 @@ public static class ToolInstaller
         switch (tool.Kind)
         {
             case InstallKind.Zip:
-                exe = ExtractZip(tool, file, ct);
+                exe = Extract(tool, file, FileSafety.ExtractZip, ct);
+                break;
+            case InstallKind.SevenZip:
+                exe = Extract(tool, file, FileSafety.Extract7z, ct);
                 break;
             case InstallKind.MsiExtract:
                 exe = await ExtractMsiAsync(tool, file, ct);
                 break;
             default:
-                exe = await RunInstallerAsync(tool, file, ct);
-                break;
+                throw new WinMarchyException("toolNotInstallable", ("tool", tool.Name));
         }
         try { File.Delete(file); } catch { }
         var tag = release.Tag;
@@ -101,11 +103,12 @@ public static class ToolInstaller
         }
     }
 
-    static string ExtractZip(ToolDef tool, string zip, CancellationToken ct)
+    /// <summary>Unpacks the archive next to the program's folder, then swaps it in.</summary>
+    static string Extract(ToolDef tool, string archive, Func<string, string, CancellationToken, int> unpack, CancellationToken ct)
     {
         var staging = tool.ToolDir + ".new";
         if (Directory.Exists(staging)) Directory.Delete(staging, true);
-        FileSafety.ExtractZip(zip, staging, ct);
+        unpack(archive, staging, ct);
         return Swap(tool, staging);
     }
 
@@ -134,24 +137,6 @@ public static class ToolInstaller
         }
         if (p.ExitCode != 0) throw new WinMarchyException("msiExtractFailed", ("tool", tool.Name), ("code", p.ExitCode), ("log", log));
         return Swap(tool, staging);
-    }
-
-    static async Task<string> RunInstallerAsync(ToolDef tool, string installer, CancellationToken ct)
-    {
-        var psi = new ProcessStartInfo(installer, tool.InstallerArgs ?? "") { UseShellExecute = false, CreateNoWindow = true };
-        using var p = Process.Start(psi) ?? throw new WinMarchyException("processStart", ("file", installer));
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(TimeSpan.FromMinutes(10));
-        await p.WaitForExitAsync(cts.Token);
-        if (p.ExitCode != 0) throw new WinMarchyException("installerFailed", ("tool", tool.Name), ("code", p.ExitCode));
-        // Squirrel installers start the app at the end; give it a moment to write its folder.
-        for (int i = 0; i < 20; i++)
-        {
-            var found = ToolCatalog.Detect(tool, Locations.Current, UserSettings.Load(), AppState.Load()).Path;
-            if (found != null) return found;
-            await Task.Delay(500, ct);
-        }
-        throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", tool.Name));
     }
 
     /// <summary>Replaces C:\WinMarchy\Tools\&lt;id&gt; with the freshly unpacked folder.</summary>
@@ -202,11 +187,25 @@ public static class ToolInstaller
         return tool.PreRelease ? await Net.GetNewestReleaseAsync(http, tool.Repo, ct) : await Net.GetLatestReleaseAsync(http, tool.Repo, ct);
     }
 
+    /// <summary>
+    /// Whether the release <paramref name="latestTag"/> is the one installed: by the tag WinMarchy noted
+    /// at the install, else by the program's version. Versions count as equal when only trailing zeros
+    /// differ ("2.1.0.0" in the file, "2.1.0" as the tag).
+    /// </summary>
     internal static bool IsCurrent(string latestTag, string? installedTag, string? installedVersion)
     {
-        if (installedTag != null) return string.Equals(installedTag, latestTag, StringComparison.OrdinalIgnoreCase);
+        if (installedTag != null && SameVersion(installedTag, latestTag)) return true;
+        return installedVersion != null && SameVersion(installedVersion, latestTag);
+    }
+
+    /// <summary>"v2.1.0" and "2.1.0.0" are the same; anything that is no plain version only as the same text.</summary>
+    internal static bool SameVersion(string a, string b)
+    {
         static string Plain(string v) => v.Trim().TrimStart('v', 'V');
-        return installedVersion != null && string.Equals(Plain(installedVersion), Plain(latestTag), StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(Plain(a), Plain(b), StringComparison.OrdinalIgnoreCase)) return true;
+        if (!Version.TryParse(Plain(a), out var x) || !Version.TryParse(Plain(b), out var y)) return false;
+        static int[] Parts(Version v) => new[] { v.Major, v.Minor, Math.Max(0, v.Build), Math.Max(0, v.Revision) };
+        return Parts(x).SequenceEqual(Parts(y));
     }
 
     /// <summary>Deletes what <see cref="Remove"/> could not delete while it was in use.</summary>
@@ -230,7 +229,7 @@ public static class ToolInstaller
         AppState.Update(s => s.LeftoverDirs.RemoveAll(gone.Contains));
     }
 
-    /// <summary>Removes a program WinMarchy installed (only its own folder or Flow's per-user install).</summary>
+    /// <summary>Removes a program WinMarchy installed (only its own folder).</summary>
     public static void Remove(ToolDef tool, Locations loc)
     {
         foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(tool.Exe)))
@@ -249,11 +248,6 @@ public static class ToolInstaller
                 Log.Info(L.T("tools.removeLater", ("tool", tool.Name), ("path", tool.ToolDir)));
                 AppState.Update(s => { if (!s.LeftoverDirs.Contains(tool.ToolDir)) s.LeftoverDirs.Add(tool.ToolDir); });
             }
-        }
-        if (tool.Kind == InstallKind.Installer && tool.Id == "flow")
-        {
-            var update = Path.Combine(loc.LocalAppData, "FlowLauncher", "Update.exe");
-            if (File.Exists(update)) Process.Start(new ProcessStartInfo(update, "--uninstall -s") { UseShellExecute = false })?.WaitForExit(60000);
         }
         AppState.Update(s => s.InstalledTools.Remove(tool.Id));
     }

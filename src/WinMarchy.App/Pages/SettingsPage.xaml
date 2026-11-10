@@ -37,21 +37,6 @@
 
     <Border Style="{StaticResource Card}" Margin="0,20,0,0">
       <StackPanel>
-        <TextBlock Text="{ui:T settings.launcher}" Style="{StaticResource H2}" />
-        <TextBlock Text="{ui:T settings.launcherText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
-        <Border Style="{StaticResource SegmentGroup}" HorizontalAlignment="Left">
-          <StackPanel Orientation="Horizontal">
-            <RadioButton x:Name="LauncherFlow" Style="{StaticResource Segment}" GroupName="launcher" Tag="flow" Checked="OnLauncher" Content="Flow Launcher" />
-            <RadioButton x:Name="LauncherFluent" Style="{StaticResource Segment}" GroupName="launcher" Tag="fluentsearch" Checked="OnLauncher" Content="Fluent Search" />
-          </StackPanel>
-        </Border>
-        <TextBlock x:Name="LauncherHint" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0" />
-        <ui:JobView x:Name="LauncherJob" Margin="0,10,0,0" />
-      </StackPanel>
-    </Border>
-
-    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
-      <StackPanel>
         <TextBlock Text="{ui:T settings.fileManager}" Style="{StaticResource H2}" />
         <TextBlock Text="{ui:T settings.fileManagerText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14" />
         <CheckBox x:Name="FilesDefaultSwitch" Style="{StaticResource Switch}" Click="OnFilesDefault">

@@ -28,7 +28,7 @@ public static class Log
 
     /// <summary>
     /// "Ausführlich protokollieren" on the Log page: every shortcut, every GlazeWM command and what
-    /// Flow, the taskbar and the window functions decided. Off by default, it is a lot.
+    /// Fluent Search, the taskbar and the window functions decided. Off by default, it is a lot.
     /// </summary>
     public static bool Verbose { get; set; }
 

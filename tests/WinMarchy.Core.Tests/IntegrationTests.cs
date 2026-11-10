@@ -42,15 +42,6 @@ public class IntegrationTests
     }
 
     [Fact]
-    public void Flow_listens_on_alt_f24_with_the_WinMarchy_theme()
-    {
-        var root = Jsonc.ParseObject(FlowTheme.PatchSettings("""{ "Hotkey": "Alt + Space", "Theme": "Win11Light", "Language": "de" }""", light: false));
-        Assert.Equal("Alt + F24", (string?)root["Hotkey"]);
-        Assert.Equal("WinMarchy", (string?)root["Theme"]);
-        Assert.Equal("de", (string?)root["Language"]);
-    }
-
-    [Fact]
     public void VsCode_falls_back_to_built_in_themes_and_takes_its_colours_back()
     {
         var theme = ThemeCatalog.Default;

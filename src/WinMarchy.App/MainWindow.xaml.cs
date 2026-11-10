@@ -153,7 +153,12 @@ public partial class MainWindow : Window
         var agent = AppModel.Agent;
         string text;
         string brush;
-        if (agent?.Glaze is { Connected: true })
+        if (agent?.Paused == true)
+        {
+            text = L.T("status.paused");
+            brush = "Warn";
+        }
+        else if (agent?.Glaze is { Connected: true })
         {
             text = agent.StatusLine();
             brush = "Ok";
@@ -214,10 +219,21 @@ public partial class MainWindow : Window
 
     bool _hintShown;
 
+    /// <summary>The page was asked about its changes; the next close goes ahead.</summary>
+    bool _leaveAsked;
+
     protected override void OnClosing(CancelEventArgs e)
     {
         WindowPlacement.Save(this);
         if (App.ExitRequested) return;
+        // Changes on the page that were not taken over: take them over, throw them away, or stay.
+        if (!_leaveAsked && _pages.TryGetValue(_route, out var current) && current is IGuardedPage { HasChanges: true } guarded)
+        {
+            e.Cancel = true;
+            _ = CloseAfterAskingAsync(guarded);
+            return;
+        }
+        _leaveAsked = false;
         // With the agent running WinMarchy stays in the tray; the window only hides.
         if (AppModel.Agent != null && AppState.Load().SetupDone)
         {
@@ -239,6 +255,13 @@ public partial class MainWindow : Window
         App.Quit();
     }
 
+    async Task CloseAfterAskingAsync(IGuardedPage page)
+    {
+        if (!await page.CanLeaveAsync()) return;
+        _leaveAsked = true;
+        Close();
+    }
+
     async Task ConfirmCloseAsync()
     {
         if (await Dialogs.ConfirmAsync(L.T("app.closeTitle"), L.T("app.confirmClose"), L.T("app.closeAnyway"), danger: true)) App.Quit();
@@ -251,10 +274,13 @@ public interface IPage
     void OnShown();
 }
 
-/// <summary>A page that may hold changes not taken over yet: it is asked before another page opens.</summary>
+/// <summary>A page that may hold changes not taken over yet: it is asked before another page opens or the window closes.</summary>
 public interface IGuardedPage
 {
-    /// <summary>False: stay on the page.</summary>
+    /// <summary>Whether the page holds changes not taken over yet.</summary>
+    bool HasChanges { get; }
+
+    /// <summary>Asks what to do with the changes, if there are any. False: stay on the page.</summary>
     Task<bool> CanLeaveAsync();
 }
 

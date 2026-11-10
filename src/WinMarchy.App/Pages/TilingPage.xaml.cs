@@ -162,18 +162,28 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
         return string.Join("\n", parts);
     }
 
+    /// <inheritdoc />
+    public bool HasChanges => Snapshot() != _shown;
+
+    bool Discard()
+    {
+        OnShown();
+        return true;
+    }
+
     /// <summary>
     /// Leaving the page with changes not taken over: take them over, throw them away, or stay. A
     /// change that cannot be taken over (a typing error) keeps the page open with the error shown.
     /// </summary>
     public async Task<bool> CanLeaveAsync()
     {
-        if (Snapshot() == _shown) return true;
+        if (!HasChanges) return true;
         var choice = await Dialogs.ChooseAsync(L.T("tiling.unsavedTitle"), L.T("tiling.unsavedText"), L.T("tiling.unsavedStay"),
             (L.T("tiling.unsavedDiscard"), "Ghost"), (L.T("tiling.apply"), "Primary"));
         return choice switch
         {
-            0 => true,
+            // Thrown away: the page shows the saved settings again (the window may only hide and come back to it).
+            0 => Discard(),
             1 => await ApplyAsync(),
             _ => false,
         };
@@ -300,7 +310,9 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
             var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             name.Children.Add(UiKit.Text(_screenNames[i], "H3"));
             name.Children.Add(UiKit.Text(i >= screens.Count ? L.T("tiling.monitorAbsent")
-                : L.T("tiling.monitorSize", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height)), "Small"));
+                : Core.Platform.ScreenNames.Position(i, screens.Count) is { } where
+                    ? L.T("tiling.monitorSizeAt", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height), ("position", where))
+                    : L.T("tiling.monitorSize", ("width", screens[i].Bounds.Width), ("height", screens[i].Bounds.Height)), "Small"));
             var isMain = new RadioButton
             {
                 Content = L.T("tiling.mainScreen"), GroupName = "main-screen", IsChecked = i == main, Tag = i,
@@ -347,7 +359,7 @@ public partial class TilingPage : UserControl, IPage, IGuardedPage
     /// </summary>
     static List<string> RowNames(List<System.Windows.Forms.Screen> screens, int rows)
     {
-        var connected = Core.Platform.ScreenNames.Of(screens.Select(m => m.DeviceName).ToList());
+        var connected = Core.Platform.ScreenNames.Of(screens.Select(m => (m.DeviceName, m.Bounds.Height > m.Bounds.Width)).ToList());
         var remembered = AppState.Load().ScreenNames;
         if (connected.Count > 0 && !remembered.Take(connected.Count).SequenceEqual(connected))
             AppState.Update(st =>

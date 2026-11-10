@@ -22,7 +22,7 @@ public partial class RestorePage : UserControl, IPage
             ? L.T("restore.nothingYet")
             : L.T("restore.originalText", ("count", original.Items.Count), ("date", original.Created.ToString("d", L.Culture)));
         ResetAll.IsEnabled = original is { Items.Count: > 0 } || AppState.Load().InstalledTools.Count > 0;
-        var tools = AppState.Load().InstalledTools.Select(id => ToolCatalog.Get(id).Name).ToList();
+        var tools = AppState.Load().InstalledTools.Select(ToolCatalog.Find).OfType<ToolDef>().Select(t => t.Name).ToList();
         RemoveTools.IsEnabled = tools.Count > 0;
         RemoveToolsHint.Text = tools.Count > 0 ? string.Join(", ", tools) : L.T("restore.noTools");
         RenderPoints();

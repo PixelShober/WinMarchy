@@ -60,7 +60,15 @@ IsTerminal() {
 UniversalCopy() => Send(IsTerminal() ? "^+c" : "^c")
 UniversalPaste() => Send(IsTerminal() ? "^+v" : "^v")
 
-; Left Win tapped on its own opens the launcher (Flow Launcher or Fluent Search, both on Alt+F24).
+; WinMarchy pauses (wParam 1) or resumes (wParam 0): suspended, only the hotkeys made with the "S"
+; option work (the WinMarchy menu and the pause key), and the Win key is Windows' own again.
+OnMessage(0x8057, PauseMessage)
+PauseMessage(wParam, *) {
+    Suspend(wParam ? 1 : 0)
+    return 1
+}
+
+; Left Win tapped on its own opens the launcher (Fluent Search, on Alt+F24).
 ; vkE8 is not assigned to any key: pressing it while Win is down keeps the Start menu closed when Win
 ; goes up. If the launcher is not running, WinMarchy starts it first.
 WinDown(*) => Send("{Blind}{vkE8}")

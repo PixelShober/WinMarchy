@@ -180,14 +180,14 @@ public class BarTests
     [InlineData("fastfetch", "fastfetch-windows-amd64.zip")]
     [InlineData("explorerblurmica", "Release_x64.zip")]
     public void New_tool_patterns_match_the_vendor_assets(string tool, string asset) =>
-        Assert.Matches(ToolCatalog.Get(tool).Asset!, asset);
+        Assert.Matches(ToolCatalog.Find(tool)!.Asset!, asset);
 
     [Theory]
     [InlineData("yasb", "yasb-2.0.7-aarch64.msi")]
     [InlineData("starship", "starship-x86_64-pc-windows-msvc.zip.sha256")]
     [InlineData("fastfetch", "fastfetch-windows-amd64.7z")]
     public void New_tool_patterns_skip_other_files(string tool, string asset) =>
-        Assert.DoesNotMatch(ToolCatalog.Get(tool).Asset!, asset);
+        Assert.DoesNotMatch(ToolCatalog.Find(tool)!.Asset!, asset);
 
     [Fact]
     public void Lunatask_is_gone_and_ExplorerBlurMica_is_experimental()
@@ -234,6 +234,10 @@ public class BarTests
     [InlineData("v2.0.7", null, "2.0.7", true)]
     [InlineData("v3.10.1-winmarchy.2", null, "3.10.1-winmarchy.1", false)]
     [InlineData("2.70.0", null, null, false)]
+    // ExplorerBlurMica: the DLL says 2.1.0.0, the tag 2.1.0.
+    [InlineData("2.1.0", null, "2.1.0.0", true)]
+    [InlineData("2.1.0", "2.0.1", "2.1.0.0", true)]
+    [InlineData("2.1.1", null, "2.1.0.0", false)]
     public void A_program_is_updated_when_its_release_changed(string latest, string? installedTag, string? version, bool current) =>
         Assert.Equal(current, ToolInstaller.IsCurrent(latest, installedTag, version));
 

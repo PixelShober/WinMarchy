@@ -304,6 +304,72 @@ public sealed class BackupStore
         return results;
     }
 
+    /// <summary>
+    /// Puts the state before WinMarchy back for the given targets ("registry" with "key|name", or
+    /// "wallpaper"), for a while: no restore point changes. Targets WinMarchy never changed are left
+    /// alone. Returns the state they had until now, for <see cref="PutBack"/>; it holds the wallpaper's
+    /// path only, not the picture, since WinMarchy's own wallpapers stay where they are.
+    /// <paramref name="keep"/> gets that state before anything changes, to store it safely first.
+    /// </summary>
+    public List<CapturedItem> ShowOriginal(IEnumerable<(string Kind, string Target)> targets, Action<List<CapturedItem>>? keep = null)
+    {
+        var now = new List<CapturedItem>();
+        lock (_sync)
+        {
+            if (LoadOriginal() is not { } original) return now;
+            foreach (var (kind, target) in targets)
+            {
+                if (original.Items.Any(i => i.Kind == kind && SameTarget(i.Target, target))) now.Add(CurrentState(kind, target));
+            }
+            keep?.Invoke(now);
+            foreach (var item in now)
+            {
+                var before = original.Items.First(i => i.Kind == item.Kind && SameTarget(i.Target, item.Target));
+                try
+                {
+                    RestoreItem(before);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WinMarchyException)
+                {
+                    Log.Warn(L.T("backup.itemFailed", ("target", before.Target), ("detail", ex.Message)));
+                }
+            }
+        }
+        return now;
+    }
+
+    /// <summary>Puts back what <see cref="ShowOriginal"/> returned.</summary>
+    public void PutBack(IEnumerable<CapturedItem> items)
+    {
+        lock (_sync)
+        {
+            foreach (var item in items)
+            {
+                try
+                {
+                    RestoreItem(item);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WinMarchyException)
+                {
+                    Log.Warn(L.T("backup.itemFailed", ("target", item.Target), ("detail", ex.Message)));
+                }
+            }
+        }
+    }
+
+    /// <summary>The state of a registry value or the wallpaper right now, as a capture without a stored copy.</summary>
+    CapturedItem CurrentState(string kind, string target)
+    {
+        if (kind == "wallpaper")
+        {
+            var current = Wallpaper?.Current();
+            return new CapturedItem { Kind = kind, Target = target, OriginalPath = current, Existed = !string.IsNullOrEmpty(current), Captured = DateTime.Now };
+        }
+        var (key, name) = SplitRegistry(target);
+        var data = Registry.Read(key, name);
+        return new CapturedItem { Kind = kind, Target = target, Existed = data != null, Registry = data, Captured = DateTime.Now };
+    }
+
     void RestoreItem(CapturedItem item)
     {
         switch (item.Kind)

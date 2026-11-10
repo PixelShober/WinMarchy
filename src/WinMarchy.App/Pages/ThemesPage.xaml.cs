@@ -21,7 +21,6 @@ public partial class ThemesPage : UserControl, IPage
         ("terminal", t => t.Terminal, (t, v) => t.Terminal = v),
         ("powershell", t => t.PowerShell, (t, v) => t.PowerShell = v),
         ("vscode", t => t.VsCode, (t, v) => t.VsCode = v),
-        ("flow", t => t.Flow, (t, v) => t.Flow = v),
         ("fluentsearch", t => t.FluentSearch, (t, v) => t.FluentSearch = v),
         ("files", t => t.Files, (t, v) => t.Files = v),
         ("shell", t => t.Shell, (t, v) => t.Shell = v),

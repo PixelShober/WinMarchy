@@ -104,12 +104,13 @@ public class NetTests
     [Theory]
     [InlineData("glazewm", "glazewm-v3.10.1-winmarchy.1-x64.zip")]
     [InlineData("autohotkey", "AutoHotkey_2.0.19.zip")]
-    [InlineData("flow", "Flow-Launcher-Setup.exe")]
+    [InlineData("fluentsearch", "fluent-search-portable-x64.zip")]
+    [InlineData("bcuninstaller", "BCUninstaller_6.3.0_portable.7z")]
     [InlineData("pwsh", "PowerShell-7.5.4-win-x64.zip")]
     [InlineData("herdr", "herdr-windows-x86_64.zip")]
     [InlineData("pi", "pi-windows-x64.zip")]
     public void Tool_patterns_match_the_vendor_assets(string tool, string asset) =>
-        Assert.Matches(ToolCatalog.Get(tool).Asset!, asset);
+        Assert.Matches(ToolCatalog.Find(tool)!.Asset!, asset);
 
     [Fact]
     public void The_glazewm_build_is_told_apart_by_its_notes()
@@ -195,6 +196,24 @@ public class FileSafetyTests
             archive.CreateEntry("../outside.txt");
         Assert.Throws<WinMarchyException>(() => FileSafety.ExtractZip(zip, tmp.File("out"), CancellationToken.None));
         Assert.False(File.Exists(tmp.File("outside.txt")));
+    }
+
+    /// <summary>
+    /// A solid 7-Zip archive with the x86 filter and LZMA2, as vendors pack their portable builds:
+    /// BCUninstaller/BCUninstaller.exe and BCUninstaller/sub/a.txt.
+    /// </summary>
+    const string SevenZip = "N3q8ryccAASxNYN0pwAAAAAAAAAWAAAAAAAAAMv/fIkBAA9NWiBmYWtlIGV4ZWhlbGxvAOABJQCLXQAAgTMHrg/PObAMB7DD2irXWGSss3jOVN2iByejSk/jQjSJFst97zzEeWVcHKUVGUIjwpn6UcQHZ6/eAaKIRtvUIPPl9mbbI5M5FWC+R12MwJ9IxoDkuNP6/LFUYvm1ljiNohUYM0ZQgFTb6Wn4MdvWrypOcx+Y+GxZ9l170jFUoAy9jbvjf1ekTgAAABcGFAEJgJMABwsBAAEhIQEYDIEmAAA=";
+
+    [Fact]
+    public void A_7zip_archive_unpacks_with_its_folders()
+    {
+        using var tmp = new TempDir();
+        var archive = tmp.File("portable.7z");
+        File.WriteAllBytes(archive, Convert.FromBase64String(SevenZip));
+        Assert.Equal(2, FileSafety.Extract7z(archive, tmp.File("out"), CancellationToken.None));
+        Assert.Equal("MZ fake exe", File.ReadAllText(Path.Combine(tmp.File("out"), "BCUninstaller", "BCUninstaller.exe")));
+        Assert.Equal("hello", File.ReadAllText(Path.Combine(tmp.File("out"), "BCUninstaller", "sub", "a.txt")));
+        Assert.Equal(Path.Combine(tmp.File("out"), "BCUninstaller", "BCUninstaller.exe"), ToolCatalog.FindIn(tmp.File("out"), "BCUninstaller.exe"));
     }
 
     [Fact]

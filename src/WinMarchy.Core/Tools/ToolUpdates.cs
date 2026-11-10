@@ -5,8 +5,8 @@ public sealed record LatestRelease(string Tag, DateTime CheckedUtc);
 
 /// <summary>
 /// Which programs have a newer release than the one installed. Only programs WinMarchy installed
-/// itself from a zip or MSI count: it can swap those for the new release (Flow Launcher updates
-/// itself, and a program installed some other way belongs to whoever installed it). The latest tags
+/// itself from an archive or MSI count: it can swap those for the new release (a program installed
+/// some other way belongs to whoever installed it). The latest tags
 /// are kept in state.json, so the Start page shows them at once and GitHub is asked at most every
 /// few hours.
 /// </summary>
@@ -22,7 +22,7 @@ public static class ToolUpdates
 
     /// <summary>Programs WinMarchy can update: installed by it, from a zip or an MSI.</summary>
     public static IReadOnlyList<ToolDef> Updatable(AppState state) => ToolCatalog.All
-        .Where(t => state.InstalledTools.Contains(t.Id) && t.Kind is InstallKind.Zip or InstallKind.MsiExtract)
+        .Where(t => state.InstalledTools.Contains(t.Id) && t.Kind is InstallKind.Zip or InstallKind.SevenZip or InstallKind.MsiExtract)
         .ToList();
 
     /// <summary>The latest release's tag if it is not the one installed, else null (also when it was never looked up).</summary>

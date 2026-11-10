@@ -9,8 +9,8 @@ public enum InstallKind
     Zip,
     /// <summary>MSI unpacked without installing (msiexec /a), so no admin rights are needed.</summary>
     MsiExtract,
-    /// <summary>The vendor's per-user installer, run silently.</summary>
-    Installer,
+    /// <summary>7-Zip archive from the vendor, unpacked into C:\WinMarchy\Tools\&lt;id&gt;.</summary>
+    SevenZip,
     /// <summary>WinMarchy only finds it (and themes it), it does not install it.</summary>
     None,
 }
@@ -31,7 +31,6 @@ public sealed record ToolDef(
     InstallKind Kind,
     string Exe,
     bool Required,
-    string? InstallerArgs = null,
     bool Extra = false,
     bool Experimental = false,
     bool PreRelease = false,
@@ -71,9 +70,6 @@ public static class ToolCatalog
 
     public static readonly ToolDef AutoHotkey = new("autohotkey", "AutoHotkey v2", "GPL-2.0", "https://www.autohotkey.com",
         "AutoHotkey/AutoHotkey", @"^AutoHotkey_2[\d.]+\.zip$", InstallKind.Zip, "AutoHotkey64.exe", Required: false);
-
-    public static readonly ToolDef Flow = new("flow", "Flow Launcher", "MIT", "https://www.flowlauncher.com",
-        "Flow-Launcher/Flow.Launcher", @"^Flow-Launcher-Setup\.exe$", InstallKind.Installer, "Flow.Launcher.exe", Required: false, "--silent");
 
     public static readonly ToolDef PowerShell = new("pwsh", "PowerShell 7", "MIT", "https://github.com/PowerShell/PowerShell",
         "PowerShell/PowerShell", @"^PowerShell-7[\d.]+-win-x64\.zip$", InstallKind.Zip, "pwsh.exe", Required: false, Extra: true);
@@ -115,19 +111,22 @@ public static class ToolCatalog
         "Maplespe/ExplorerBlurMica", @"^Release_x64\.zip$", InstallKind.Zip, "ExplorerBlurMica.dll", Required: false, Extra: true, Experimental: true);
 
     /// <summary>
-    /// The other launcher behind the Win key, chosen in Settings instead of Flow Launcher. Freeware, not
-    /// open source: its terms come as COPYING.txt with its installer and are published nowhere else, so
-    /// a company has to check them itself. The portable build of the newest nightly on GitHub (the last
-    /// stable build there is from May 2025); its settings and themes live in "Blast" next to the exe
-    /// and survive updates.
+    /// The launcher behind the Win key. Freeware, not open source: its terms come as COPYING.txt with
+    /// its installer and are published nowhere else, so a company has to check them itself. The
+    /// portable build of the newest nightly on GitHub (the last stable build there is from May 2025);
+    /// its settings and themes live in "Blast" next to the exe and survive updates.
     /// </summary>
     public static readonly ToolDef FluentSearch = new("fluentsearch", "Fluent Search", "Freeware (proprietär)", "https://github.com/adirh3/Fluent-Search",
-        "adirh3/Fluent-Search", @"^fluent-search-portable-x64\.zip$", InstallKind.Zip, "FluentSearch.exe", Required: false, Extra: true,
+        "adirh3/Fluent-Search", @"^fluent-search-portable-x64\.zip$", InstallKind.Zip, "FluentSearch.exe", Required: false,
         PreRelease: true, KeepFolders: new[] { "Blast" });
+
+    /// <summary>Removes programs thoroughly, leftovers included. The vendor's portable build, a 7-Zip archive.</summary>
+    public static readonly ToolDef BulkCrapUninstaller = new("bcuninstaller", "Bulk Crap Uninstaller", "Apache-2.0", "https://www.bcuninstaller.com",
+        "BCUninstaller/Bulk-Crap-Uninstaller", @"^BCUninstaller_[\d.]+_portable\.7z$", InstallKind.SevenZip, "BCUninstaller.exe", Required: false, Extra: true);
 
     public static IReadOnlyList<ToolDef> All { get; } = new[]
     {
-        GlazeWm, Yasb, AutoHotkey, Flow, FluentSearch, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, ExplorerBlurMica, Terminal, Files, VsCode,
+        GlazeWm, Yasb, AutoHotkey, FluentSearch, PowerShell, Starship, Fastfetch, Herdr, Pi, Greenshot, BulkCrapUninstaller, ExplorerBlurMica, Terminal, Files, VsCode,
     };
 
     /// <summary>Optional programs the setup offers below the main ones, unticked.</summary>
@@ -140,7 +139,8 @@ public static class ToolCatalog
         Path.Combine(loc.LocalAppData, "Programs", "Git", "bin", "bash.exe"),
     }.FirstOrDefault(File.Exists) ?? OnPath("bash.exe");
 
-    public static ToolDef Get(string id) => All.First(t => t.Id == id);
+    /// <summary>The program with this id; null for one WinMarchy no longer knows (state.json of an older version).</summary>
+    public static ToolDef? Find(string id) => All.FirstOrDefault(t => t.Id == id);
 
     /// <summary>Where each program usually is, besides C:\WinMarchy\Tools and PATH.</summary>
     static IEnumerable<string> KnownPaths(ToolDef t, Locations loc) => t.Id switch
@@ -152,7 +152,6 @@ public static class ToolCatalog
             Path.Combine(loc.ProgramFiles, "AutoHotkey", "v2", "AutoHotkey64.exe"),
             Path.Combine(loc.LocalAppData, "Programs", "AutoHotkey", "v2", "AutoHotkey64.exe"),
         },
-        "flow" => new[] { Path.Combine(loc.LocalAppData, "FlowLauncher", "Flow.Launcher.exe") },
         // Where Herdr's and Pi's own install scripts put them.
         "herdr" => new[] { Path.Combine(loc.LocalAppData, "Programs", "Herdr", "herdr.exe"), Path.Combine(loc.LocalAppData, "Programs", "Herdr", "winarchy-lite", "herdr.exe") },
         "pi" => new[] { Path.Combine(loc.LocalAppData, "Programs", "pi", "pi.exe"), Path.Combine(loc.UserProfile, ".pi", "bin", "pi.exe") },

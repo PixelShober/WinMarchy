@@ -61,7 +61,7 @@
     { "keys": "Win+Shift+W", "do": "app:word", "group": "apps", "omarchy": "SUPER + SHIFT + W (Omawrite)", "label": { "de": "Schreiben (Word)", "en": "Writing (Word)" } },
     { "keys": "Win+Alt+P", "do": "app:winmarchy", "group": "apps", "label": { "de": "WinMarchy öffnen", "en": "Open WinMarchy" } },
 
-    { "keys": "Win+Space", "do": "do:menu", "group": "menus", "omarchy": "SUPER + ALT + SPACE und SUPER + SPACE", "label": { "de": "WinMarchy-Menü und Programme", "en": "WinMarchy menu and apps" }, "note": { "de": "Tippen sucht auch in den Programmen des Startmenüs. Win allein öffnet Flow Launcher.", "en": "Typing also searches the Start menu apps. Win alone opens Flow Launcher." } },
+    { "keys": "Win+Space", "do": "do:menu", "group": "menus", "omarchy": "SUPER + ALT + SPACE und SUPER + SPACE", "label": { "de": "WinMarchy-Menü und Programme", "en": "WinMarchy menu and apps" }, "note": { "de": "Tippen sucht auch in den Programmen des Startmenüs. Win allein öffnet Fluent Search.", "en": "Typing also searches the Start menu apps. Win alone opens Fluent Search." } },
     { "keys": "Win+Escape", "do": "do:menu system", "group": "menus", "label": { "de": "Systemmenü", "en": "System menu" } },
     { "keys": "Win+K", "do": "do:keybindings", "group": "menus", "label": { "de": "Tastenkürzel anzeigen", "en": "Show keybindings" } },
     { "keys": "Win+Ctrl+T", "do": "do:theme-menu", "group": "menus", "omarchy": "SUPER + CTRL + SHIFT + SPACE", "label": { "de": "Theme wählen", "en": "Theme menu" } },
@@ -95,6 +95,7 @@
     { "keys": "Win+Ctrl+Alt+E", "do": "open:ms-clock:", "group": "utilities", "optional": true, "label": { "de": "Weltuhr", "en": "World clock" } },
 
     { "keys": "Win+Ctrl+L", "do": "do:lock", "group": "system", "label": { "de": "Sperren", "en": "Lock" } },
+    { "keys": "Win+Alt+Escape", "do": "do:pause", "group": "system", "omarchy": "– (Omarchy hat keine Pause)", "label": { "de": "WinMarchy pausieren oder fortsetzen", "en": "Pause or resume WinMarchy" }, "note": { "de": "Pausiert ist alles wie unter Windows ohne WinMarchy: kein Tiling, keine Leiste, keine Kürzel, Taskleiste, Hintergrund und Farben von vorher. Win+Leertaste und dieses Kürzel gehen weiter.", "en": "Paused, everything is as in Windows without WinMarchy: no tiling, no bar, no shortcuts, the taskbar, wallpaper and colours from before. Win+Space and this shortcut keep working." } },
     { "keys": "Win+Ctrl+I", "do": "do:keep-awake", "group": "system", "optional": true, "omarchy": "SUPER + CTRL + I (Idle-Sperre)", "label": { "de": "Bildschirm wach halten", "en": "Keep display awake" } },
     { "keys": "Win+Ctrl+A", "do": "open:ms-settings:sound", "group": "system", "optional": true, "label": { "de": "Audio", "en": "Audio" } },
     { "keys": "Win+Ctrl+B", "do": "open:ms-settings:bluetooth", "group": "system", "optional": true, "label": { "de": "Bluetooth", "en": "Bluetooth" } },

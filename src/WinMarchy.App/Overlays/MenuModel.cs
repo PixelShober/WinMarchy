@@ -125,6 +125,14 @@ static class MenuModel
             Do("refresh", "system.restart", () => Shutdown("/r /t 0")),
             Do("power", "system.shutdown", () => Shutdown("/s /t 0")),
         },
+        // Paused, the menu leads with the way back; the rest stays, but only what changes nothing runs.
+        _ when AppModel.Agent?.Paused == true => new[]
+        {
+            Item("play", "root.resume", "do:pause"),
+            Sub("book", "root.learn", "learn"),
+            Sub("settings", "root.setup", "setup"),
+            Sub("power", "root.system", "system"),
+        },
         _ => new[]
         {
             Item("grid", "root.apps", "app:launcher"),
@@ -137,6 +145,7 @@ static class MenuModel
             // As in Omarchy: with Fastfetch, "About" shows the system information in a terminal.
             HasFastfetch() ? Item("info", "root.about", "do:about") : Page("info", "root.about", "start"),
             Sub("power", "root.system", "system"),
+            Item("pause", "root.pause", "do:pause"),
         },
     };
 

@@ -26,8 +26,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
     readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromHours(6) };
     readonly Forms.NotifyIcon _tray = new();
     readonly TaskbarGuard _guard = new();
-    readonly DispatcherTimer _flowTimer = new() { Interval = TimeSpan.FromSeconds(10) };
-    DateTime _flowStarted = DateTime.MinValue;
+    readonly DispatcherTimer _launcherTimer = new() { Interval = TimeSpan.FromSeconds(10) };
+    DateTime _launcherStarted = DateTime.MinValue;
     HwndSource? _window;
     ScreenshotWatch? _screenshots;
     LayoutEngine? _layouts;
@@ -50,6 +50,9 @@ public sealed class AgentHost : IAgentHost, IDisposable
     /// <summary>Until then a GlazeWM that does not answer is waited for, not restarted: the PC just woke up, was unlocked or changed its screens.</summary>
     DateTime _glazeGraceUntil = DateTime.MinValue;
     bool _graceSaid;
+    bool _paused;
+    bool _pauseBusy;
+    Forms.ToolStripItem? _trayPause;
 
     public AgentHost()
     {
@@ -62,6 +65,12 @@ public sealed class AgentHost : IAgentHost, IDisposable
     public WindowCommands? Windows => _windows;
     public AppLauncher Apps { get; }
     public UserSettings Settings => AppModel.Settings;
+
+    /// <summary>WinMarchy is paused: Windows looks and works as without it; only the menu and the pause key work.</summary>
+    public bool Paused => _paused;
+
+    /// <summary>Paused or resumed (Start page, menu, tray).</summary>
+    public event Action? PausedChanged;
 
     /// <summary>GlazeWM runs, but WinMarchy cannot reach it (after two tries): the reason, else null.</summary>
     public string? GlazeProblem { get; private set; }
@@ -83,6 +92,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         Microsoft.Win32.SystemEvents.SessionSwitch += OnSessionSwitch;
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         _ = Task.Run(() => GlazeLoopAsync(_cts.Token));
+        EndPauseOfLastRun();
 
         if (SetupDone)
         {
@@ -93,8 +103,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
         HookMinimize();
         // The program list for Win+Space's search, read once in the background.
         StartApps.Refresh();
-        _flowTimer.Tick += (_, _) => KeepFlowRunning();
-        _flowTimer.Start();
+        _launcherTimer.Tick += (_, _) => KeepLauncherRunning();
+        _launcherTimer.Start();
         try { AppModel.Engine.CheckFilesDefault(); }
         catch (Exception ex) { Log.Warn(Net.Describe(ex)); }
 
@@ -124,13 +134,13 @@ public sealed class AgentHost : IAgentHost, IDisposable
             // Print belongs to Greenshot when the user chose it; it has to run for that.
             if (Settings.ScreenshotTool == Screenshots.Greenshot && !Core.Services.Components.IsRunning("Greenshot") &&
                 c.Status(Core.Tools.ToolCatalog.Greenshot).Path is { } greenshot) AppLauncher.Start(greenshot);
-            // Win opens the launcher (Flow Launcher or Fluent Search); after the setup it has never run yet.
+            // Win opens Fluent Search; after the setup it has never run yet.
             Log.Trace($"components: glazewm {Core.Services.Components.GlazeRunning}, yasb {c.BarRunning}, " +
-                      $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, launcher {Core.Services.Components.IsRunning(Core.Integrations.Launchers.Process(Settings))}", "agent");
+                      $"ahk {Core.Services.Components.OurAhkProcesses().Any()}, launcher {Core.Services.Components.IsRunning(Core.Integrations.FluentSearchConfig.Process)}", "agent");
             if (c.StartLauncher())
             {
-                _flowStarted = DateTime.Now;
-                Log.Info(L.T("agent.flowStarted"));
+                _launcherStarted = DateTime.Now;
+                Log.Info(L.T("agent.launcherStarted"));
             }
         }
         catch (Exception ex)
@@ -161,30 +171,30 @@ public sealed class AgentHost : IAgentHost, IDisposable
     }
 
     /// <summary>
-    /// Win alone opens the launcher (Flow Launcher or Fluent Search), so it has to run. If it is gone (crashed, or a restart after a
+    /// Win alone opens Fluent Search, so it has to run. If it is gone (crashed, or a restart after a
     /// theme change did not come up), it is started again; not more than every 30 seconds, and not while
     /// a job runs (a theme change restarts it on purpose, the setup installs it).
     /// </summary>
-    void KeepFlowRunning()
+    void KeepLauncherRunning()
     {
-        if (!SetupDone || _restoring || AppModel.Jobs.AnyRunning) return;
-        if (Core.Services.Components.IsRunning(Core.Integrations.Launchers.Process(Settings))) return;
-        if (DateTime.Now - _flowStarted < TimeSpan.FromSeconds(30))
+        if (!SetupDone || _restoring || _paused || AppModel.Jobs.AnyRunning) return;
+        if (Core.Services.Components.IsRunning(Core.Integrations.FluentSearchConfig.Process)) return;
+        if (DateTime.Now - _launcherStarted < TimeSpan.FromSeconds(30))
         {
-            Log.Trace("flow: not running, started less than 30 s ago, waiting", "flow");
+            Log.Trace("launcher: not running, started less than 30 s ago, waiting", "launcher");
             return;
         }
         try
         {
             if (AppModel.Engine.Components.StartLauncher())
             {
-                _flowStarted = DateTime.Now;
-                Log.Info(L.T("agent.flowRestarted"));
+                _launcherStarted = DateTime.Now;
+                Log.Info(L.T("agent.launcherRestarted"));
             }
         }
         catch (Exception ex)
         {
-            Log.Debug("Flow: " + Net.Describe(ex));
+            Log.Debug("Fluent Search: " + Net.Describe(ex));
         }
     }
 
@@ -195,7 +205,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         Microsoft.Win32.SystemEvents.SessionSwitch -= OnSessionSwitch;
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         _glazeProcess?.Dispose();
-        _flowTimer.Stop();
+        _launcherTimer.Stop();
         _guard.Dispose();
         _taskbarTimer.Stop();
         _updateTimer.Stop();
@@ -278,6 +288,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         Add("tray.reload", () => _ = ReloadGlazeAsync(_cts.Token));
         Add("tray.bar", ToggleBar);
         Add("tray.taskbar", ToggleTaskbar);
+        _trayPause = menu.Items.Add(L.T("tray.pause"), null, (_, _) => Application.Current.Dispatcher.InvokeAsync(() => _ = TogglePauseAsync(_cts.Token)));
         menu.Items.Add(new Forms.ToolStripSeparator());
         Add("tray.quit", App.Quit);
         _tray.ContextMenuStrip = menu;
@@ -409,8 +420,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _lastGlazeRestart = DateTime.Now;
         _hangReported = false;
         Log.Warn(L.T("agent.glazeHung"));
-        // What GlazeWM itself wrote before it stopped answering, and which build it is: the next fix starts there.
-        var errors = AppModel.Engine.Components.GlazeErrors(3);
+        // What GlazeWM itself wrote in the last minutes before it stopped answering, and which build it is: the next fix starts there.
+        var errors = AppModel.Engine.Components.GlazeErrors(3, since: DateTime.Now.AddMinutes(-15));
         var version = AppState.Load().ToolTags.GetValueOrDefault(Core.Tools.ToolCatalog.GlazeWm.Id) ?? AppModel.Engine.Components.Status(Core.Tools.ToolCatalog.GlazeWm).Version ?? "?";
         Log.Info(L.T("agent.glazeHungDetail", ("version", version), ("detail", errors.Count > 0 ? string.Join(" | ", errors) : L.T("agent.glazeNoErrors"))));
         Notify(L.T("agent.glazeRestarting"));
@@ -433,6 +444,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     async Task CheckGlazeAnswersAsync(CancellationToken ct, bool again = true)
     {
         var c = AppModel.Engine.Components;
+        var started = DateTime.Now.AddSeconds(-5);
         for (int i = 0; i < 10; i++)
         {
             await Task.Delay(TimeSpan.FromSeconds(2), ct);
@@ -442,8 +454,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
                 return;
             }
         }
-        // Its lines carry the time, so older ones among them are easy to tell apart.
-        var errors = c.GlazeErrors(3);
+        // Only what this start wrote; older lines would point at an earlier problem.
+        var errors = c.GlazeErrors(3, since: started);
         Log.Warn(L.T("agent.glazeNoAnswerAfterStart", ("detail", errors.Count > 0 ? string.Join(" | ", errors) : L.T("agent.glazeNoErrors"))));
         if (!again)
         {
@@ -505,7 +517,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
         ForgetGlazeProcess();
         // Ended by WinMarchy itself (an update ends it the way its tray menu does, with code 0).
-        if (_restoring || AppModel.Jobs.AnyRunning || App.ExitRequested) return;
+        if (_restoring || _paused || AppModel.Jobs.AnyRunning || App.ExitRequested) return;
         if (code == 0)
         {
             Log.Info(L.T("agent.glazeQuit"));
@@ -522,7 +534,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
             return;
         }
         _glazeCrashes.Add(now);
-        var errors = AppModel.Engine.Components.GlazeErrors(3);
+        var errors = AppModel.Engine.Components.GlazeErrors(3, since: now.AddMinutes(-15));
         Log.Warn(L.T("agent.glazeCrashed", ("code", detail), ("detail", errors.Count > 0 ? string.Join(" | ", errors) : L.T("agent.glazeNoErrors"))));
         Notify(L.T("agent.glazeRestartingCrash"));
         await Task.Delay(TimeSpan.FromSeconds(1), ct);
@@ -630,7 +642,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
         _taskbarShownByUser = false;
         EnforceTaskbar();
         var running = AppModel.Engine.Components.BarRunning;
-        if (Settings.ShowBar && !running && SetupDone) AppModel.Engine.Components.StartBar();
+        if (Settings.ShowBar && !running && SetupDone && !_paused) AppModel.Engine.Components.StartBar();
         else if (!Settings.ShowBar && running) AppModel.Engine.Components.StopBar();
     }
 
@@ -642,7 +654,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     /// </summary>
     void EnforceTaskbar()
     {
-        bool want = Settings.HideTaskbar && !_taskbarShownByUser && !_restoring && SetupDone;
+        bool want = Settings.HideTaskbar && !_taskbarShownByUser && !_restoring && !_paused && SetupDone;
         if (want)
         {
             if (!_taskbarHidden)
@@ -752,6 +764,122 @@ public sealed class AgentHost : IAgentHost, IDisposable
         Notify(L.T("agent.restored"));
     }
 
+    // ------------------------------------------------------------------ pause
+
+    /// <summary>
+    /// Pauses WinMarchy, or lets it go on (Win+Alt+Esc, the WinMarchy menu, the tray, the Start page).
+    /// Paused, Windows looks and works as without WinMarchy; a restart of WinMarchy or Windows ends
+    /// the pause.
+    /// </summary>
+    public async Task TogglePauseAsync(CancellationToken ct)
+    {
+        if (_pauseBusy) return;
+        _pauseBusy = true;
+        try
+        {
+            if (_paused) Resume();
+            else await PauseAsync(ct);
+        }
+        finally
+        {
+            _pauseBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// The hotkey script lets go of every key but the menu and the pause key, so Win opens the Start
+    /// menu again. GlazeWM ends the way its tray menu ends it, which shows every window it had hidden
+    /// on other workspaces. Bar and Fluent Search end, the taskbar shows, and Windows' colours and
+    /// wallpaper are as they were before WinMarchy.
+    /// </summary>
+    async Task PauseAsync(CancellationToken ct)
+    {
+        if (!SetupDone)
+        {
+            Notify(L.T("pause.notSetUp"));
+            return;
+        }
+        if (AppModel.Jobs.AnyRunning)
+        {
+            Notify(L.T("pause.jobRunning"));
+            return;
+        }
+        _paused = true;
+        Log.Info(L.T("pause.pausing"));
+        if (!Core.Services.Components.SuspendAhk(true)) Log.Debug("pause: no hotkey script to suspend");
+        // WinMarchy ends it on purpose: no crash to answer.
+        ForgetGlazeProcess();
+        if (Glaze is { Connected: true } ipc)
+        {
+            // GlazeWM may end before it answers: the wait is short, the check below says whether it is gone.
+            try { await ipc.CommandAsync("wm-exit", ct).WaitAsync(TimeSpan.FromSeconds(3), ct); }
+            catch (Exception ex) when (ex is WinMarchyException or TimeoutException) { Log.Debug("wm-exit: " + ex.Message); }
+        }
+        for (int i = 0; i < 30 && Core.Services.Components.GlazeRunning; i++) await Task.Delay(100, ct);
+        if (Core.Services.Components.GlazeRunning) await Core.Services.Components.EndGlazeAsync(ct);
+        AppModel.Engine.Components.StopBar();
+        await Core.Integrations.FluentSearchConfig.StopAsync(ct);
+        EnforceTaskbar();
+        try
+        {
+            AppModel.Engine.ShowPlainWindows();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WinMarchyException)
+        {
+            Log.Warn(L.T("pause.lookFailed", ("detail", Net.Describe(ex))));
+        }
+        PauseShown();
+        Notify(L.T("pause.paused"));
+    }
+
+    /// <summary>WinMarchy's colours and wallpaper come back, then the hotkeys, GlazeWM, bar, taskbar hiding and Fluent Search.</summary>
+    void Resume()
+    {
+        Log.Info(L.T("pause.resuming"));
+        try
+        {
+            AppModel.Engine.ShowWinMarchyLook();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WinMarchyException)
+        {
+            Log.Warn(L.T("pause.lookFailed", ("detail", Net.Describe(ex))));
+        }
+        _paused = false;
+        Core.Services.Components.SuspendAhk(false);
+        StartComponents();
+        _taskbarShownByUser = false;
+        EnforceTaskbar();
+        PauseShown();
+        Notify(L.T("pause.resumed"));
+    }
+
+    /// <summary>
+    /// A pause does not outlast WinMarchy: one that was still on when it last ended (closed, crashed,
+    /// Windows restarted) ends now. Colours and wallpaper come back, and the hotkey script, which may
+    /// still run suspended, takes its keys again.
+    /// </summary>
+    void EndPauseOfLastRun()
+    {
+        if (AppState.Load().PausedLook != null)
+        {
+            Log.Info(L.T("pause.endedByRestart"));
+            try { AppModel.Engine.ShowWinMarchyLook(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or WinMarchyException)
+            {
+                Log.Warn(L.T("pause.lookFailed", ("detail", Net.Describe(ex))));
+            }
+        }
+        Core.Services.Components.SuspendAhk(false);
+    }
+
+    /// <summary>The tray entry says what a click does now; the pages and the menu follow <see cref="PausedChanged"/>.</summary>
+    void PauseShown()
+    {
+        if (_trayPause != null) _trayPause.Text = L.T(_paused ? "tray.resume" : "tray.pause");
+        _tray.Text = _paused ? L.T("pause.trayTitle") : "WinMarchy";
+        PausedChanged?.Invoke();
+    }
+
     // ------------------------------------------------------------------ minimizing like Omarchy
 
     WinEventProc? _minimizeProc;
@@ -771,7 +899,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     /// </summary>
     void OnMinimizeStart(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
     {
-        if (idObject != 0 || idChild != 0 || hwnd == IntPtr.Zero) return;
+        if (idObject != 0 || idChild != 0 || hwnd == IntPtr.Zero || _paused) return;
         if (_windows is not { } windows) return;
         var handle = hwnd.ToInt64();
         _ = Task.Run(async () =>
