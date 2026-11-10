@@ -1213,7 +1213,7 @@
     "blocked": "WinMarchy ist pausiert. Mit Win+Alt+Esc oder im WinMarchy-Menü geht es weiter.",
     "notSetUp": "Pausieren geht erst, wenn WinMarchy eingerichtet ist.",
     "jobRunning": "Gerade läuft eine Aufgabe von WinMarchy. Pausieren geht, sobald sie fertig ist.",
-    "pausing": "WinMarchy pausiert: Kürzel, GlazeWM, Leiste und Fluent Search aus, Taskleiste, Hintergrund und Farben wie bei einem frischen Windows.",
+    "pausing": "WinMarchy pausiert: Kürzel, GlazeWM, Leiste und Fluent Search aus, Taskleiste, Explorer, Hintergrund und Akzentfarbe wie bei einem frischen Windows, Hell oder Dunkel wie vor WinMarchy.",
     "resuming": "WinMarchy läuft weiter.",
     "paused": "WinMarchy pausiert. Win+Alt+Esc setzt es fort.",
     "resumed": "WinMarchy läuft wieder.",

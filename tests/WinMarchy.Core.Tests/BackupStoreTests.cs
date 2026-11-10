@@ -70,6 +70,28 @@ public class BackupStoreTests
         """;
 
     [Fact]
+    public void The_pause_keeps_the_users_own_light_or_dark_mode()
+    {
+        using var tmp = new TempDir();
+        var registry = new MemoryUserRegistry();
+        var store = new BackupStore(tmp.File("backups"), registry, new FakeWallpaper());
+        // Before WinMarchy: dark apps; the taskbar's mode was never set. WinMarchy's theme then made both light.
+        registry.Write(Key, "AppsUseLightTheme", RegistryData.Dword(0));
+        var point = store.Begin("theme", "Theme");
+        store.CaptureRegistry(point, Key, "AppsUseLightTheme");
+        store.CaptureRegistry(point, Key, "SystemUsesLightTheme");
+        registry.Write(Key, "AppsUseLightTheme", RegistryData.Dword(1));
+        registry.Write(Key, "SystemUsesLightTheme", RegistryData.Dword(1));
+
+        var look = Integrations.WindowsDefaults.Parse(AeroTheme, tmp.File("windows"), windows11: true);
+        store.ShowFor(Integrations.WindowsDefaults.ForPause(look, store.LoadOriginal()));
+        Assert.Equal(0, registry.Read(Key, "AppsUseLightTheme")!.Number);
+        Assert.Null(registry.Read(Key, "SystemUsesLightTheme"));
+        // Windows' blue as accent, whatever the theme had.
+        Assert.Equal(Themes.ColorMath.ToAbgr("#0078D4"), registry.Read(Integrations.WindowsAppearance.DwmKey, "AccentColor")!.AsInt);
+    }
+
+    [Fact]
     public void The_plain_look_comes_from_windows_default_theme()
     {
         var look = Integrations.WindowsDefaults.Parse(AeroTheme.Replace("0XC40078D4", "0XC4005FB8").Replace("SystemMode=Light", "SystemMode=Dark"), @"C:\Windows", windows11: true);

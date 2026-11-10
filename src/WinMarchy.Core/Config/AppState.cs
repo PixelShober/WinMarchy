@@ -33,6 +33,9 @@ public sealed class AppState
     /// </summary>
     public bool? PausedTaskbarAutoHide { get; set; }
 
+    /// <summary>While WinMarchy is paused: Files was the default file manager, and gets that place back when it resumes.</summary>
+    public bool PausedFilesDefault { get; set; }
+
     /// <summary>Wallpaper position per theme for "next background".</summary>
     public Dictionary<string, int> WallpaperIndex { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

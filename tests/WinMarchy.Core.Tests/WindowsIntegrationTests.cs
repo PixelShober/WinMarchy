@@ -41,6 +41,29 @@ public class FilesDefaultTests
     }
 
     [Fact]
+    public void The_pause_hands_folders_and_win_e_to_explorer_and_back()
+    {
+        using var tmp = new TempDir();
+        var (loc, exe) = FakeFiles(tmp);
+        var registry = new MemoryUserRegistry();
+        var store = new BackupStore(tmp.File("backups"), registry, null);
+        var point = store.Begin("files-default", "Files");
+        FilesDefault.Apply(new IntegrationContext(loc, store, point, new UserSettings()), on: true);
+        int captured = store.Get(point.Id)!.Items.Count;
+
+        FilesDefault.Pause(registry);
+        Assert.False(FilesDefault.IsOn(registry));
+        Assert.False(registry.KeyExists(FilesDefault.WinEKey));
+        // The verb stays, so the pause's end knows where Files is; no restore point changed.
+        Assert.Equal(exe, FilesDefault.Target(registry));
+        Assert.Equal(captured, store.Get(point.Id)!.Items.Count);
+
+        FilesDefault.Resume(registry);
+        Assert.True(FilesDefault.IsOn(registry));
+        Assert.Equal($"\"{exe}\"", registry.Read(FilesDefault.WinEKey + @"\shell\opennewwindow\command", "")!.Text);
+    }
+
+    [Fact]
     public void Switching_off_removes_only_what_points_to_Files()
     {
         using var tmp = new TempDir();

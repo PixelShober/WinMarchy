@@ -555,22 +555,39 @@ public sealed class Engine
 
     /// <summary>What the pause shows as it was before WinMarchy: Windows' colours and the wallpaper.</summary>
     /// <summary>
-    /// Paused: Windows' colours and wallpaper as Windows comes (its default theme, a policy wallpaper
-    /// first), not as they were before WinMarchy: an earlier tool may have changed them too. What
-    /// WinMarchy has set is noted in state.json first, so even a WinMarchy that ends during the pause
-    /// puts it back at its next start (<see cref="ShowWinMarchyLook"/>). Restore points stay as they are.
+    /// Paused: Windows' accent colour and wallpaper as Windows comes (its default theme, a policy
+    /// wallpaper first), not as they were before WinMarchy: an earlier tool may have changed them too.
+    /// Light or dark mode is the user's own from before WinMarchy. Folders and Win+E open in Explorer
+    /// again if Files is the default. What WinMarchy has set is noted in state.json first, so even a
+    /// WinMarchy that ends during the pause puts it back at its next start (<see cref="ShowWinMarchyLook"/>).
+    /// Restore points stay as they are.
     /// </summary>
     public void ShowPlainWindows()
     {
-        if (AppState.Load().PausedLook != null) return;
-        var plain = WindowsDefaults.Read(Backups.Registry);
-        Backups.ShowFor(WindowsDefaults.Items(plain), now => AppState.Update(s => s.PausedLook = now));
-        Win32.BroadcastSettingChange("ImmersiveColorSet");
+        if (AppState.Load().PausedLook == null)
+        {
+            var shown = WindowsDefaults.ForPause(WindowsDefaults.Read(Backups.Registry), Backups.LoadOriginal());
+            Backups.ShowFor(shown, now => AppState.Update(s => s.PausedLook = now));
+            Win32.BroadcastSettingChange("ImmersiveColorSet");
+        }
+        if (FilesDefault.IsOn(Backups.Registry) && !AppState.Load().PausedFilesDefault)
+        {
+            // Noted first: a WinMarchy that ends during the pause gives Files its place back at the next start.
+            AppState.Update(s => s.PausedFilesDefault = true);
+            FilesDefault.Pause(Backups.Registry);
+            Win32.AssociationsChanged();
+        }
     }
 
-    /// <summary>The end of a pause: WinMarchy's colours and wallpaper come back.</summary>
+    /// <summary>The end of a pause: WinMarchy's colours and wallpaper come back, and Files opens folders again if it did.</summary>
     public void ShowWinMarchyLook()
     {
+        if (AppState.Load().PausedFilesDefault)
+        {
+            FilesDefault.Resume(Backups.Registry);
+            AppState.Update(s => s.PausedFilesDefault = false);
+            Win32.AssociationsChanged();
+        }
         if (AppState.Load().PausedLook is not { } look) return;
         Backups.PutBack(look);
         AppState.Update(s => s.PausedLook = null);

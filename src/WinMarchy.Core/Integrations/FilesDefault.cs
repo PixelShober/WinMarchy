@@ -33,6 +33,33 @@ public static class FilesDefault
         return end > 1 ? command[1..end] : null;
     }
 
+    /// <summary>
+    /// The pause: folders and Win+E open in Explorer again, without a restore point. The "Open in
+    /// Files" verb stays, so <see cref="Resume"/> finds Files' path in it. Win+E only if the entry is ours.
+    /// </summary>
+    public static void Pause(IUserRegistry registry)
+    {
+        foreach (var cls in Classes)
+            if (string.Equals(registry.Read(cls + @"\shell", "")?.Text, Verb, StringComparison.OrdinalIgnoreCase))
+                registry.Delete(cls + @"\shell", "");
+        if (OursOnWinE(registry)) registry.DeleteKey(WinEKey);
+    }
+
+    /// <summary>The end of a pause: Files opens folders and Win+E again, as <see cref="Apply"/> set it up.</summary>
+    public static void Resume(IUserRegistry registry)
+    {
+        if (Target(registry) is not { } exe) return;
+        foreach (var cls in Classes)
+            if (registry.KeyExists(cls + @"\shell\" + Verb)) registry.Write(cls + @"\shell", "", RegistryData.Str(Verb));
+        // Another tool's Win+E entry stayed during the pause; it is left as it is.
+        if (registry.KeyExists(WinEKey + @"\shell\opennewwindow\command")) return;
+        registry.Write(WinEKey + @"\shell\opennewwindow\command", "", RegistryData.Str($"\"{exe}\""));
+        registry.Write(WinEKey + @"\shell\opennewwindow\command", "DelegateExecute", RegistryData.Str(""));
+    }
+
+    static bool OursOnWinE(IUserRegistry registry) =>
+        (registry.Read(WinEKey + @"\shell\opennewwindow\command", "")?.Text ?? "").Replace('/', '\\').Contains(@"\WindowsApps\files", StringComparison.OrdinalIgnoreCase);
+
     public static void Apply(IntegrationContext ctx, bool on)
     {
         if (on)
@@ -69,8 +96,7 @@ public static class FilesDefault
             }
         }
         // Win+E only if it is ours: some other tool may have its own entry there.
-        var winE = ctx.Registry.Read(WinEKey + @"\shell\opennewwindow\command", "")?.Text ?? "";
-        if (winE.Contains(@"\WindowsApps\files", StringComparison.OrdinalIgnoreCase))
+        if (OursOnWinE(ctx.Registry))
         {
             ctx.Backups.CaptureRegistry(ctx.Point, WinEKey + @"\shell\opennewwindow\command", "");
             ctx.Backups.CaptureRegistry(ctx.Point, WinEKey + @"\shell\opennewwindow\command", "DelegateExecute");

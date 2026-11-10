@@ -7,9 +7,10 @@ namespace WinMarchy.Core.Integrations;
 public sealed record PlainLook(bool AppsLight, bool SystemLight, string Accent, bool AutoColorization, string? Wallpaper);
 
 /// <summary>
-/// The look of a plain Windows, for the pause: what Windows' default theme (aero.theme) sets, so the
-/// PC looks like any other office PC, whatever WinMarchy or an earlier tool changed before. A
-/// wallpaper set by group policy wins over the theme's.
+/// The look of a plain Windows, for the pause: the accent colour and wallpaper of Windows' default
+/// theme (aero.theme), so the PC looks like any other office PC, whatever WinMarchy or an earlier
+/// tool changed. A wallpaper set by group policy wins over the theme's. Light or dark mode stays the
+/// user's own (<see cref="ForPause"/>).
 /// </summary>
 public static class WindowsDefaults
 {
@@ -88,6 +89,24 @@ public static class WindowsDefaults
         };
         if (look.Wallpaper != null)
             items.Add(new CapturedItem { Kind = "wallpaper", Target = "wallpaper", Existed = true, OriginalPath = look.Wallpaper, Captured = now });
+        return items;
+    }
+
+    /// <summary>The two values for light or dark mode (apps, and taskbar and Start).</summary>
+    static readonly string[] ModeValues = { "AppsUseLightTheme", "SystemUsesLightTheme" };
+
+    static bool IsMode(CapturedItem item) =>
+        item.Kind == "registry" && ModeValues.Any(m => item.Target == WindowsAppearance.PersonalizeKey + "|" + m);
+
+    /// <summary>
+    /// What the pause shows: Windows' accent colour and wallpaper (<see cref="Items"/>), and light or
+    /// dark mode as the user had it before WinMarchy (from the "original" restore point). A mode
+    /// WinMarchy never changed is not in there and stays as it is.
+    /// </summary>
+    public static List<CapturedItem> ForPause(PlainLook look, RestorePoint? original)
+    {
+        var items = Items(look).Where(i => !IsMode(i)).ToList();
+        if (original != null) items.AddRange(original.Items.Where(IsMode));
         return items;
     }
 

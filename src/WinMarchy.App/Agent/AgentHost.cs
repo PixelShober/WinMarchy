@@ -862,7 +862,7 @@ public sealed class AgentHost : IAgentHost, IDisposable
     /// </summary>
     void EndPauseOfLastRun()
     {
-        if (AppState.Load().PausedLook != null)
+        if (AppState.Load() is { PausedLook: not null } or { PausedFilesDefault: true })
         {
             Log.Info(L.T("pause.endedByRestart"));
             try { AppModel.Engine.ShowWinMarchyLook(); }
