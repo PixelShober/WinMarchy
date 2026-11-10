@@ -9,9 +9,14 @@ namespace WinMarchy.App.Pages;
 
 public partial class RestorePage : UserControl, IPage
 {
+    bool _canReset;
+    readonly Action _checkReset;
+
     public RestorePage()
     {
         InitializeComponent();
+        // Resetting while a program installs would leave it half there.
+        _checkReset = InstallLock.Bind(ResetAll, () => _canReset);
         if (AppModel.Jobs.Get("restore") != null) Job.Follow("restore");
     }
 
@@ -21,9 +26,10 @@ public partial class RestorePage : UserControl, IPage
         OriginalText.Text = original == null || original.Items.Count == 0
             ? L.T("restore.nothingYet")
             : L.T("restore.originalText", ("count", original.Items.Count), ("date", original.Created.ToString("d", L.Culture)));
-        ResetAll.IsEnabled = original is { Items.Count: > 0 } || AppState.Load().InstalledTools.Count > 0;
+        _canReset = original is { Items.Count: > 0 } || AppState.Load().InstalledTools.Count > 0;
         var tools = AppState.Load().InstalledTools.Select(ToolCatalog.Find).OfType<ToolDef>().Select(t => t.Name).ToList();
         RemoveTools.IsEnabled = tools.Count > 0;
+        _checkReset();
         RemoveToolsHint.Text = tools.Count > 0 ? string.Join(", ", tools) : L.T("restore.noTools");
         RenderPoints();
     }

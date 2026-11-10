@@ -23,6 +23,13 @@ public sealed class LayoutStore
     /// <summary>The layout each workspace's windows are arranged in now. Missing: as GlazeWM tiles them by itself.</summary>
     public Dictionary<string, LayoutMode> Workspaces { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// GlazeWM's id of each workspace when WinMarchy arranged its windows. GlazeWM gives a workspace a
+    /// new id when it opens it again or restarts; its windows are then in GlazeWM's own tiles, whatever
+    /// <see cref="Workspaces"/> says.
+    /// </summary>
+    public Dictionary<string, string> WorkspaceIds { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Scrolling workspaces: their columns left to right, by window handle (survives a restart of WinMarchy).</summary>
     public Dictionary<string, List<long>> Columns { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -62,6 +69,8 @@ public sealed class LayoutStore
             if (LayoutEngine.TryParse(mode, out var m)) store.Workspaces[name] = m;
             else if (string.Equals(mode, "floating", StringComparison.OrdinalIgnoreCase)) store.FormerlyFloating.Add(name);
         }
+        foreach (var (name, id) in Modes(root["workspaceIds"]))
+            if (!string.IsNullOrEmpty(id)) store.WorkspaceIds[name] = id;
         foreach (var (name, mode) in Modes(root["overrides"]))
             if (LayoutEngine.TryParse(mode, out var m)) store.Overrides[name] = m;
         if (root["untilClosed"] is JsonObject untilClosed)
@@ -431,24 +440,27 @@ public sealed class LayoutEngine
 
     /// <summary>
     /// Brings a shown workspace's windows into the layout it should have now (<see cref="ModeOf"/>),
-    /// if they are arranged in another. A hidden workspace waits until it is shown: rearranging means
-    /// focusing its windows, and that would switch to it. Returns the layout the windows follow now.
-    /// Caller holds the gate.
+    /// if they are arranged in another or WinMarchy does not know how they are arranged: GlazeWM
+    /// tiled them by itself (it restarted, or they came while the workspace was hidden). A hidden
+    /// workspace waits until it is shown: rearranging means focusing its windows, and that would
+    /// switch to it. Returns the layout the windows follow now. Caller holds the gate.
     /// </summary>
     async Task<LayoutMode> ReconcileLockedAsync(string workspace, JsonElement monitors, CancellationToken ct)
     {
         _screenOf = GlazeTree.ScreenOfWorkspaces(monitors);
         var wanted = ModeOf(workspace);
-        var now = Arranged(workspace);
-        if (now == wanted) return wanted;
         var area = WorkspaceArea.All(monitors).FirstOrDefault(a => a.Name == workspace);
+        var stored = Arranged(workspace);
+        var now = StillArranged(workspace, area?.Id) ? stored : null;
+        if (now == wanted) return wanted;
         // Hidden: its windows stay as they are, so they are placed as they are (GlazeWM's tiles split like Dwindle).
         if (area is not { Displayed: true }) return now ?? LayoutMode.Dwindle;
 
         Log.Trace($"layout: workspace {workspace} from {(now is { } n ? Id(n) : "GlazeWM's tiles")} to {Id(wanted)}", "layout");
         _store.Workspaces[workspace] = wanted;
+        _store.WorkspaceIds[workspace] = area.Id;
         _store.Save();
-        if (now == LayoutMode.Scrolling)
+        if (stored == LayoutMode.Scrolling)
         {
             // Columns waiting off the screen come back first, then all of them into the tiles.
             foreach (var (id, staged) in ColumnsOf(workspace, monitors))
@@ -469,10 +481,21 @@ public sealed class LayoutEngine
             _strips.Remove(workspace);
             await ArrangeLockedAsync(workspace, null, ct);
         }
-        // Windows GlazeWM tiled by itself stay where they are; a layout WinMarchy had set is redone.
-        else if (now != null) await RelayoutAsync(workspace, wanted, ct);
+        // Also windows GlazeWM tiled by itself: they show the layout the screen has, and Win+Ctrl+J
+        // visibly changes it. A workspace with one window has nothing to rearrange.
+        else await RelayoutAsync(workspace, wanted, ct);
         return wanted;
     }
+
+    /// <summary>
+    /// Whether the workspace's windows are still as WinMarchy arranged them: GlazeWM has not opened it
+    /// anew or restarted since (its id is the same). Unknown ids (layouts.json of older versions) count
+    /// as rearranged by GlazeWM.
+    /// </summary>
+    internal static bool StillArranged(LayoutStore store, string workspace, string? currentId) =>
+        currentId is null || (store.WorkspaceIds.TryGetValue(workspace, out var known) && known == currentId);
+
+    bool StillArranged(string workspace, string? currentId) => StillArranged(_store, workspace, currentId);
 
     /// <summary>
     /// The columns of a scrolling workspace and whether each waits in the staging workspace: the strip
@@ -604,7 +627,7 @@ public sealed class LayoutEngine
             foreach (var name in names)
             {
                 // A closed workspace has no windows: no arrangement, no columns, and a work mode's layout ends.
-                changed |= _store.Overrides.Remove(name) | _store.Workspaces.Remove(name) | _store.Columns.Remove(name);
+                changed |= _store.Overrides.Remove(name) | _store.Workspaces.Remove(name) | _store.WorkspaceIds.Remove(name) | _store.Columns.Remove(name);
                 _strips.Remove(name);
                 foreach (var id in _yielded.Where(y => y.Value.Workspace == name).Select(y => y.Key).ToList()) _yielded.Remove(id);
                 Log.Trace($"layout: workspace {name} closed", "layout");

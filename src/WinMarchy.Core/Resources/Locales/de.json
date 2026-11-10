@@ -142,7 +142,7 @@
     "bar": "Leiste oben anzeigen",
     "barHint": "Workspaces, Uhr, Netz, Ton und Akku, wie Waybar in Omarchy.",
     "wallpapers": "Hintergrundbilder laden",
-    "wallpapersHint": "Alle {count} Bilder der {themes} Themes, etwa {size}. Dann hat jedes Theme gleich seine Bilder.",
+    "wallpapersHint": "Alle {count} Bilder der {themes} Themes, etwa {size}. Ohne Haken kommen nur die Bilder des aktuellen Themes, die anderen beim ersten Wechsel.",
     "start": "Einrichtung starten",
     "startHint": "Dauert je nach Leitung ein bis drei Minuten.",
     "done": "Fertig eingerichtet. Win+K zeigt dir alle Tastenkürzel.",
@@ -152,7 +152,9 @@
     "extrasDone": "Extras installiert.",
     "piNeedsBash": "Braucht Git Bash, das hier noch fehlt.",
     "experimental": "Experimentell",
-    "glazeOfficial": "Offizielles Release, wird ersetzt"
+    "glazeOfficial": "Offizielles Release, wird ersetzt",
+    "fluentSettings": "Einstellungen von Fluent Search setzen",
+    "fluentSettingsHint": "Setzt Alt+F24 als Kürzel (das drückt die Win-Taste), schaltet den eigenen Autostart ab und färbt Fluent Search im Theme. Überschreibt dabei, was du in Fluent Search eingestellt hast. Ohne Haken bleibt alles, wie es ist; ein frisch installiertes Fluent Search bekommt die Einstellungen trotzdem, sonst öffnet die Win-Taste es nicht."
   },
 
   "themes": {
@@ -662,7 +664,8 @@
     "toolUpdates": "Programme aktualisieren",
     "glazeUpdate": "GlazeWM auf {version} aktualisieren",
     "toolUpdate": "{tool} aktualisieren",
-    "afterUpdate": "WinMarchy {version}: GlazeWM, Tastenkürzel und Leiste neu einrichten"
+    "afterUpdate": "WinMarchy {version}: GlazeWM, Tastenkürzel und Leiste neu einrichten",
+    "installRunning": "Gerade wird etwas installiert. Das geht erst, wenn es fertig ist."
   },
 
   "steps": {
@@ -714,7 +717,8 @@
     "flowRetire": "Flow Launcher ablösen",
     "notNeeded": "nicht nötig",
     "fluentSearchTheme": "Fluent Search einfärben",
-    "updateDone": "Neue Version vermerken"
+    "updateDone": "Neue Version vermerken",
+    "fluentSearchKept": "Einstellungen bleiben, wie sie sind"
   },
 
   "integrations": {
@@ -1019,7 +1023,8 @@
       "winmarchy": "WinMarchy prüfen",
       "checking": "Suche nach einer neuen Version …",
       "glazewm": "GlazeWM neu laden",
-      "windows": "Windows Update"
+      "windows": "Windows Update",
+      "tools": "Programme aktualisieren"
     },
     "system": {
       "lock": "Sperren",

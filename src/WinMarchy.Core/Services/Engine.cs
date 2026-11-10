@@ -13,6 +13,13 @@ public sealed record SetupOptions(bool InstallGlazeWm, bool InstallBar, bool Ins
 {
     /// <summary>Ticked extras: PowerShell 7, Starship, Fastfetch, Herdr, Pi … (tool ids).</summary>
     public IReadOnlyCollection<string> Extras { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Whether WinMarchy sets Fluent Search's settings (Alt+F24, no autostart of its own, the theme's
+    /// accent) where Fluent Search already has some. Off by default: they are the user's. A Fluent
+    /// Search without settings gets them anyway, or the Win key would not open it.
+    /// </summary>
+    public bool FluentSearchSettings { get; init; }
 }
 
 /// <summary>
@@ -333,7 +340,8 @@ public sealed class Engine
     }
 
     /// <summary>The theme steps without their own restore point (the full setup shares its point).</summary>
-    List<SetupStep> ThemeChanges(OmarchyTheme theme, bool downloadWallpapers, Func<RestorePoint> pointOf)
+    /// <param name="fluentSearch">The full setup: whether it may touch Fluent Search's settings (null: as the theme targets say).</param>
+    List<SetupStep> ThemeChanges(OmarchyTheme theme, bool downloadWallpapers, Func<RestorePoint> pointOf, Func<bool>? fluentSearch = null)
     {
         var targets = S.ThemeTargets;
         var palette = theme.Palette;
@@ -363,7 +371,9 @@ public sealed class Engine
                 () => targets.VsCode ? null : L.T("steps.off")),
             new(L.T("steps.fluentSearchTheme"), (step, ct) => FluentSearchConfig.ApplyThemeAsync(Ctx(step), palette, Components.Status(ToolCatalog.FluentSearch).Path,
                     start: true, ct),
-                () => !targets.FluentSearch ? L.T("steps.off") : Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notSetUp")),
+                () => !targets.FluentSearch ? L.T("steps.off")
+                    : !Components.Status(ToolCatalog.FluentSearch).Installed ? L.T("steps.notSetUp")
+                    : fluentSearch?.Invoke() == false ? L.T("steps.fluentSearchKept") : null),
             new(L.T("steps.files"), (step, _) => { FilesTheme.Apply(Ctx(step), palette); return Task.CompletedTask; },
                 () => targets.Files ? null : L.T("steps.off")),
             new(L.T("steps.windows"), (step, _) => { WindowsAppearance.Apply(Ctx(step), palette); return Task.CompletedTask; },
@@ -696,10 +706,18 @@ public sealed class Engine
         Install(Bars.Tool, o.InstallBar);
         Install(ToolCatalog.AutoHotkey, o.InstallAutoHotkey);
         Install(ToolCatalog.FluentSearch, o.InstallLauncher);
-        // Its settings come before the theme, which then only sets the accent colour.
-        steps.Add(new SetupStep(L.T("steps.fluentSearch"), (step, ct) => FluentSearchConfig.SetupAsync(Context(point!, step), CurrentTheme.Palette,
-                Components.Status(ToolCatalog.FluentSearch).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", ToolCatalog.FluentSearch.Name)), start: false, ct),
-            () => o.InstallLauncher || Components.Status(ToolCatalog.FluentSearch).Installed ? null : L.T("steps.notChosen")));
+        // Its settings come before the theme, which then only sets the accent colour. Settings Fluent
+        // Search already has stay, unless the user ticked that WinMarchy sets them.
+        bool fluentSettings = false;
+        steps.Add(new SetupStep(L.T("steps.fluentSearch"), (step, ct) =>
+            {
+                fluentSettings = true;
+                return FluentSearchConfig.SetupAsync(Context(point!, step), CurrentTheme.Palette,
+                    Components.Status(ToolCatalog.FluentSearch).Path ?? throw new WinMarchyException("toolNotFoundAfterInstall", ("tool", ToolCatalog.FluentSearch.Name)), start: false, ct);
+            },
+            () => !o.InstallLauncher && !Components.Status(ToolCatalog.FluentSearch).Installed ? L.T("steps.notChosen")
+                : o.FluentSearchSettings || !FluentSearchConfig.HasSettings(_loc, Components.Status(ToolCatalog.FluentSearch).Path) ? null
+                : L.T("steps.fluentSearchKept")));
         foreach (var extra in ToolCatalog.Extras)
         {
             Install(extra, o.Extras.Contains(extra.Id));
@@ -731,7 +749,8 @@ public sealed class Engine
         // All wallpapers, if wanted: switching themes later then needs no download.
         if (o.DownloadWallpapers) steps.Add(DownloadAllWallpapersStep());
         // The theme runs last: it styles everything that was just installed.
-        steps.AddRange(ThemeChanges(CurrentTheme, o.DownloadWallpapers, () => point!));
+        // The current theme's pictures always come (it sets one as wallpaper); the others only with "all wallpapers".
+        steps.AddRange(ThemeChanges(CurrentTheme, downloadWallpapers: true, () => point!, () => fluentSettings));
         steps.Add(new SetupStep(L.T("steps.bar"), (step, _) =>
         {
             Components.StopBar();

@@ -16,6 +16,8 @@ public partial class SetupPage : UserControl, IPage
     readonly CheckBox _taskbar;
     readonly CheckBox _bar;
     readonly CheckBox _wallpapers;
+    readonly CheckBox _fluentSettings;
+    readonly Action _checkExtras;
 
     public SetupPage()
     {
@@ -25,10 +27,17 @@ public partial class SetupPage : UserControl, IPage
         _taskbar = UiKit.Switch(L.T("setup.taskbar"), s.HideTaskbar, L.T("setup.taskbarHint"));
         _bar = UiKit.Switch(L.T("setup.bar"), s.ShowBar, L.T("setup.barHint"));
         var bytes = ThemeCatalog.All.Sum(t => t.Backgrounds.Sum(b => b.Size));
-        _wallpapers = UiKit.Switch(L.T("setup.wallpapers"), true,
+        // Off: the current theme's wallpapers come anyway; all of them are a large download.
+        _wallpapers = UiKit.Switch(L.T("setup.wallpapers"), false,
             L.T("setup.wallpapersHint", ("count", Wallpapers.AllCount()), ("themes", ThemeCatalog.All.Count), ("size", Net.Mb(bytes))));
-        foreach (var c in new[] { _autostart, _taskbar, _bar, _wallpapers }) Options.Children.Add(c);
+        // Off: Fluent Search's settings are the user's. A Fluent Search without any gets WinMarchy's anyway.
+        _fluentSettings = UiKit.Switch(L.T("setup.fluentSettings"), false, L.T("setup.fluentSettingsHint"));
+        foreach (var c in new[] { _autostart, _taskbar, _bar, _wallpapers, _fluentSettings }) Options.Children.Add(c);
         if (AppModel.Jobs.Get("setup") != null) Job.Follow("setup");
+        // One installation at a time: a second click while one runs would only start it again.
+        _checkExtras = InstallLock.Bind(InstallExtras, () => WantedExtras().Any());
+        InstallLock.Bind(StartButton);
+        InstallLock.OnChange(() => { if (IsVisible && !InstallLock.Busy) OnShown(); });
     }
 
     public void OnShown()
@@ -98,7 +107,7 @@ public partial class SetupPage : UserControl, IPage
 
     void UpdateExtrasButton()
     {
-        InstallExtras.IsEnabled = WantedExtras().Any();
+        _checkExtras?.Invoke();
         InstallExtras.Visibility = ToolCatalog.Extras.All(t => AppModel.Engine.Components.Status(t).Installed)
             ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -118,6 +127,7 @@ public partial class SetupPage : UserControl, IPage
                 });
             });
         if (job != null) Job.Follow(job.Id);
+        _checkExtras();
     }
 
     void OnStart(object sender, RoutedEventArgs e)
@@ -132,6 +142,7 @@ public partial class SetupPage : UserControl, IPage
         var options = new SetupOptions(Want("glazewm"), Want(Bars.Tool.Id), Want("autohotkey"), Want(ToolCatalog.FluentSearch.Id), _wallpapers.IsChecked == true)
         {
             Extras = WantedExtras().Select(t => t.Id).ToList(),
+            FluentSearchSettings = _fluentSettings.IsChecked == true,
         };
         var job = AppModel.Run("setup", "setup", L.T("jobs.setup"), AppModel.Engine.SetupSteps(options), async j =>
         {
@@ -145,6 +156,9 @@ public partial class SetupPage : UserControl, IPage
                 OnShown();
             });
         });
-        if (job != null) Job.Follow(job.Id);
+        if (job == null) return;
+        Job.Follow(job.Id);
+        // The steps are below the button; show them.
+        Dispatcher.InvokeAsync(() => Job.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 }

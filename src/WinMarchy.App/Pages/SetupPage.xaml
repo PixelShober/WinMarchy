@@ -24,6 +24,7 @@
           <TextBlock Text="{ui:T setup.extrasText}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,2,0,14" />
           <StackPanel x:Name="ExtraChoices" />
           <Button x:Name="InstallExtras" Content="{ui:T setup.installExtras}" Click="OnInstallExtras" HorizontalAlignment="Left" Margin="0,0,0,14" />
+          <ui:InstallProgress />
           <TextBlock x:Name="Detected" Style="{StaticResource Small}" Margin="0,6,0,0" />
         </StackPanel>
       </Border>

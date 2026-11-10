@@ -114,6 +114,7 @@ static class MenuModel
         "update" => new[]
         {
             Do("download", "update.winmarchy", CheckForUpdate),
+            new MenuEntry("download", L.T("menu.update.tools")) { Run = UpdateTools, OwnWindow = true },
             Item("refresh", "update.glazewm", "do:reload"),
             Item("download", "update.windows", "open:ms-settings:windowsupdate"),
         },
@@ -176,6 +177,13 @@ static class MenuModel
                 : s.Available ? L.T("settings.updateAvailable", ("version", s.Latest))
                 : L.T("settings.upToDate"));
         });
+    }
+
+    /// <summary>Opens WinMarchy on Start and looks for new releases of its programs right away; Start offers them.</summary>
+    static void UpdateTools()
+    {
+        Pages.OverviewPage.RequestCheck();
+        OpenPage("start");
     }
 
     static void Suspend()

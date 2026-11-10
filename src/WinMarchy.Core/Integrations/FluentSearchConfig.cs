@@ -37,6 +37,10 @@ public static class FluentSearchConfig
         return Path.Combine(loc.AppData, "Blast", "Settings");
     }
 
+    /// <summary>Whether Fluent Search has settings of its own already (its "System" page, where the hotkey is).</summary>
+    public static bool HasSettings(Locations loc, string? exe) =>
+        exe != null && File.Exists(Path.Combine(SettingsDir(loc, exe), "System.json"));
+
     /// <summary>The settings pages WinMarchy carries a template for, e.g. "System.json".</summary>
     public static IReadOnlyList<string> TemplateFiles() => typeof(FluentSearchConfig).Assembly.GetManifestResourceNames()
         .Where(n => n.StartsWith(ResourcePrefix, StringComparison.Ordinal))

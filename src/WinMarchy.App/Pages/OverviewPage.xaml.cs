@@ -15,12 +15,33 @@ public partial class OverviewPage : UserControl, IPage
     List<ToolDef> _newer = new();
     /// <summary>Follows the agent's pause (the agent starts after this page may have been made).</summary>
     bool _followsPause;
+    /// <summary>The WinMarchy menu asked for a lookup of new releases now (<see cref="RequestCheck"/>).</summary>
+    static bool _checkRequested;
+    static event Action? CheckRequested;
+
+    /// <summary>
+    /// "Update programs" in the WinMarchy menu: the next time Start shows (or now, if it shows), it
+    /// looks for new releases at once, however recent the last lookup was.
+    /// </summary>
+    public static void RequestCheck()
+    {
+        _checkRequested = true;
+        CheckRequested?.Invoke();
+    }
 
     public OverviewPage()
     {
         InitializeComponent();
         AppModel.SettingsChanged += () => Dispatcher.InvokeAsync(Refresh);
         ToolUpdates.Changed += () => Dispatcher.InvokeAsync(() => { if (IsVisible) RenderTools(); });
+        // "Update to …" and "Update all" wait while anything installs.
+        InstallLock.OnChange(() => { if (IsVisible) RenderTools(); });
+        CheckRequested += () => Dispatcher.InvokeAsync(() =>
+        {
+            if (!IsVisible) return;
+            _checkRequested = false;
+            _ = CheckVersionsAsync(TimeSpan.Zero);
+        });
     }
 
     public void OnShown()
@@ -31,7 +52,9 @@ public partial class OverviewPage : UserControl, IPage
             _followsPause = true;
         }
         Refresh();
-        _ = CheckVersionsAsync(ToolUpdates.MaxAge);
+        var maxAge = _checkRequested ? TimeSpan.Zero : ToolUpdates.MaxAge;
+        _checkRequested = false;
+        _ = CheckVersionsAsync(maxAge);
     }
 
     void Refresh()
@@ -119,7 +142,7 @@ public partial class OverviewPage : UserControl, IPage
         _newer = newer;
         UpdateAll.Content = L.T("overview.updateAll", ("count", newer.Count));
         UpdateAll.Visibility = newer.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
-        UpdateAll.IsEnabled = !AppModel.Jobs.IsRunning("setup");
+        UpdateAll.IsEnabled = !InstallLock.Busy;
         VersionsChecked.Text = _checking ? L.T("overview.versionsChecking")
             : updatable.Count == 0 ? L.T("overview.versionsNone")
             : ToolUpdates.CheckedUtc(state) is { } checkedUtc ? L.T("overview.versionsChecked", ("date", checkedUtc.ToLocalTime().ToString("g", L.Culture)))
@@ -133,7 +156,7 @@ public partial class OverviewPage : UserControl, IPage
         {
             var button = UiKit.IconTextButton("download", L.T("overview.updateTo", ("version", tag)));
             button.ToolTip = L.T("overview.updateToHint", ("tool", status.Tool.Name));
-            button.IsEnabled = !AppModel.Jobs.IsRunning("setup");
+            button.IsEnabled = !InstallLock.Busy;
             button.Click += (_, _) => RunUpdates(new[] { status.Tool }, L.T("jobs.toolUpdate", ("tool", status.Tool.Name)));
             return button;
         }

@@ -223,6 +223,23 @@ public class WorkModeTests
     }
 
     [Fact]
+    public void Windows_glazewm_tiled_itself_count_as_not_arranged()
+    {
+        var store = new LayoutStore { Workspaces = { ["1"] = LayoutMode.Dwindle, ["2"] = LayoutMode.Columns } };
+        store.WorkspaceIds["1"] = "ws-a";
+        var back = LayoutStore.Parse(Json.Serialize(store));
+        Assert.Equal("ws-a", back.WorkspaceIds["1"]);
+        // Same workspace as when WinMarchy arranged it.
+        Assert.True(LayoutEngine.StillArranged(back, "1", "ws-a"));
+        // GlazeWM restarted or opened it anew: its windows are in GlazeWM's own tiles again.
+        Assert.False(LayoutEngine.StillArranged(back, "1", "ws-b"));
+        // layouts.json of an older version knows no ids: arranged once more.
+        Assert.False(LayoutEngine.StillArranged(back, "2", "ws-c"));
+        // Not open: nothing to compare.
+        Assert.True(LayoutEngine.StillArranged(back, "1", null));
+    }
+
+    [Fact]
     public void Layouts_json_of_older_versions_is_read()
     {
         // "untilClosed" held the layout from before a work mode; the one it used was in "workspaces".

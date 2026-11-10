@@ -15,6 +15,8 @@ public partial class SettingsPage : UserControl, IPage
     public SettingsPage()
     {
         InitializeComponent();
+        InstallLock.Bind(GlazeFork);
+        InstallLock.Bind(BlurSwitch);
         Subtitle.Text = L.T("settings.subtitle", ("path", Paths.SettingsFile));
         foreach (var (tag, key) in new[] { ("auto", "settings.languages.auto"), ("de", "settings.languages.de"), ("de-CH", "settings.languages.deCH"), ("en", "settings.languages.en") })
             LanguageBox.Items.Add(new ComboBoxItem { Content = L.T(key), Tag = tag });

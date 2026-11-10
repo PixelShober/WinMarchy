@@ -119,8 +119,11 @@ public class LauncherTests
         Assert.Equal(File.ReadAllText(Path.Combine(dir, "System.json")), File.ReadAllText(Path.Combine(dir, "System.backup.json")));
         Assert.Contains("\"OpenLinksInBrowser\",\"Value\":true", File.ReadAllText(Path.Combine(dir, "Web.json")));
         Assert.Equal(0x87, Value(File.ReadAllText(Path.Combine(dir, "System.json")), "Search hotkey")!["HotKeys"]![1]!.GetValue<int>());
+        // From now on the setup leaves them alone unless the user ticks that WinMarchy sets them.
+        Assert.True(FluentSearchConfig.HasSettings(loc, exe));
 
         store.Restore(point);
+        Assert.False(FluentSearchConfig.HasSettings(loc, exe));
         Assert.Equal(new[] { "Web.json" }, Directory.GetFiles(dir, "*.json").Select(Path.GetFileName));
     }
 

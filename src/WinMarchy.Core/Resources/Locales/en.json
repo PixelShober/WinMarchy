@@ -142,7 +142,7 @@
     "bar": "Show the top bar",
     "barHint": "Workspaces, clock, network, sound and battery, like Waybar in Omarchy.",
     "wallpapers": "Download wallpapers",
-    "wallpapersHint": "All {count} pictures of the {themes} themes, about {size}. Every theme then has its pictures right away.",
+    "wallpapersHint": "All {count} pictures of the {themes} themes, about {size}. Without the tick only the current theme's pictures come, the others at the first switch.",
     "start": "Start setup",
     "startHint": "Takes one to three minutes, depending on your connection.",
     "done": "All set. Win+K shows every shortcut.",
@@ -152,7 +152,9 @@
     "extrasDone": "Extras installed.",
     "piNeedsBash": "Needs Git Bash, which is missing here.",
     "experimental": "Experimental",
-    "glazeOfficial": "Official release, gets replaced"
+    "glazeOfficial": "Official release, gets replaced",
+    "fluentSettings": "Set Fluent Search's settings",
+    "fluentSettingsHint": "Sets Alt+F24 as hotkey (the Win key presses it), turns off its own autostart and colours Fluent Search in the theme. This overwrites what you set in Fluent Search. Without the tick everything stays as it is; a freshly installed Fluent Search gets the settings anyway, or the Win key would not open it."
   },
 
   "themes": {
@@ -662,7 +664,8 @@
     "toolUpdates": "Update programs",
     "glazeUpdate": "Update GlazeWM to {version}",
     "toolUpdate": "Update {tool}",
-    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again"
+    "afterUpdate": "WinMarchy {version}: set up GlazeWM, shortcuts and bar again",
+    "installRunning": "Something is being installed. This works once it is done."
   },
 
   "steps": {
@@ -714,7 +717,8 @@
     "flowRetire": "Retire Flow Launcher",
     "notNeeded": "not needed",
     "fluentSearchTheme": "Colour Fluent Search",
-    "updateDone": "Note the new version"
+    "updateDone": "Note the new version",
+    "fluentSearchKept": "Settings stay as they are"
   },
 
   "integrations": {
@@ -1019,7 +1023,8 @@
       "winmarchy": "Check WinMarchy",
       "checking": "Looking for a new version …",
       "glazewm": "Reload GlazeWM",
-      "windows": "Windows Update"
+      "windows": "Windows Update",
+      "tools": "Update programs"
     },
     "system": {
       "lock": "Lock",
