@@ -664,6 +664,10 @@ public sealed class Engine
                 case "greenshot":
                     foreach (var p in Process.GetProcessesByName(process)) using (p) { try { p.Kill(); p.WaitForExit(3000); } catch { } }
                     break;
+                case "fluentsearch":
+                    // It sits behind the Win key and always runs: ended for the swap, started again after.
+                    await FluentSearchConfig.StopAsync(ct);
+                    break;
                 default:
                     if (wasRunning)
                     {
@@ -692,6 +696,9 @@ public sealed class Engine
                         break;
                     case "greenshot" when wasRunning && Components.Status(tool).Path is { } exe:
                         Platform.AppLauncher.Start(exe);
+                        break;
+                    case "fluentsearch" when wasRunning:
+                        Components.StartLauncher();
                         break;
                 }
             }

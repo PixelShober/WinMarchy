@@ -356,7 +356,9 @@ public sealed class LayoutEngine
                 var index = strip.Ids.IndexOf(id);
                 // A dialog or a window floated by a rule is not a column; leave its focus alone.
                 if (index < 0 && GlazeTree.WindowState(window) != "tiling") break;
-                if (index >= 0 && GlazeTree.WindowState(window) == "floating")
+                // A column in full screen counts like a floating one: it is not placed, and arranging
+                // the row for it again would focus it again, and that focus would arrange the row again.
+                if (index >= 0 && GlazeTree.WindowState(window) is "floating" or "fullscreen")
                 {
                     if (index == strip.Focus) break;
                     bool onScreen = index >= strip.Start && index < strip.Start + Visible;
@@ -816,8 +818,13 @@ public sealed class LayoutEngine
         if (focusId != null && strip.Ids.IndexOf(focusId) is var fi and >= 0) strip.Focus = fi;
         else if (arriving.Count > 0) strip.Focus = insertAt - 1;
         else if (windows.FirstOrDefault(w => w.Focused) is { } focused && strip.Ids.IndexOf(focused.Id) is var ff and >= 0) strip.Focus = ff;
-        _store.Columns[workspace] = strip.Ids.Select(id => present[id].Handle).ToList();
-        _store.Save();
+        // Written only when the columns change: arranging happens many times a minute.
+        var handles = strip.Ids.Select(id => present[id].Handle).ToList();
+        if (!known.SequenceEqual(handles))
+        {
+            _store.Columns[workspace] = handles;
+            _store.Save();
+        }
         if (strip.Ids.Count == 0 || !area.Displayed) return;
 
         int gap = (int)Math.Round(_settings().InnerGap * area.Scale);
@@ -835,7 +842,9 @@ public sealed class LayoutEngine
         }
         Log.Trace($"scrolling {workspace}: {strip.Ids.Count} columns, focus {strip.Focus}, from {strip.Start}, {Visible} on screen", "layout");
         // Only when the user is on this workspace: focusing a window switches GlazeWM to it.
-        if (focus && area.Focused) await _ipc.CommandAsync($"focus --container-id {strip.Ids[strip.Focus]}", ct);
+        // A column that has the focus already gets no new one: each focus comes back as an event.
+        if (focus && area.Focused && !present[strip.Ids[strip.Focus]].Focused)
+            await _ipc.CommandAsync($"focus --container-id {strip.Ids[strip.Focus]}", ct);
     }
 
     /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
