@@ -211,6 +211,12 @@ public sealed class LayoutEngine
     /// </summary>
     readonly Dictionary<string, (string Workspace, bool Maximized, HashSet<string> Newcomers, bool BackOnFocus)> _yielded = new();
     readonly SemaphoreSlim _busy;
+    /// <summary>
+    /// The window the scrolling layout just gave the focus, and when. GlazeWM reports that focus back
+    /// as an event; answering it would arrange the row again, focus again, and so on (the flicker
+    /// in the logs of 13 November). Only touched while holding the gate.
+    /// </summary>
+    (string? Id, DateTime At) _ownFocus;
 
     /// <param name="chooseScreen">Saves a screen's layout chosen with Win+Ctrl+J into the settings.</param>
     public LayoutEngine(GlazeIpc ipc, Action<string> notify, SemaphoreSlim? gate = null, Func<UserSettings>? settings = null, Action<int, LayoutMode>? chooseScreen = null)
@@ -363,6 +369,8 @@ public sealed class LayoutEngine
     /// </summary>
     async Task PlaceLockedAsync(string eventType, JsonElement window, string id, JsonElement monitors, CancellationToken ct)
     {
+        // The echo of a focus the scrolling layout set itself: nothing to do.
+        if (eventType == "focus_changed" && IsOwnFocus(id)) return;
         var ws = GlazeTree.WorkspaceOf(monitors, id);
         var name = ws is { } w2 ? GlazeTree.Str(w2, "name") : null;
         if (name == null || !GlazeConfig.IsRegular(name)) return;
@@ -388,7 +396,10 @@ public sealed class LayoutEngine
             }
         }
 
-        if (eventType == "focus_changed") await FullscreenOnFocusLockedAsync(window, id, name, ws!.Value, ct);
+        // Only a focus that still holds: events arrive late, and a stale one would push a window out
+        // of the full screen it just got back.
+        if (eventType == "focus_changed" && GlazeTree.WindowInfos(monitors).Any(w => w.Id == id && w.Focused))
+            await FullscreenOnFocusLockedAsync(window, id, name, ws!.Value, ct);
 
         switch (mode)
         {
@@ -482,6 +493,9 @@ public sealed class LayoutEngine
             if (windows.Any(w => GlazeTree.Str(w, "id") == id && GlazeTree.WindowState(w) == "minimized")) continue;
             Log.Trace($"fullscreen: {id} gets its full screen back, the windows that came for it are closed", "layout");
             await _ipc.CommandAsync("set-fullscreen" + (maximized ? " --maximized" : ""), ct, id);
+            // GlazeWM gave the focus to a window next to it when the last one closed; it was in front
+            // before. Only on the workspace the user is on: focusing would switch to another.
+            if (GlazeTree.Bool(ws, "hasFocus")) await _ipc.CommandAsync($"focus --container-id {id}", ct);
         }
     }
 
@@ -900,7 +914,22 @@ public sealed class LayoutEngine
         // Only when the user is on this workspace: focusing a window switches GlazeWM to it.
         // A column that has the focus already gets no new one: each focus comes back as an event.
         if (focus && area.Focused && !present[strip.Ids[strip.Focus]].Focused)
+        {
+            _ownFocus = (strip.Ids[strip.Focus], DateTime.UtcNow);
             await _ipc.CommandAsync($"focus --container-id {strip.Ids[strip.Focus]}", ct);
+        }
+    }
+
+    /// <summary>
+    /// Whether a focus event only reports the focus <see cref="ArrangeLockedAsync"/> set a moment ago.
+    /// Used up by the first such event; a later focus on the same window (a click) counts again.
+    /// Caller holds the gate.
+    /// </summary>
+    bool IsOwnFocus(string id)
+    {
+        if (_ownFocus.Id != id || DateTime.UtcNow - _ownFocus.At > TimeSpan.FromSeconds(1)) return false;
+        _ownFocus = default;
+        return true;
     }
 
     /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
