@@ -45,6 +45,8 @@ public sealed class LayoutStore
 
     public static LayoutStore Load()
     {
+        // A store of an earlier connection may still have a write pending: it comes first.
+        Flush();
         try
         {
             if (File.Exists(Paths.LayoutsFile)) return Parse(File.ReadAllText(Paths.LayoutsFile));
@@ -92,7 +94,61 @@ public sealed class LayoutStore
             ? o.Select(p => (p.Key, p.Value is JsonValue v && v.TryGetValue(out string? text) ? text : null))
             : Enumerable.Empty<(string, string?)>();
 
-    public void Save() => FileSafety.WriteText(Paths.LayoutsFile, Json.Serialize(this, indented: true));
+    // ------------------------------------------------------------------ writing
+
+    /// <summary>Wait after the last change before writing: arranging changes the store many times in a row.</summary>
+    internal static TimeSpan SaveDelay { get; set; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Wait before trying again when Windows refused the file (a virus scanner or the indexer holds it).</summary>
+    internal static TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(5);
+
+    static readonly object WriteSync = new();
+    static readonly Timer WriteTimer = new(_ => Flush(), null, Timeout.Infinite, Timeout.Infinite);
+    /// <summary>The newest content not yet on disk; null when everything is written.</summary>
+    static string? _pending;
+    static int _failures;
+
+    /// <summary>
+    /// Notes the store for writing, shortly after the last change, from a thread of its own. Changes
+    /// in quick succession end up in one write, and a write Windows refuses is tried again a few
+    /// seconds later: layouts.json is never replaced many times a second, and a moment in which a
+    /// virus scanner holds it costs nothing. The content is taken now, by the caller, which holds
+    /// the layout engine's gate, so no change in progress ends up half in the file.
+    /// </summary>
+    public void Save()
+    {
+        var json = Json.Serialize(this, indented: true);
+        lock (WriteSync)
+        {
+            _pending = json;
+            WriteTimer.Change(SaveDelay, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    /// <summary>
+    /// Writes what <see cref="Save"/> noted, now (WinMarchy ends, or a new connection reads the file).
+    /// If Windows refuses, it is tried again later; only a refusal that lasts is logged, once.
+    /// </summary>
+    public static void Flush()
+    {
+        lock (WriteSync)
+        {
+            if (_pending is not { } json) return;
+            try
+            {
+                FileSafety.WriteText(Paths.LayoutsFile, json);
+                _pending = null;
+                if (_failures >= 3) Log.Debug("layouts.json: written again");
+                _failures = 0;
+            }
+            catch (Exception ex)
+            {
+                // Any error: this runs on a timer thread, where nothing may escape. Still pending; a newer Save replaces the content and the timer.
+                if (++_failures == 3) Log.Warn(L.T("layouts.saveFailed", ("detail", ex.Message)));
+                WriteTimer.Change(RetryDelay, Timeout.InfiniteTimeSpan);
+            }
+        }
+    }
 }
 
 /// <summary>The columns of one scrolling workspace, left to right.</summary>

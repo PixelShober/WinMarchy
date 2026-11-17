@@ -223,6 +223,38 @@ public class WorkModeTests
     }
 
     [Fact]
+    public void Layouts_json_is_written_after_a_refusal_without_an_error()
+    {
+        using var temp = new TempDir();
+        var root = Paths.Root;
+        var (save, retry) = (LayoutStore.SaveDelay, LayoutStore.RetryDelay);
+        Paths.OverrideRoot(temp.File("root"));
+        // The timer must not write in between: the test writes itself with Flush.
+        LayoutStore.SaveDelay = LayoutStore.RetryDelay = TimeSpan.FromHours(1);
+        try
+        {
+            // Windows refuses the file (here: a folder stands where it goes). Nothing escapes.
+            Directory.CreateDirectory(Paths.LayoutsFile);
+            var store = new LayoutStore { Workspaces = { ["1"] = LayoutMode.Columns } };
+            store.Save();
+            LayoutStore.Flush();
+            Assert.True(Directory.Exists(Paths.LayoutsFile));
+
+            // Free again: the newest content arrives, changes in between end up in one write.
+            Directory.Delete(Paths.LayoutsFile);
+            store.Workspaces["1"] = LayoutMode.Scrolling;
+            store.Save();
+            LayoutStore.Flush();
+            Assert.Equal(LayoutMode.Scrolling, LayoutStore.Load().Workspaces["1"]);
+        }
+        finally
+        {
+            (LayoutStore.SaveDelay, LayoutStore.RetryDelay) = (save, retry);
+            Paths.OverrideRoot(root);
+        }
+    }
+
+    [Fact]
     public void Windows_glazewm_tiled_itself_count_as_not_arranged()
     {
         var store = new LayoutStore { Workspaces = { ["1"] = LayoutMode.Dwindle, ["2"] = LayoutMode.Columns } };

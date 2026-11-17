@@ -201,6 +201,8 @@ public sealed class AgentHost : IAgentHost, IDisposable
     public void Dispose()
     {
         _cts.Cancel();
+        // The last layout change is on disk before WinMarchy ends.
+        LayoutStore.Flush();
         Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         Microsoft.Win32.SystemEvents.SessionSwitch -= OnSessionSwitch;
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;

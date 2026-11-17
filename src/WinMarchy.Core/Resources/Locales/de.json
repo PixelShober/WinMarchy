@@ -468,7 +468,8 @@
     "scrolling": "Scrolling",
     "scrollingText": "Spalten in einer Reihe, breiter als der Bildschirm. Win+Pfeil scrollt.",
     "screenChanged": "Bildschirm {screen}: {layout}",
-    "floatingGone": "Das Layout „Schwebend“ gibt es nicht mehr. Die Fenster von Workspace {workspaces} sind wieder gekachelt; einzelne Fenster schweben mit Win+T."
+    "floatingGone": "Das Layout „Schwebend“ gibt es nicht mehr. Die Fenster von Workspace {workspaces} sind wieder gekachelt; einzelne Fenster schweben mit Win+T.",
+    "saveFailed": "layouts.json lässt sich gerade nicht schreiben ({detail}). WinMarchy versucht es alle paar Sekunden wieder; bis dahin gilt der Stand im Speicher."
   },
 
   "scratchpad": {
