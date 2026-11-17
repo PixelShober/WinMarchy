@@ -591,20 +591,24 @@ public sealed class WindowCommands
 
     /// <summary>
     /// GlazeWM applies "bind_to_monitor" only when a workspace opens. Workspaces already open on the
-    /// wrong screen move over (move-workspace towards their monitor), one step at a time; the focus
-    /// goes back where it was.
+    /// wrong screen move over (move-workspace towards their monitor), one step at a time, by the
+    /// assignment fitted to the screens there are now (<see cref="WorkspacePins.Effective"/>). A
+    /// screen that shows none of the regular workspaces (GlazeWM put the scratchpad there) gets
+    /// one of its own. The focus goes back where it was.
     /// </summary>
-    public Task EnforceMonitorsAsync(IReadOnlyDictionary<string, int> pinned, CancellationToken ct) => Exclusive(async () =>
+    public Task EnforceMonitorsAsync(IReadOnlyDictionary<string, int> chosen, CancellationToken ct) => Exclusive(async () =>
     {
-        if (pinned.Count == 0) return;
+        if (chosen.Count == 0) return;
         string? back = null, last = null;
-        for (int round = 0; round < 12; round++)
+        IReadOnlyDictionary<string, int> pinned = chosen;
+        for (int round = 0; round < 16; round++)
         {
             var data = await _ipc.QueryAsync("monitors", ct);
             var monitors = GlazeTree.List(data, "monitors").ToList();
             var workspaces = monitors.Select((m, i) => (Index: i, List: GlazeTree.Children(m).Where(c => GlazeTree.Type(c) == "workspace").ToList())).ToList();
             if (round == 0)
             {
+                pinned = WorkspacePins.Effective(chosen, monitors.Count);
                 back = workspaces.SelectMany(x => x.List).Where(w => GlazeTree.Bool(w, "hasFocus")).Select(w => GlazeTree.Str(w, "name")).FirstOrDefault();
                 Log.Trace($"monitors: {monitors.Count} in GlazeWM; pinned " + string.Join(", ", pinned.Select(p => $"{p.Key}→{p.Value}")) + "; open " +
                           string.Join(", ", workspaces.SelectMany(x => x.List.Select(w => $"{GlazeTree.Str(w, "name")}@{x.Index}"))), "monitors");
@@ -612,7 +616,20 @@ public sealed class WindowCommands
             var wrong = workspaces.SelectMany(x => x.List.Select(w => (Name: GlazeTree.Str(w, "name") ?? "", From: x.Index)))
                 .Where(w => pinned.TryGetValue(w.Name, out var to) && to != w.From && to < monitors.Count)
                 .Select(w => (w.Name, w.From, To: pinned[w.Name])).FirstOrDefault();
-            if (wrong.Name is null or "") break;
+            if (wrong.Name is null or "")
+            {
+                // Every workspace is where it belongs: does each screen show a regular one?
+                var bare = workspaces.FirstOrDefault(x => x.List.Any(w => GlazeTree.Bool(w, "isDisplayed")) &&
+                                                          !x.List.Any(w => GlazeTree.Bool(w, "isDisplayed") && GlazeConfig.IsRegular(GlazeTree.Str(w, "name") ?? "")));
+                var own = bare.List == null ? null
+                    : pinned.Where(p => p.Value == bare.Index).Select(p => p.Key).OrderBy(k => int.Parse(k)).FirstOrDefault();
+                if (own == null || $"show {own}@{bare.Index}" == last) break;
+                last = $"show {own}@{bare.Index}";
+                Log.Trace($"monitors: monitor {bare.Index} shows no workspace of its own, opening {own} there", "monitors");
+                if (monitors.Count > 1) await Cmd($"focus --monitor {bare.Index}", ct);
+                await Cmd($"focus --workspace {own}", ct);
+                continue;
+            }
             var key = $"{wrong.Name}@{wrong.From}";
             if (key == last)
             {

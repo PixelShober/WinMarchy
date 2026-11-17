@@ -83,6 +83,10 @@ public static class Diagnostics
                                  $"{GlazeTree.Int(w, "x")},{GlazeTree.Int(w, "y")} {GlazeTree.Int(w, "width")}×{GlazeTree.Int(w, "height")} " +
                                  $"hwnd {GlazeTree.Handle(w)}" + (GlazeTree.Bool(w, "hasFocus") ? " (focus)" : ""));
                         }
+                        // Split containers without a window: an empty tile that takes room on the screen.
+                        foreach (var split in GlazeTree.Descendants(ws).Where(c => GlazeTree.Type(c) == "split" && !GlazeTree.Windows(c).Any()))
+                            Line($"    empty tile [{GlazeTree.Str(split, "tilingDirection")}] {GlazeTree.Int(split, "x")},{GlazeTree.Int(split, "y")} " +
+                                 $"{GlazeTree.Int(split, "width")}×{GlazeTree.Int(split, "height")}");
                     }
                 }
             }

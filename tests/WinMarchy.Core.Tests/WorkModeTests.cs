@@ -223,6 +223,33 @@ public class WorkModeTests
     }
 
     [Fact]
+    public void A_fourth_screen_gets_a_workspace_and_a_missing_one_gives_its_own_away()
+    {
+        var chosen = new Dictionary<string, int> { ["1"] = 0, ["2"] = 0, ["3"] = 1, ["4"] = 1, ["5"] = 2, ["6"] = 2 };
+        // Four screens (the diagnosis of 17 November): the fourth takes the highest workspace of a screen with two.
+        var four = WorkspacePins.Effective(chosen, 4);
+        Assert.Equal(new[] { 0, 1, 2, 3 }, four.Values.Distinct().OrderBy(v => v));
+        Assert.Equal(3, four["6"]);
+        Assert.Equal(new[] { "1", "2" }, four.Where(p => p.Value == 0).Select(p => p.Key).OrderBy(k => k));
+        // Two screens: the workspaces of the third go to the screen with the fewest.
+        var two = WorkspacePins.Effective(chosen, 2);
+        Assert.All(two.Values, v => Assert.InRange(v, 0, 1));
+        Assert.Equal(6, two.Count);
+        // As chosen when the screens match; nothing chosen stays nothing.
+        Assert.Equal(chosen, WorkspacePins.Effective(chosen, 3));
+        Assert.Empty(WorkspacePins.Effective(new Dictionary<string, int>(), 4));
+    }
+
+    [Fact]
+    public void Tiles_that_leave_half_the_workspace_empty_are_a_gap()
+    {
+        // Four windows in the right half of a 1900 px wide workspace, as in the diagnosis.
+        Assert.True(LayoutEngine.GapIn(1900, 1144, new[] { (1016, 0, 553, 572), (1016, 582, 553, 572), (1579, 0, 331, 572), (1579, 582, 331, 572) }));
+        Assert.False(LayoutEngine.GapIn(1900, 1144, new[] { (0, 0, 945, 1144), (955, 0, 945, 1144) }));
+        Assert.False(LayoutEngine.GapIn(1900, 1144, Array.Empty<(int, int, int, int)>()));
+    }
+
+    [Fact]
     public void Layouts_json_is_written_after_a_refusal_without_an_error()
     {
         using var temp = new TempDir();

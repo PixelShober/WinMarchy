@@ -401,6 +401,14 @@ public sealed class LayoutEngine
         if (eventType == "focus_changed" && GlazeTree.WindowInfos(monitors).Any(w => w.Id == id && w.Focused))
             await FullscreenOnFocusLockedAsync(window, id, name, ws!.Value, ct);
 
+        // GlazeWM can keep an empty tile (the diagnosis of 17 November: four windows in the right
+        // half of a screen, the left half empty). Rebuilt once, it is gone.
+        if (mode is LayoutMode.Dwindle or LayoutMode.Columns && eventType == "focus_changed" && HasGap(name, monitors))
+        {
+            await RelayoutAsync(name, mode, ct, rebuild: true);
+            return;
+        }
+
         switch (mode)
         {
             case LayoutMode.Dwindle when GlazeTree.WindowState(window) == "tiling":
@@ -932,6 +940,39 @@ public sealed class LayoutEngine
         return true;
     }
 
+    /// <summary>
+    /// The workspaces rebuilt for an empty tile, by GlazeWM's id: once per workspace. A gap that
+    /// stays (a program that will not grow) does not make it rebuild again and again.
+    /// </summary>
+    readonly HashSet<string> _rebuilt = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether the tiled windows of a shown workspace leave a large part of it empty: together they
+    /// cover less than three quarters of its width or height. Tiles always fill their workspace,
+    /// so that is an empty tile GlazeWM kept. Caller holds the gate.
+    /// </summary>
+    bool HasGap(string workspace, JsonElement monitors)
+    {
+        var area = WorkspaceArea.All(monitors).FirstOrDefault(a => a.Name == workspace);
+        if (area is not { Displayed: true } || area.Width <= 0 || area.Height <= 0) return false;
+        var tiles = GlazeTree.WindowInfos(monitors).Where(w => w.Workspace == workspace && w.State == "tiling").ToList();
+        if (tiles.Count == 0) return false;
+        if (!GapIn(area.Width, area.Height, tiles.Select(w => (w.X, w.Y, w.Width, w.Height)))) return false;
+        if (!_rebuilt.Add(area.Id)) return false;
+        Log.Info(L.T("layouts.gapRepaired", ("workspace", workspace)));
+        return true;
+    }
+
+    /// <summary>Whether tiles that span less than three quarters of the width or height leave a gap.</summary>
+    internal static bool GapIn(int width, int height, IEnumerable<(int X, int Y, int Width, int Height)> tiles)
+    {
+        var list = tiles.ToList();
+        if (list.Count == 0) return false;
+        int spanX = list.Max(t => t.X + t.Width) - list.Min(t => t.X);
+        int spanY = list.Max(t => t.Y + t.Height) - list.Min(t => t.Y);
+        return spanX < width * 3 / 4 || spanY < height * 3 / 4;
+    }
+
     /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
     internal bool IsWaitingColumn(long handle) =>
         _store.Columns.Any(c => Arranged(c.Key) == LayoutMode.Scrolling && c.Value.Contains(handle));
@@ -944,13 +985,14 @@ public sealed class LayoutEngine
     /// come back in the new arrangement: Columns side by side in their old order, Dwindle each one
     /// halving the last.
     /// </summary>
-    async Task RelayoutAsync(string workspace, LayoutMode mode, CancellationToken ct)
+    /// <param name="rebuild">Also with a single window, and the first one goes out and back too: GlazeWM builds the workspace's tiles anew.</param>
+    async Task RelayoutAsync(string workspace, LayoutMode mode, CancellationToken ct, bool rebuild = false)
     {
         var data = await _ipc.QueryAsync("workspaces", ct);
         var ws = GlazeTree.List(data, "workspaces").FirstOrDefault(w => GlazeTree.Str(w, "name") == workspace);
         if (ws.ValueKind != JsonValueKind.Object || GlazeTree.Str(ws, "id") is not { } wsId) return;
         var ids = GlazeTree.TilingWindows(ws).Select(w => GlazeTree.Str(w, "id")).OfType<string>().ToList();
-        if (ids.Count < 2) return;
+        if (ids.Count < (rebuild ? 1 : 2)) return;
         var focused = GlazeTree.Windows(ws).Where(w => GlazeTree.Bool(w, "hasFocus")).Select(w => GlazeTree.Str(w, "id")).FirstOrDefault();
 
         var first = ids[0];
@@ -961,6 +1003,15 @@ public sealed class LayoutEngine
             {
                 await _ipc.CommandAsync($"move --workspace {GlazeConfig.StageWorkspace}", ct, id);
                 staged.Add(id);
+            }
+            if (rebuild)
+            {
+                // The last one out and back as well: the workspace is empty for a moment, and an
+                // empty tile GlazeWM kept goes with its old tree.
+                await _ipc.CommandAsync($"move --workspace {GlazeConfig.StageWorkspace}", ct, first);
+                staged.Add(first);
+                await _ipc.CommandAsync($"move --workspace {workspace}", ct, first);
+                staged.Remove(first);
             }
             await _ipc.CommandAsync($"focus --container-id {first}", ct);
             if (mode == LayoutMode.Columns)

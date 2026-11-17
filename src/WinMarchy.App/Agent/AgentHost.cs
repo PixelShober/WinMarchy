@@ -561,7 +561,31 @@ public sealed class AgentHost : IAgentHost, IDisposable
             or Microsoft.Win32.SessionSwitchReason.RemoteConnect) GiveGlazeTime(e.Reason.ToString());
     }
 
-    void OnDisplaySettingsChanged(object? sender, EventArgs e) => GiveGlazeTime("display");
+    void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        GiveGlazeTime("display");
+        _ = ScreensChangedAsync();
+    }
+
+    /// <summary>
+    /// Screens plugged in or out (another desk): once GlazeWM has taken them in, every workspace goes
+    /// to its screen and every screen gets a workspace of its own, also one the Tiling page does not
+    /// know yet. Repeated changes within the wait count once.
+    /// </summary>
+    async Task ScreensChangedAsync()
+    {
+        int mine = Interlocked.Increment(ref _screenChanges);
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), _cts.Token);
+            if (mine != Volatile.Read(ref _screenChanges) || _paused || _windows is not { } windows) return;
+            await windows.EnforceMonitorsAsync(Settings.WorkspaceMonitors, _cts.Token);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { Log.Debug("screens changed: " + Net.Describe(ex)); }
+    }
+
+    int _screenChanges;
 
     void GiveGlazeTime(string why)
     {

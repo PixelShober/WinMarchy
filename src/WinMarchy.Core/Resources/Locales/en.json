@@ -469,7 +469,8 @@
     "scrollingText": "Columns in a row, wider than the screen. Win+Arrow scrolls.",
     "screenChanged": "Screen {screen}: {layout}",
     "floatingGone": "The floating layout is gone. The windows of workspace {workspaces} are tiled again; single windows float with Win+T.",
-    "saveFailed": "layouts.json cannot be written right now ({detail}). WinMarchy tries again every few seconds; until then the state in memory counts."
+    "saveFailed": "layouts.json cannot be written right now ({detail}). WinMarchy tries again every few seconds; until then the state in memory counts.",
+    "gapRepaired": "Workspace {workspace}: the windows left a large part empty, GlazeWM kept an empty tile there. WinMarchy arranges them anew."
   },
 
   "scratchpad": {
