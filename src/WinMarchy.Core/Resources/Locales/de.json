@@ -470,7 +470,8 @@
     "screenChanged": "Bildschirm {screen}: {layout}",
     "floatingGone": "Das Layout „Schwebend“ gibt es nicht mehr. Die Fenster von Workspace {workspaces} sind wieder gekachelt; einzelne Fenster schweben mit Win+T.",
     "saveFailed": "layouts.json lässt sich gerade nicht schreiben ({detail}). WinMarchy versucht es alle paar Sekunden wieder; bis dahin gilt der Stand im Speicher.",
-    "gapRepaired": "Workspace {workspace}: Die Fenster ließen einen großen Teil frei, GlazeWM hielt dort eine leere Kachel. WinMarchy ordnet sie neu an."
+    "gapRepaired": "Workspace {workspace}: Die Fenster ließen einen großen Teil frei, GlazeWM hielt dort eine leere Kachel. WinMarchy ordnet sie neu an.",
+    "hiddenShown": "Der interne Workspace „{hidden}“ war zu sehen. WinMarchy zeigt dort wieder Workspace {workspace}."
   },
 
   "scratchpad": {

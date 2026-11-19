@@ -373,7 +373,12 @@ public sealed class LayoutEngine
         if (eventType == "focus_changed" && IsOwnFocus(id)) return;
         var ws = GlazeTree.WorkspaceOf(monitors, id);
         var name = ws is { } w2 ? GlazeTree.Str(w2, "name") : null;
-        if (name == null || !GlazeConfig.IsRegular(name)) return;
+        if (name == null) return;
+        if (!GlazeConfig.IsRegular(name))
+        {
+            if (eventType == "focus_changed") await LeaveHiddenWorkspaceLockedAsync(name, id, monitors, ct);
+            return;
+        }
         var mode = await ReconcileLockedAsync(name, monitors, ct);
 
         // A new window next to one in full screen: that one goes back to where it was (its tile, or
@@ -971,6 +976,38 @@ public sealed class LayoutEngine
         int spanX = list.Max(t => t.X + t.Width) - list.Min(t => t.X);
         int spanY = list.Max(t => t.Y + t.Height) - list.Min(t => t.Y);
         return spanX < width * 3 / 4 || spanY < height * 3 / 4;
+    }
+
+    /// <summary>
+    /// The focus landed on a window in one of WinMarchy's hidden workspaces (the parking place of the
+    /// scrolling columns, the scratchpad) and GlazeWM shows that workspace: the parked columns lie on
+    /// top of each other, and new windows open there (the diagnosis of 19 November). The screen
+    /// shows its own workspace again; a window that does not belong there (not a parked column, not
+    /// in the scratchpad) goes along. Caller holds the gate.
+    /// </summary>
+    async Task LeaveHiddenWorkspaceLockedAsync(string hidden, string id, JsonElement monitors, CancellationToken ct)
+    {
+        var list = GlazeTree.List(monitors, "monitors").ToList();
+        int screen = list.FindIndex(m => GlazeTree.Children(m).Any(w => GlazeTree.Type(w) == "workspace" &&
+                                                                       GlazeTree.Str(w, "name") == hidden && GlazeTree.Bool(w, "isDisplayed")));
+        if (screen < 0) return;
+        var open = GlazeTree.Children(list[screen]).Where(w => GlazeTree.Type(w) == "workspace")
+            .Select(w => GlazeTree.Str(w, "name") ?? "").Where(GlazeConfig.IsRegular).ToList();
+        var pins = WorkspacePins.Effective(_settings().WorkspaceMonitors, list.Count);
+        var own = pins.Where(p => p.Value == screen).Select(p => p.Key).OrderBy(k => int.Parse(k)).ToList();
+        // An open workspace of this screen first, then one pinned to it, then any open one here.
+        var target = own.FirstOrDefault(open.Contains) ?? own.FirstOrDefault() ?? open.FirstOrDefault();
+        if (target == null) return;
+        var window = GlazeTree.WindowInfos(monitors).FirstOrDefault(w => w.Id == id);
+        bool stray = window != null && !window.OnTop &&
+                     (hidden == GlazeConfig.StageWorkspace ? !IsWaitingColumn(window.Handle) && !_strips.Values.Any(s => s.Ids.Contains(id)) : false);
+        Log.Info(L.T("layouts.hiddenShown", ("hidden", hidden), ("workspace", target)));
+        await _ipc.CommandAsync($"focus --workspace {target}", ct);
+        if (stray)
+        {
+            await _ipc.CommandAsync($"move --workspace {target}", ct, id);
+            await _ipc.CommandAsync($"focus --container-id {id}", ct);
+        }
     }
 
     /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
