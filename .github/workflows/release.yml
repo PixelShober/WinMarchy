@@ -1,0 +1,133 @@
+name: Release
+
+# Every merge to main that changes the app creates a GitHub release: version from the PR title,
+# WinMarchy.exe (self-contained, single file), latest.json for the updater and SHA256SUMS.txt.
+# Installed copies find it through releases/latest/download/latest.json and update themselves.
+# Changes to docs only do not create a release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version erzwingen (z. B. 1.4.0), leer = aus dem PR-Titel'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release erstellen
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Version bestimmen
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCED: ${{ inputs.version }}
+        run: |
+          last=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          pr=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[0]' 2>/dev/null || echo '{}')
+          [ -z "$pr" ] && pr='{}'
+          title=$(jq -r '.title // empty' <<<"$pr")
+          number=$(jq -r '.number // empty' <<<"$pr")
+          [ -z "$title" ] && title=$(git log -1 --pretty=%s)
+
+          if [ -z "$FORCED" ] && [ -n "$last" ] && git diff --quiet "$last" HEAD -- src Directory.Build.props global.json; then
+            echo "Seit $last hat sich an der App nichts geändert, kein Release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -n "$FORCED" ]; then version="${FORCED#v}"; else version=$(PR_TITLE="$title" node scripts/next-version.mjs "$last"); fi
+
+          mkdir -p release/out
+          printf '%s' "$title" > release/title.txt
+          jq -r '.body // empty' <<<"$pr" > release/body.md
+          {
+            echo "release=true"
+            echo "version=$version"
+            echo "last=$last"
+            echo "pr=$number"
+          } >> "$GITHUB_OUTPUT"
+          echo "Version $version (vorher ${last:-keine})"
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.version.outputs.release == 'true'
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/setup-node@v7
+        if: steps.version.outputs.release == 'true'
+        with:
+          node-version: 22
+
+      - name: Prüfen und testen
+        if: steps.version.outputs.release == 'true'
+        run: |
+          node scripts/check-encoding.mjs
+          node scripts/check-deps.mjs
+          dotnet test tests/WinMarchy.Core.Tests -c Release
+
+      - name: WinMarchy.exe bauen
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet publish src/WinMarchy.App/WinMarchy.App.csproj -c Release -o release/exe "-p:Version=$VERSION"
+          cp release/exe/WinMarchy.exe release/out/WinMarchy.exe
+
+      - name: Selbsttest der Release-Exe
+        if: steps.version.outputs.release == 'true'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath release/out/WinMarchy.exe -ArgumentList '--selftest', "$PWD/release/selftest" -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Selbsttest hängt' }
+          Get-Content release/selftest/selftest.txt
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+
+      - name: latest.json, Prüfsummen und Notizen
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PR: ${{ steps.version.outputs.pr }}
+        run: |
+          node scripts/make-manifest.mjs --version "$VERSION" --exe release/out/WinMarchy.exe \
+            --notes "https://github.com/${GITHUB_REPOSITORY}/releases/tag/v$VERSION" --out release/out
+          {
+            echo "## $(cat release/title.txt)"
+            [ -n "$PR" ] && echo "" && echo "Aus Pull Request #$PR."
+            echo ""
+            cat release/body.md
+            echo ""
+            echo "### Installation"
+            echo ""
+            echo "\`WinMarchy.exe\` herunterladen und starten. WinMarchy kopiert sich nach \`C:\\WinMarchy\\App\` und legt einen Startmenü-Eintrag an. Installierte Versionen aktualisieren sich selbst, sobald das Fenster zu ist."
+            echo ""
+            echo "SHA-256 von \`WinMarchy.exe\`: \`$(cut -d' ' -f1 release/out/SHA256SUMS.txt)\`"
+          } > release/notes.md
+
+      - name: Release veröffentlichen
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" release/out/* \
+            --title "WinMarchy $VERSION" --notes-file release/notes.md --target "$GITHUB_SHA"

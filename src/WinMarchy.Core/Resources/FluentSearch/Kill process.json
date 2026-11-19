@@ -1,0 +1,1 @@
+[{"SettingName":"EnableApplication","Value":true},{"SettingName":"SearchTagOnly","Value":true},{"SettingName":"Search hotkey","Value":{"Name":"Keyboard shortcut to start searching using Kill process","HotKeys":[]}},{"SettingName":"Kill key gesture","Value":"Delete"},{"SettingName":"Kill as admin key gesture","Value":"Shift+Delete"}]

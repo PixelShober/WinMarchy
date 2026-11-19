@@ -1,0 +1,102 @@
+<UserControl x:Class="WinMarchy.App.Pages.LogPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:WinMarchy.App.Ui">
+  <StackPanel>
+    <DockPanel Margin="0,0,0,22">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+        <Button x:Name="DiagnoseButton" Content="{ui:T log.diagnose}" Click="OnDiagnose" ToolTip="{ui:T log.diagnoseHint}" Margin="0,0,8,0" />
+        <Button x:Name="PoliciesButton" Content="{ui:T log.policies}" Click="OnPolicies" ToolTip="{ui:T log.policiesHint}" Margin="0,0,8,0" />
+        <Button Content="{ui:T log.copy}" Click="OnCopy" />
+        <Button Content="{ui:T log.openFolder}" Click="OnOpenFolder" Margin="8,0,0,0" />
+      </StackPanel>
+      <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+        <TextBlock Text="{ui:T log.title}" Style="{StaticResource H1}" />
+        <TextBlock x:Name="Subtitle" Style="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+    </DockPanel>
+
+    <Border Style="{StaticResource Card}" Margin="0,0,0,24">
+      <CheckBox x:Name="Verbose" Style="{StaticResource Switch}" Click="OnVerbose">
+        <StackPanel>
+          <TextBlock Text="{ui:T log.verbose}" Style="{StaticResource Body}" />
+          <TextBlock Text="{ui:T log.verboseHint}" Style="{StaticResource Small}" TextWrapping="Wrap" />
+        </StackPanel>
+      </CheckBox>
+    </Border>
+
+    <StackPanel x:Name="PoliciesBlock" Visibility="Collapsed" Margin="0,0,0,24">
+      <DockPanel Margin="0,0,0,10">
+        <Button x:Name="PoliciesReport" DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{ui:T log.policiesReport}" Click="OnPoliciesReport" />
+        <TextBlock Text="{ui:T log.policiesTitle}" Style="{StaticResource H2}" />
+      </DockPanel>
+      <Border Style="{StaticResource Card}" Padding="0">
+        <StackPanel x:Name="Policies" />
+      </Border>
+    </StackPanel>
+
+    <StackPanel x:Name="JobsBlock" Visibility="Collapsed" Margin="0,0,0,24">
+      <TextBlock Text="{ui:T log.jobs}" Style="{StaticResource H2}" Margin="0,0,0,10" />
+      <Border Style="{StaticResource Card}" Padding="0">
+        <StackPanel x:Name="Jobs" />
+      </Border>
+      <ui:JobView x:Name="Job" Margin="0,12,0,0" />
+    </StackPanel>
+
+    <DockPanel Margin="0,0,0,12">
+      <Border DockPanel.Dock="Left" Style="{StaticResource SegmentGroup}">
+        <StackPanel Orientation="Horizontal">
+          <RadioButton Style="{StaticResource Segment}" GroupName="log-level" Tag="Debug" Content="{ui:T log.levels.all}" Checked="OnLevel" />
+          <RadioButton x:Name="LevelInfo" Style="{StaticResource Segment}" GroupName="log-level" Tag="Info" Content="{ui:T log.levels.info}" Checked="OnLevel" />
+          <RadioButton Style="{StaticResource Segment}" GroupName="log-level" Tag="Warning" Content="{ui:T log.levels.warnings}" Checked="OnLevel" />
+        </StackPanel>
+      </Border>
+      <TextBox x:Name="Search" Width="260" HorizontalAlignment="Right" TextChanged="OnSearch" ToolTip="{ui:T log.search}" />
+    </DockPanel>
+
+    <Border Style="{StaticResource Card}" Padding="0">
+      <ItemsControl x:Name="Entries" Height="560" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                    ScrollViewer.CanContentScroll="True">
+        <ItemsControl.Template>
+          <ControlTemplate TargetType="ItemsControl">
+            <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,10" Focusable="False">
+              <ItemsPresenter />
+            </ScrollViewer>
+          </ControlTemplate>
+        </ItemsControl.Template>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <VirtualizingStackPanel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,2">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="72" />
+                <ColumnDefinition Width="22" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{Binding Time, StringFormat=HH:mm:ss}" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+              <Ellipse x:Name="Dot" Grid.Column="1" Width="6" Height="6" Margin="0,6,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Fill="{DynamicResource BorderStrong}" />
+              <TextBlock x:Name="Message" Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{DynamicResource Text}" />
+            </Grid>
+            <DataTemplate.Triggers>
+              <DataTrigger Binding="{Binding Level}" Value="Debug">
+                <Setter TargetName="Message" Property="Foreground" Value="{DynamicResource TextMuted}" />
+              </DataTrigger>
+              <DataTrigger Binding="{Binding Level}" Value="Warning">
+                <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource Warn}" />
+              </DataTrigger>
+              <DataTrigger Binding="{Binding Level}" Value="Error">
+                <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource Error}" />
+                <Setter TargetName="Message" Property="Foreground" Value="{DynamicResource Error}" />
+              </DataTrigger>
+            </DataTemplate.Triggers>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+    <TextBlock x:Name="Empty" Text="{ui:T log.empty}" Style="{StaticResource Muted}" Margin="0,12,0,0" Visibility="Collapsed" />
+  </StackPanel>
+</UserControl>

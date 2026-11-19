@@ -1,0 +1,168 @@
+# Tastenkürzel: Omarchy auf Windows
+
+Omarchy bindet fast alles an Super. Unter Windows übernimmt die Win-Taste diese Rolle. AutoHotkey fängt die Kürzel ab, bevor Windows sie sieht, und reicht sie an WinMarchy weiter: Fensterbefehle gehen an GlazeWM, alles andere erledigt WinMarchy selbst (Programme, Web-Apps, Menüs, Scratchpad, Layouts).
+
+Tasten mit Satzzeichen sind nach ihrer **Position** benannt, wie Omarchy sie über den Keycode bindet. `Win+Minus` ist die Taste rechts neben der 0, auf einer deutschen Tastatur also `ß`. Die Finger machen unter Linux und Windows dasselbe.
+
+Die Kürzel kommen aus einem Profil für die Arbeit: Statt HEY, Signal und Obsidian öffnet es Outlook, OneNote, Word und Stackfield. Fehlt ein Programm, nimmt WinMarchy die Web-Version im eigenen Browserfenster.
+
+Eigene Kürzel legst du in WinMarchy an. Sie liegen in `C:\WinMarchy\Config\hotkeys.json`, schlagen die mitgelieferten Kürzel auf derselben Taste und gelten, sobald du sie speicherst. Updates lassen die Datei in Ruhe. **Exportieren** nimmt sie auf einen anderen Rechner mit.
+
+**Importieren** liest einen WinMarchy-Export, Omarchys `bindings.lua` oder Hyprlands `bindings.conf`. Danach zeigt WinMarchy jedes Kürzel aus der Datei mit dem, was daraus würde, und du hakst an, was du übernimmst. Vorausgewählt ist, was neu ist und keine belegte Taste nimmt. Linux-Befehle übersetzt WinMarchy, wo Windows dasselbe kann: Web-Apps, Spotify-Links und bekannte Programme. Was kein Gegenstück hat, steht ausgegraut dabei. Vor dem Übernehmen legt WinMarchy einen Sicherungspunkt an.
+
+**Favoriten:** Am Anfang gibt es keine. Mit dem Stern auf der Seite **Tastenkürzel** markierst du welche; `Win+K` zeigt sie dann ganz oben, darunter alle anderen und zuletzt den Abschnitt „Optional“. Im WinMarchy-Menü (`Win+Space`) findet die Suche sie zuerst; in der Liste des Menüs stehen sie nicht. Eigene Kürzel hat die Seite **Tastenkürzel** in einem eigenen Tab. Was in den Tabellen unten *optional* heißt, steht dort. Die Sterne liegen mit den eigenen Kürzeln in `hotkeys.json` und überstehen Updates.
+
+## Was sich nicht 1:1 übertragen lässt
+
+| Omarchy | Unter Windows | Warum |
+|-|-|-|
+| `Super+L` (Layout wechseln) | `Win+Strg+J` | `Win+L` sperrt den Rechner. Das lässt sich ohne Gruppenrichtlinie nicht abschalten, und die will in Firmen niemand anfassen. `Win+Alt+L` kam im Test nie bei WinMarchy an, Windows behält die Taste offenbar auch mit Alt. `Win+Strg+J` liegt neben `Win+J`, das die Teilung dreht. |
+| `Super+Alt+Space` (Omarchy-Menü) und `Super+Space` (Programme) | `Win+Space` | Ein Menü für beides: Tippen sucht in WinMarchys Einträgen und in den Programmen des Startmenüs. |
+| Super allein | `Win` allein | Öffnet Fluent Search. Es hört auf `Alt+F24`, eine Taste, die keine Tastatur hat; läuft es nicht, startet WinMarchy es. |
+| Scrolling-Layout | `Win+Strg+J` bis „Scrolling“ | GlazeWM kann das nicht selbst, WinMarchy setzt die Spalten. Siehe [tiling.md](tiling.md). |
+| `Super+Shift+L` (Sperrbildschirm-Explorer) | nicht belegt | Windows hat kein Gegenstück. |
+| Spotify-Playlists mit Autoplay | Playlist öffnet sich | Unter Windows gibt es kein `playerctl`. Spotify zeigt die Playlist, starten musst du selbst. |
+| `Super+J` (Teilung drehen) | `Win+J` | Gleiche Taste. GlazeWMs eigener Befehl gilt erst fürs nächste Fenster, WinMarchy baut die Teilung deshalb selbst um, damit man sie sofort sieht. Das alte Verhalten liegt auf `Win+Alt+J`. |
+| Minimieren | gibt es in Omarchy nicht | WinMarchy holt minimierte Fenster sofort zurück. `Win+M` holt alles zurück, was trotzdem minimiert ist. |
+| `Print` (Bildschirmfoto) | `Druck` | Snipping Tool oder Greenshot, umschaltbar unter **Einstellungen**. |
+| Idle-Sperre (`Super+Ctrl+I`) | Wach bleiben | Windows regelt die Sperre über Energieoptionen und oft per Richtlinie. WinMarchy verhindert nur den Ruhezustand, solange der Schalter an ist. |
+
+## Aus deiner bindings.lua
+
+Private Kürzel (ChatGPT, Spotify, Signal, WhatsApp und Co.) bringt WinMarchy nicht mehr mit. Wer sie haben will, importiert seine `bindings.lua` unter **Tastenkürzel → Importieren**; sie stehen danach bei den eigenen Kürzeln und lassen sich dort ändern.
+
+`Win+Shift+S` bleibt frei: Unter Windows macht genau diese Taste schon das Bildschirmfoto. Ist unter **Einstellungen** Greenshot gewählt, fängt WinMarchy die Taste ab und öffnet Greenshots Bereichsauswahl statt des Snipping Tools, solange du nichts Eigenes darauf legst. `Win+Alt+P` (bei dir Omaplug) öffnet WinMarchy selbst.
+
+Eigene Skripte legst du als Kürzel vom Typ „Skript“ an. PowerShell-Skripte laufen unter der Ausführungsrichtlinie des Rechners; WinMarchy umgeht sie nicht.
+
+## Alle Kürzel
+
+### Fenster
+
+| Windows | Was passiert | Omarchy |
+|-|-|-|
+| `Win+W` | Fenster schließen | gleich |
+| `Win+Q` | Fenster schließen · *optional* | gleich |
+| `Win+J` | Teilung drehen (Nebeneinander wird übereinander und zurück, sofort.) | gleich |
+| `Win+Alt+J` | Teilung für das nächste Fenster · *optional* | gleich |
+| `Win+T` | Schwebend oder gekachelt (Das Fenster schwebt über den Kacheln, nichts deckt es zu. Noch einmal gedrückt, kommt es zurück ins Layout des Bildschirms.) | gleich |
+| `Win+O` | Herauslösen in die Ecke (Klein unten rechts und über allen Fenstern, etwa für einen Anruf oder ein Video. Noch einmal gedrückt, kommt es zurück ins Layout.) | gleich |
+| `Win+F` | Vollbild | gleich |
+| `Win+Alt+F` | Volle Breite | gleich |
+| `Win+Strg+J` | Layout des Bildschirms wechseln: Dwindle, Spalten, Scrolling (Win+L gehört unter Windows dem Sperren, und auch Win+Alt+L kommt nicht immer an.) | Super + L |
+| `Win+Left` | Fokus nach links | gleich |
+| `Win+Right` | Fokus nach rechts | gleich |
+| `Win+Up` | Fokus nach oben | gleich |
+| `Win+Down` | Fokus nach unten | gleich |
+| `Win+Umschalt+Left` | Fenster nach links tauschen | gleich |
+| `Win+Umschalt+Right` | Fenster nach rechts tauschen | gleich |
+| `Win+Umschalt+Up` | Fenster nach oben tauschen | gleich |
+| `Win+Umschalt+Down` | Fenster nach unten tauschen | gleich |
+| `Win+M` | Minimierte Fenster zurückholen (Falls doch einmal etwas minimiert wurde.) | – (Omarchy minimiert nicht) |
+| `Win+S` | Scratchpad zeigen oder verstecken | gleich |
+| `Win+Alt+S` | Fenster ins Scratchpad oder wieder heraus (Auf einem Scratchpad-Fenster holt es das Fenster zurück in die Kacheln.) | gleich |
+| `Win+Umschalt+Backspace` | Abstände ein oder aus · *optional* | gleich |
+| `Win+Umschalt+Alt+R` | GlazeWM neu laden · *optional* | gleich |
+| `Win+Umschalt+Alt+P` | Tiling pausieren · *optional* | gleich |
+
+### Workspaces
+
+| Windows | Was passiert | Omarchy |
+|-|-|-|
+| `Win+1…6` | Workspace 1–6 | gleich |
+| `Win+Umschalt+1…6` | Fenster auf Workspace 1–6 | gleich |
+| `Win+Tab` | Nächster Workspace | gleich |
+| `Win+Umschalt+Tab` | Vorheriger Workspace | gleich |
+| `Win+Strg+Tab` | Zuletzt benutzter Workspace · *optional* | gleich |
+| `Win+Strg+D` | Arbeitsmodus 1: frische Workspaces mit seinen Programmen (Die offenen Fenster bleiben auf ihren Workspaces. Nochmal drücken: zurück. Programme legst du unter Tiling fest.) | gleich |
+| `Win+Strg+1` | Arbeitsmodus 1 · *optional* | gleich |
+| `Win+Strg+2` | Arbeitsmodus 2 (Etwa Recherche neben den aktiven Tools in Modus 1.) | gleich |
+| `Win+Strg+3` | Arbeitsmodus 3 | gleich |
+| `Win+Strg+Right` | Alle Bildschirme: nächster Workspace (Lässt sich aufs Drei-Finger-Wischen legen.) | gleich |
+| `Win+Strg+Left` | Alle Bildschirme: vorheriger Workspace (Lässt sich aufs Drei-Finger-Wischen legen.) | gleich |
+| `Win+WheelDown` | Nächster Workspace (Mausrad) · *optional* | gleich |
+| `Win+WheelUp` | Vorheriger Workspace (Mausrad) · *optional* | gleich |
+
+### Programme
+
+| Windows | Was passiert | Omarchy |
+|-|-|-|
+| `Win+Enter` | Terminal | gleich |
+| `Win+Umschalt+Enter` | Zweiter Browser (Welcher Browser, legst du in den Einstellungen fest.) | gleich |
+| `Win+Umschalt+B` | Browser | gleich |
+| `Win+Umschalt+Alt+B` | Browser (privat) · *optional* | gleich |
+| `Win+Umschalt+F` | Dateimanager | gleich |
+| `Win+N` | Editor | gleich |
+| `Win+Umschalt+N` | Code-Editor (VS Code) | Super + Umschalt + N (Neovim) |
+| `Win+Strg+Enter` | Herdr | gleich |
+| `Win+Umschalt+M` | Spotify (Web-App) | gleich |
+| `Win+Umschalt+Q` | Rechner | gleich |
+| `Win+Umschalt+T` | Task-Manager | Super + Umschalt + T (btop) |
+| `Win+Umschalt+E` | E-Mail (Outlook) | Super + Umschalt + E (HEY) |
+| `Win+Umschalt+Alt+E` | Neue E-Mail · *optional* | gleich |
+| `Win+Umschalt+C` | Kalender | Super + Umschalt + C (HEY Calendar) |
+| `Win+Umschalt+G` | Stackfield | Super + Umschalt + G (Signal) |
+| `Win+Umschalt+O` | Notizen (OneNote) | Super + Umschalt + O (Obsidian) |
+| `Win+Umschalt+W` | Schreiben (Word) | Super + Umschalt + W (Omawrite) |
+| `Win+Alt+P` | WinMarchy öffnen | gleich |
+
+### Menüs
+
+| Windows | Was passiert | Omarchy |
+|-|-|-|
+| `Win+Space` | WinMarchy-Menü und Programme (Tippen sucht auch in den Programmen des Startmenüs. Win allein öffnet Fluent Search.) | Super + Alt + SPACE und Super + SPACE |
+| `Win+Escape` | Systemmenü | gleich |
+| `Win+K` | Tastenkürzel anzeigen | gleich |
+| `Win+Strg+T` | Theme wählen | Super + Strg + Umschalt + SPACE |
+| `Win+Strg+Space` | Nächstes Hintergrundbild | gleich |
+| `Win+Strg+Alt+Space` | Hintergrund wählen | gleich |
+| `Win+Umschalt+Space` | Leiste ein oder aus · *optional* | gleich |
+| `Win+Strg+C` | Aufnahme-Menü · *optional* | gleich |
+| `Win+Strg+O` | Schalter-Menü · *optional* | gleich |
+| `Win+Strg+H` | Hardware-Menü · *optional* | gleich |
+| `Win+Strg+E` | Emojis | gleich |
+| `Win+Alt+D` | Kalender der Leiste (nur mit YASB) · *optional* | gleich |
+| `Win+Alt+A` | Lautstärke der Leiste (nur mit YASB) · *optional* | gleich |
+
+### Werkzeuge
+
+| Windows | Was passiert | Omarchy |
+|-|-|-|
+| `Win+C` | Kopieren (auch im Terminal) | gleich |
+| `Win+V` | Einfügen (auch im Terminal) | gleich |
+| `Win+X` | Ausschneiden | gleich |
+| `Win+A` | Alles markieren | gleich |
+| `Win+Strg+V` | Zwischenablage-Verlauf | gleich |
+| `Win+Strg+M` | Musik abspielen oder anhalten | gleich |
+| `PrintScreen` | Bildschirmfoto (Mit Windows oder Greenshot, je nach Einstellung.) | gleich |
+| `Win+Strg+Alt+C` | Bildschirmfoto | gleich |
+| `Alt+PrintScreen` | Bildschirmaufnahme | gleich |
+| `Win+Comma` | Benachrichtigungen | gleich |
+| `Win+Slash` | Skalierung größer · *optional* | gleich |
+| `Win+Alt+Slash` | Skalierung kleiner · *optional* | gleich |
+| `Win+Strg+Z` | Lupe vergrößern · *optional* | gleich |
+| `Win+Strg+Alt+Z` | Lupe beenden · *optional* | gleich |
+| `Win+Strg+Alt+T` | Uhrzeit zeigen · *optional* | gleich |
+| `Win+Strg+Alt+B` | Akku zeigen · *optional* | gleich |
+| `Win+Strg+Alt+D` | Kalender aufklappen · *optional* | gleich |
+| `Win+Strg+Alt+E` | Weltuhr · *optional* | gleich |
+
+### System
+
+| Windows | Was passiert | Omarchy |
+|-|-|-|
+| `Win+Strg+L` | Sperren | gleich |
+| `Win+Alt+Escape` | WinMarchy pausieren oder fortsetzen (Pausiert ist alles wie unter Windows ohne WinMarchy: kein Tiling, keine Leiste, keine Kürzel, Taskleiste, Hintergrund und Farben von vorher. Win+Leertaste und dieses Kürzel gehen weiter.) | – (Omarchy hat keine Pause) |
+| `Win+Strg+I` | Bildschirm wach halten · *optional* | Super + Strg + I (Idle-Sperre) |
+| `Win+Strg+A` | Audio · *optional* | gleich |
+| `Win+Strg+B` | Bluetooth · *optional* | gleich |
+| `Win+Strg+Umschalt+D` | Anzeige · *optional* | gleich |
+| `Win+Strg+N` | Netzwerk · *optional* | gleich |
+| `Win+Strg+P` | Energie · *optional* | gleich |
+| `Strg+Alt+Umschalt+T` | Windows-Taskleiste ein oder aus · *optional* | gleich |
+
+## Wie die Tasten ankommen
+
+**AutoHotkey** fängt jedes Kürzel ab und schickt es in etwa einer Millisekunde per `WM_COPYDATA` an WinMarchy. Nur so geht die Win-Taste allein und das Mausrad mit Win. Läuft WinMarchy gerade nicht, schickt das Skript Fensterbefehle direkt an GlazeWMs Kommandozeile und startet für den Rest `WinMarchy.exe --action …`. GlazeWM selbst bindet keine Tasten; ist AutoHotkey nicht installiert, wirkt kein Kürzel, bis die Einrichtung es nachholt.
+
+Vor jeder Änderung prüft AutoHotkey das neue Skript mit `/Validate`. Hat es einen Fehler, bleibt das alte aktiv.
