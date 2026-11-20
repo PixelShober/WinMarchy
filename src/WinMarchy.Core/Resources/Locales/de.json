@@ -250,7 +250,7 @@
       "open": "Zum Beispiel ms-settings:display, mailto: oder spotify:.",
       "send": "Tasten, die an das Fenster vorne gehen, z. B. Ctrl+Shift+T.",
       "do": "Menüs, Layouts, Scratchpad und andere Funktionen von WinMarchy.",
-      "run": "Pfad zu einem Skript oder Programm."
+      "run": "Pfad zu einem Programm, Skript oder einer Verknüpfung (.lnk), auch mit Anführungszeichen."
     },
     "edit": {
       "newTitle": "Neues Kürzel",
@@ -281,7 +281,8 @@
       "runEmpty": "Gib einen Pfad an.",
       "duplicate": "{keys} ist doppelt belegt. Es gilt der letzte Eintrag.",
       "appNoUrls": "Adressen nimmt nur der Browser mit, „{app}“ nicht.",
-      "appUrl": "„{url}“ ist keine Webadresse (https://…)."
+      "appUrl": "„{url}“ ist keine Webadresse (https://…).",
+      "runMissing": "Keine Datei unter {path}. Ein Programm, ein Skript oder eine Verknüpfung (.lnk) mit vollem Pfad."
     },
     "export": "Exportieren",
     "exportTip": "Deine eigenen Kürzel, abgeschaltete und Favoriten als Datei sichern.",
@@ -855,7 +856,7 @@
     "appMissing": "{app} ist auf diesem Rechner nicht zu finden.",
     "glazeMissing": "GlazeWM fehlt. Unter Einrichtung lässt es sich nachinstallieren.",
     "glazeNotRunning": "Dafür muss GlazeWM laufen.",
-    "scriptMissing": "Die Datei hinter diesem Kürzel fehlt.",
+    "scriptMissing": "Die Datei hinter diesem Kürzel fehlt: {path}",
     "scale": "Anzeige: {percent} %",
     "scaleFailed": "Die Skalierung ließ sich nicht ändern.",
     "noBattery": "Kein Akku gefunden.",

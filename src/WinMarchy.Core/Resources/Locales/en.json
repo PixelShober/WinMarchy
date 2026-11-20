@@ -250,7 +250,7 @@
       "open": "For example ms-settings:display, mailto: or spotify:.",
       "send": "Keys sent to the window in front, e.g. Ctrl+Shift+T.",
       "do": "Menus, layouts, the scratchpad and other WinMarchy functions.",
-      "run": "Path to a script or program."
+      "run": "Path to a program, script or shortcut (.lnk), quotes are fine."
     },
     "edit": {
       "newTitle": "New shortcut",
@@ -281,7 +281,8 @@
       "runEmpty": "Enter a path.",
       "duplicate": "{keys} is bound twice. The last entry wins.",
       "appNoUrls": "Only the browser takes addresses, “{app}” does not.",
-      "appUrl": "“{url}” is not a web address (https://…)."
+      "appUrl": "“{url}” is not a web address (https://…).",
+      "runMissing": "No file at {path}. A program, a script or a shortcut (.lnk) with its full path."
     },
     "export": "Export",
     "exportTip": "Save your own shortcuts, switched-off ones and favourites to a file.",
@@ -855,7 +856,7 @@
     "appMissing": "{app} is not on this PC.",
     "glazeMissing": "GlazeWM is missing. Setup can install it.",
     "glazeNotRunning": "This needs GlazeWM running.",
-    "scriptMissing": "The file behind this shortcut is missing.",
+    "scriptMissing": "The file behind this shortcut is missing: {path}",
     "scale": "Display: {percent} %",
     "scaleFailed": "Could not change the scaling.",
     "noBattery": "No battery found.",

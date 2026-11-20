@@ -83,6 +83,15 @@ public class KeyComboDisplayTests
 
 public class HotkeyActionTests
 {
+    [Fact]
+    public void A_path_copied_with_quotes_runs_without_them()
+    {
+        // Explorer's "Copy as path" puts quotes around it.
+        Assert.True(HotkeyAction.TryParse("run:\"C:\\Users\\me\\Pi Projekt.lnk\"", out var action, out _));
+        Assert.Equal(@"C:\Users\me\Pi Projekt.lnk", action.Value);
+        Assert.Equal(@"C:\Tools\a.ps1", HotkeyAction.RunPath("  \"C:\\Tools\\a.ps1\"  "));
+    }
+
     [Theory]
     [InlineData("wm:focus --direction left")]
     [InlineData("wm:move --workspace 3;focus --workspace 3")]

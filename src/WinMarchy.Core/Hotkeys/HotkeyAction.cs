@@ -81,6 +81,8 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
             "wm" => ActionKind.Wm, "app" => ActionKind.App, "web" => ActionKind.Web, "open" => ActionKind.Open,
             "send" => ActionKind.Send, "do" => ActionKind.Do, "run" => ActionKind.Run, _ => null,
         };
+        // Explorer's "Copy as path" puts the path in quotes; they are not part of it.
+        if (kind == ActionKind.Run) value = RunPath(value);
         if (kind == null || value.Length == 0)
         {
             error = L.T("hotkeys.errors.actionFormat", ("action", text));
@@ -129,6 +131,9 @@ public sealed record HotkeyAction(ActionKind Kind, string Value)
         }
         return null;
     }
+
+    /// <summary>The path of a "run:" action without the quotes Explorer's "Copy as path" adds.</summary>
+    public static string RunPath(string value) => value.Trim().Trim('"').Trim();
 
     /// <summary>"app:browser https://a" → "browser".</summary>
     public string AppId => Value.Split(' ', 2)[0];

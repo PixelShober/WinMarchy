@@ -382,7 +382,10 @@ public partial class HotkeysPage : UserControl, IPage
 
         string error;
         if (!KeyCombo.TryParse(EditKeys.Text, out var combo, out error) || (combo.ReservedReason() is { } r && (error = r) != null) ||
-            !HotkeyAction.TryParse(kind + ":" + value, out _, out error))
+            !HotkeyAction.TryParse(kind + ":" + value, out var parsed, out error) ||
+            // A program, script or shortcut that is not there: said now, not only when the keys are pressed.
+            (parsed.Kind == ActionKind.Run && Environment.ExpandEnvironmentVariables(parsed.Value) is var path && !File.Exists(path) &&
+             (error = L.T("hotkeys.errors.runMissing", ("path", path))) != null))
         {
             EditError.Text = error;
             EditError.Visibility = Visibility.Visible;
@@ -394,7 +397,7 @@ public partial class HotkeysPage : UserControl, IPage
         _custom.Bindings.Add(new HotkeyBinding
         {
             Keys = combo.ToString(),
-            Do = kind + ":" + value,
+            Do = kind + ":" + (kind == "run" ? HotkeyAction.RunPath(value) : value),
             Group = _editing.Group,
             Label = label.Length > 0 ? LocalizedText.Same(label) : _editing.Label,
         });
