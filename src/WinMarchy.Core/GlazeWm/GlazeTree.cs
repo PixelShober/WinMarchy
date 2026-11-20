@@ -35,6 +35,13 @@ public static class GlazeTree
 
     public static IEnumerable<JsonElement> Windows(JsonElement container) => Descendants(container).Where(d => Type(d) == "window");
 
+    /// <summary>
+    /// A window the program maximized itself (Outlook, Teams start that way): GlazeWM keeps it as
+    /// "fullscreen" with "maximized". Win+F gives a full screen without that mark.
+    /// </summary>
+    public static bool IsMaximized(JsonElement window) =>
+        WindowState(window) == "fullscreen" && window.TryGetProperty("state", out var st) && st.ValueKind == JsonValueKind.Object && Bool(st, "maximized");
+
     public static IEnumerable<JsonElement> TilingWindows(JsonElement container) => Windows(container).Where(w => WindowState(w) == "tiling");
 
     /// <summary>Children that take part in the layout: split containers and tiling windows.</summary>

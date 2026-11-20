@@ -414,6 +414,16 @@ public sealed class LayoutEngine
             return;
         }
 
+        // A program that opens maximized belongs in the layout like any other window; otherwise it
+        // covers the screen and the windows next to it (Outlook over Stackfield, 20 November).
+        // Win+F gives a full screen without the "maximized" mark and stays.
+        if (eventType == "window_managed" && GlazeTree.IsMaximized(window) && mode != LayoutMode.Scrolling)
+        {
+            Log.Trace($"layout: {id} ({GlazeTree.Str(window, "processName")}) opened maximized, it joins the tiles", "layout");
+            await _ipc.CommandAsync("set-tiling", ct, id);
+            return;
+        }
+
         switch (mode)
         {
             case LayoutMode.Dwindle when GlazeTree.WindowState(window) == "tiling":
@@ -435,10 +445,11 @@ public sealed class LayoutEngine
                 var strip = Strip(name);
                 var index = strip.Ids.IndexOf(id);
                 // A dialog or a window floated by a rule is not a column; leave its focus alone.
-                if (index < 0 && GlazeTree.WindowState(window) != "tiling") break;
+                bool maximized = GlazeTree.IsMaximized(window);
+                if (index < 0 && GlazeTree.WindowState(window) != "tiling" && !maximized) break;
                 // A column in full screen counts like a floating one: it is not placed, and arranging
                 // the row for it again would focus it again, and that focus would arrange the row again.
-                if (index >= 0 && GlazeTree.WindowState(window) is "floating" or "fullscreen")
+                if (index >= 0 && !maximized && GlazeTree.WindowState(window) is "floating" or "fullscreen")
                 {
                     if (index == strip.Focus) break;
                     bool onScreen = index >= strip.Start && index < strip.Start + Visible;
@@ -462,7 +473,8 @@ public sealed class LayoutEngine
         if (_yielded.TryGetValue(id, out var own) && own.BackOnFocus && own.Workspace == workspace)
         {
             _yielded.Remove(id);
-            if (GlazeTree.WindowState(window) is "tiling" or "floating" && !GlazeTree.Windows(ws).Any(w => GlazeTree.WindowState(w) == "fullscreen"))
+            if (GlazeTree.WindowState(window) is "tiling" or "floating" && !GlazeTree.Windows(ws).Any(w => GlazeTree.WindowState(w) == "fullscreen") &&
+                !(own.Maximized && Arranged(workspace) == LayoutMode.Scrolling))
             {
                 Log.Trace($"fullscreen: {id} has the focus again and goes back to full screen", "layout");
                 await _ipc.CommandAsync("set-fullscreen" + (own.Maximized ? " --maximized" : ""), ct, id);
@@ -504,6 +516,8 @@ public sealed class LayoutEngine
             var windows = GlazeTree.Windows(ws).ToList();
             if (windows.Any(w => GlazeTree.WindowState(w) == "fullscreen")) continue;
             if (windows.Any(w => GlazeTree.Str(w, "id") == id && GlazeTree.WindowState(w) == "minimized")) continue;
+            // In a row of columns a maximized window is a column; it does not cover the row again.
+            if (maximized && Arranged(workspace) == LayoutMode.Scrolling) continue;
             Log.Trace($"fullscreen: {id} gets its full screen back, the windows that came for it are closed", "layout");
             await _ipc.CommandAsync("set-fullscreen" + (maximized ? " --maximized" : ""), ct, id);
             // GlazeWM gave the focus to a window next to it when the last one closed; it was in front
@@ -887,6 +901,9 @@ public sealed class LayoutEngine
 
         // Full screen (Win+F) keeps its column; it is just not placed until it comes back.
         var present = windows.Where(w => !w.OnTop && w.State is "tiling" or "floating" or "fullscreen").ToDictionary(w => w.Id);
+        // Maximized by the program itself: a column like the others (Win+F full screen stays as it is).
+        var maximized = GlazeTree.Workspaces(monitors).SelectMany(GlazeTree.Windows).Where(GlazeTree.IsMaximized)
+            .Select(w => GlazeTree.Str(w, "id")).OfType<string>().Where(present.ContainsKey).ToHashSet();
         strip.Ids.RemoveAll(id => !present.ContainsKey(id));
         if (strip.Ids.Count == 0)
         {
@@ -895,12 +912,12 @@ public sealed class LayoutEngine
             strip.Ids.AddRange(present.Values.Where(w => w.Floating && w.Workspace == workspace && !strip.Ids.Contains(w.Id))
                 .OrderBy(w => w.X).ThenBy(w => w.Y).Select(w => w.Id));
         }
-        var arriving = present.Values.Where(w => (w.State == "tiling" || Orphan(w)) && !strip.Ids.Contains(w.Id)).OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
+        var arriving = present.Values.Where(w => (w.State == "tiling" || maximized.Contains(w.Id) || Orphan(w)) && !strip.Ids.Contains(w.Id)).OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
         if (arriving.Any(Orphan)) Log.Info(L.T("layouts.orphansBack", ("workspace", workspace), ("count", arriving.Count(Orphan))));
         int insertAt = strip.Ids.Count == 0 ? 0 : Math.Clamp(strip.Focus + 1, 0, strip.Ids.Count);
         foreach (var w in arriving) strip.Ids.Insert(insertAt++, w.Id);
         // Tiling windows of the strip float: new ones, and any that Win+T put back into the tiles.
-        foreach (var id in strip.Ids.Where(id => present[id].State == "tiling").ToList())
+        foreach (var id in strip.Ids.Where(id => present[id].State == "tiling" || maximized.Contains(id)).ToList())
             await _ipc.CommandAsync("set-floating --centered=false --shown-on-top=false", ct, id);
         if (focusId != null && strip.Ids.IndexOf(focusId) is var fi and >= 0) strip.Focus = fi;
         else if (arriving.Count > 0) strip.Focus = insertAt - 1;
@@ -922,7 +939,7 @@ public sealed class LayoutEngine
                 await _ipc.CommandAsync($"move --workspace {GlazeConfig.StageWorkspace}", ct, id);
         foreach (var (id, x, width, visible) in placed)
         {
-            if (!visible || present[id].State == "fullscreen") continue;
+            if (!visible || (present[id].State == "fullscreen" && !maximized.Contains(id))) continue;
             if (present[id].Workspace != workspace) await _ipc.CommandAsync($"move --workspace {workspace}", ct, id);
             await _ipc.CommandAsync($"size --width {width}px --height {area.Height}px", ct, id);
             await _ipc.CommandAsync($"position --x-pos {x} --y-pos {area.Y}", ct, id);
