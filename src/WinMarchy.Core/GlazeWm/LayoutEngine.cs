@@ -879,8 +879,11 @@ public sealed class LayoutEngine
         var strip = Strip(workspace);
         var known = _store.Columns.TryGetValue(workspace, out var saved) ? saved : new List<long>();
         // This workspace's windows, and its columns that wait in the staging workspace.
+        // Parked windows that belong to no row at all (their row is gone) join this one: otherwise
+        // nothing would ever bring them back (alfaview, 20 November).
+        bool Orphan(WindowInfo w) => w.Workspace == GlazeConfig.StageWorkspace && !w.OnTop && OwnerOf(w) == null;
         var windows = all.Where(w => w.Workspace == workspace ||
-                                     (w.Workspace == GlazeConfig.StageWorkspace && (strip.Ids.Contains(w.Id) || known.Contains(w.Handle)))).ToList();
+                                     (w.Workspace == GlazeConfig.StageWorkspace && (strip.Ids.Contains(w.Id) || known.Contains(w.Handle) || Orphan(w)))).ToList();
 
         // Full screen (Win+F) keeps its column; it is just not placed until it comes back.
         var present = windows.Where(w => !w.OnTop && w.State is "tiling" or "floating" or "fullscreen").ToDictionary(w => w.Id);
@@ -892,7 +895,8 @@ public sealed class LayoutEngine
             strip.Ids.AddRange(present.Values.Where(w => w.Floating && w.Workspace == workspace && !strip.Ids.Contains(w.Id))
                 .OrderBy(w => w.X).ThenBy(w => w.Y).Select(w => w.Id));
         }
-        var arriving = present.Values.Where(w => w.State == "tiling" && !strip.Ids.Contains(w.Id)).OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
+        var arriving = present.Values.Where(w => (w.State == "tiling" || Orphan(w)) && !strip.Ids.Contains(w.Id)).OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
+        if (arriving.Any(Orphan)) Log.Info(L.T("layouts.orphansBack", ("workspace", workspace), ("count", arriving.Count(Orphan))));
         int insertAt = strip.Ids.Count == 0 ? 0 : Math.Clamp(strip.Focus + 1, 0, strip.Ids.Count);
         foreach (var w in arriving) strip.Ids.Insert(insertAt++, w.Id);
         // Tiling windows of the strip float: new ones, and any that Win+T put back into the tiles.
@@ -991,6 +995,19 @@ public sealed class LayoutEngine
         int screen = list.FindIndex(m => GlazeTree.Children(m).Any(w => GlazeTree.Type(w) == "workspace" &&
                                                                        GlazeTree.Str(w, "name") == hidden && GlazeTree.Bool(w, "isDisplayed")));
         if (screen < 0) return;
+
+        // A parked column brought to the front (Alt+Tab, the taskbar, a notification): its row
+        // scrolls to it, on the workspace it belongs to.
+        var focusedWindow = GlazeTree.WindowInfos(monitors).FirstOrDefault(w => w.Id == id);
+        if (hidden == GlazeConfig.StageWorkspace && focusedWindow != null && OwnerOf(focusedWindow) is { } owner)
+        {
+            Log.Trace($"scrolling {owner}: parked column {id} got the focus, the row scrolls to it", "layout");
+            await _ipc.CommandAsync($"focus --workspace {owner}", ct);
+            if (Strip(owner) is var strip && strip.Ids.IndexOf(id) is var at and >= 0) strip.Focus = at;
+            await ArrangeLockedAsync(owner, id, ct);
+            return;
+        }
+
         var open = GlazeTree.Children(list[screen]).Where(w => GlazeTree.Type(w) == "workspace")
             .Select(w => GlazeTree.Str(w, "name") ?? "").Where(GlazeConfig.IsRegular).ToList();
         var pins = WorkspacePins.Effective(_settings().WorkspaceMonitors, list.Count);
@@ -999,8 +1016,8 @@ public sealed class LayoutEngine
         var target = own.FirstOrDefault(open.Contains) ?? own.FirstOrDefault() ?? open.FirstOrDefault();
         if (target == null) return;
         var window = GlazeTree.WindowInfos(monitors).FirstOrDefault(w => w.Id == id);
-        bool stray = window != null && !window.OnTop &&
-                     (hidden == GlazeConfig.StageWorkspace ? !IsWaitingColumn(window.Handle) && !_strips.Values.Any(s => s.Ids.Contains(id)) : false);
+        // Parked but in no row (WinMarchy restarted, its row was closed): it comes back to this screen.
+        bool stray = window != null && !window.OnTop && hidden == GlazeConfig.StageWorkspace;
         Log.Info(L.T("layouts.hiddenShown", ("hidden", hidden), ("workspace", target)));
         await _ipc.CommandAsync($"focus --workspace {target}", ct);
         if (stray)
@@ -1009,6 +1026,12 @@ public sealed class LayoutEngine
             await _ipc.CommandAsync($"focus --container-id {id}", ct);
         }
     }
+
+    /// <summary>The open scrolling workspace a parked window is a column of; null if it is in no row. Caller holds the gate.</summary>
+    string? OwnerOf(WindowInfo window) =>
+        _strips.FirstOrDefault(s => s.Value.Ids.Contains(window.Id) && Arranged(s.Key) == LayoutMode.Scrolling).Key
+        ?? _store.Columns.FirstOrDefault(c => c.Value.Contains(window.Handle) && Arranged(c.Key) == LayoutMode.Scrolling &&
+                                              _screenOf.ContainsKey(c.Key)).Key;
 
     /// <summary>Whether a window waiting in the staging workspace is a column of a scrolling workspace.</summary>
     internal bool IsWaitingColumn(long handle) =>
