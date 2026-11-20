@@ -241,6 +241,17 @@ public class WorkModeTests
     }
 
     [Fact]
+    public void A_window_the_program_maximized_is_told_apart_from_win_f()
+    {
+        static System.Text.Json.JsonElement W(string state) => System.Text.Json.JsonDocument.Parse(state).RootElement;
+        // Outlook opened maximized: GlazeWM keeps it as full screen with "maximized".
+        Assert.True(GlazeTree.IsMaximized(W("""{ "type": "window", "state": { "type": "fullscreen", "maximized": true } }""")));
+        // Win+F: full screen without the mark; it stays as it is.
+        Assert.False(GlazeTree.IsMaximized(W("""{ "type": "window", "state": { "type": "fullscreen", "maximized": false } }""")));
+        Assert.False(GlazeTree.IsMaximized(W("""{ "type": "window", "state": { "type": "tiling" } }""")));
+    }
+
+    [Fact]
     public void Tiles_that_leave_half_the_workspace_empty_are_a_gap()
     {
         // Four windows in the right half of a 1900 px wide workspace, as in the diagnosis.
