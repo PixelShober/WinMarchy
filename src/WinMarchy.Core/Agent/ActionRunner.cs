@@ -184,13 +184,12 @@ public sealed class ActionRunner
 
     void Run(string value)
     {
-        var path = value.Trim();
-        if (path.Length == 0 || !File.Exists(Environment.ExpandEnvironmentVariables(path)))
+        var path = Environment.ExpandEnvironmentVariables(HotkeyAction.RunPath(value));
+        if (path.Length == 0 || !File.Exists(path))
         {
-            _host.Notify(L.T("actions.scriptMissing"));
+            _host.Notify(L.T("actions.scriptMissing", ("path", path)));
             return;
         }
-        path = Environment.ExpandEnvironmentVariables(path);
         if (path.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
         {
             // Runs under the machine's execution policy; WinMarchy never bypasses it.
